@@ -1,0 +1,18 @@
+{
+	"name": "Brotatogether",
+	"namespace": "Pasha",
+	"version_number": "1.0.0",
+	"description": "Wanna Brotato with your bros?",
+	"website_url": "",
+	"dependencies": ["Darkly77-ContentLoader", "dami-ModOptions"],
+	"extra": {
+		"godot": {
+			"incompatibilities": [],
+			"authors": ["Pasha"],
+			"compatible_mod_loader_version": "4.0.0",
+			"compatible_game_version": ["0.8.0.3"],
+			"config_defaults": {
+			}
+		}
+	}
+}

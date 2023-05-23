@@ -1,0 +1,87 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/multiplayer_menu.gd" type="Script" id=2]
+[ext_resource path="res://resources/fonts/actual/base/font_small_title.tres" type="DynamicFont" id=3]
+
+[node name="MultiplayerMenu" type="VBoxContainer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource( 1 )
+alignment = 1
+script = ExtResource( 2 )
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+margin_top = 377.0
+margin_right = 1920.0
+margin_bottom = 703.0
+alignment = 1
+
+[node name="InfoBox" type="VBoxContainer" parent="HBoxContainer"]
+margin_right = 958.0
+margin_bottom = 326.0
+size_flags_horizontal = 3
+custom_constants/separation = 50
+alignment = 1
+
+[node name="Label" type="Label" parent="HBoxContainer/InfoBox"]
+margin_top = 107.0
+margin_right = 958.0
+margin_bottom = 138.0
+custom_fonts/font = ExtResource( 3 )
+text = "Connection Information will one day be here"
+
+[node name="ServerIp" type="TextEdit" parent="HBoxContainer/InfoBox"]
+margin_top = 188.0
+margin_right = 958.0
+margin_bottom = 218.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "127.0.0.1"
+
+[node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
+margin_left = 1141.0
+margin_right = 1741.0
+margin_bottom = 326.0
+size_flags_horizontal = 6
+custom_constants/separation = 50
+alignment = 1
+
+[node name="Label" type="Label" parent="HBoxContainer/ControlBox"]
+margin_right = 600.0
+margin_bottom = 31.0
+custom_fonts/font = ExtResource( 3 )
+text = "This is a label text for controls"
+
+[node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
+margin_top = 81.0
+margin_right = 600.0
+margin_bottom = 326.0
+rect_min_size = Vector2( 600, 0 )
+size_flags_horizontal = 4
+custom_constants/separation = 25
+alignment = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ServerButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+margin_right = 600.0
+margin_bottom = 65.0
+text = "START_SERVER"
+
+[node name="ClientButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+margin_top = 90.0
+margin_right = 600.0
+margin_bottom = 155.0
+text = "CONNECT_CLIENT"
+
+[node name="StartButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+margin_top = 180.0
+margin_right = 600.0
+margin_bottom = 245.0
+text = "START_GAME"
+
+[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ServerButton" to="." method="_on_ServerButton_pressed"]
+[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ClientButton" to="." method="_on_ClientButton_pressed"]
+[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]

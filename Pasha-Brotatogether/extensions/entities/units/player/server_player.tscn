@@ -1,0 +1,269 @@
+[gd_scene load_steps=24 format=2]
+
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/player/player.gd" type="Script" id=1]
+[ext_resource path="res://entities/units/player/player_stats.tres" type="Resource" id=2]
+[ext_resource path="res://entities/units/unit/hurt_sounds/bullet_impact_body_flesh_05.wav" type="AudioStream" id=3]
+[ext_resource path="res://entities/units/player/potato.png" type="Texture" id=4]
+[ext_resource path="res://entities/units/player/highlight.png" type="Texture" id=16]
+[ext_resource path="res://resources/shaders/flash.gdshader" type="Shader" id=17]
+[ext_resource path="res://entities/units/unit/unit.tscn" type="PackedScene" id=18]
+[ext_resource path="res://entities/units/player/item_attract_area.gd" type="Script" id=21]
+[ext_resource path="res://entities/units/movement_behaviors/player_movement_behavior.gd" type="Script" id=22]
+[ext_resource path="res://entities/units/player/weapons_container.gd" type="Script" id=23]
+[ext_resource path="res://entities/units/player/player_idle.tres" type="Animation" id=24]
+[ext_resource path="res://entities/units/player/player_move.tres" type="Animation" id=25]
+[ext_resource path="res://particles/running_smoke.tscn" type="PackedScene" id=26]
+[ext_resource path="res://entities/units/player/leg_r.tscn" type="PackedScene" id=27]
+[ext_resource path="res://entities/units/player/leg_l.tscn" type="PackedScene" id=28]
+
+[sub_resource type="Curve" id=2]
+_data = [ Vector2( 0, 1 ), 0.0, 0.0, 0, 0, Vector2( 1, 0 ), 0.0, 0.0, 0, 0 ]
+
+[sub_resource type="CurveTexture" id=3]
+curve = SubResource( 2 )
+
+[sub_resource type="ParticlesMaterial" id=4]
+emission_shape = 2
+emission_box_extents = Vector3( 10, 1, 1 )
+flag_disable_z = true
+spread = 180.0
+gravity = Vector3( 0, 0, 0 )
+initial_velocity = 30.0
+initial_velocity_random = 0.5
+angular_velocity = 720.0
+angular_velocity_random = 0.73
+orbit_velocity = 0.0
+orbit_velocity_random = 0.0
+angle_random = 1.0
+scale = 0.5
+scale_random = 0.25
+scale_curve = SubResource( 3 )
+color = Color( 0.709804, 0.67451, 0.615686, 1 )
+
+[sub_resource type="ShaderMaterial" id=9]
+resource_local_to_scene = true
+shader = ExtResource( 17 )
+shader_param/flash_color = Color( 1, 1, 1, 1 )
+shader_param/flash_modifier = 0.0
+
+[sub_resource type="CircleShape2D" id=7]
+radius = 24.0
+
+[sub_resource type="CircleShape2D" id=10]
+radius = 21.0
+
+[sub_resource type="CircleShape2D" id=8]
+radius = 150.0
+
+[sub_resource type="CircleShape2D" id=6]
+radius = 32.0
+
+[node name="Player" instance=ExtResource( 18 )]
+collision_layer = 2
+collision_mask = 128
+script = ExtResource( 1 )
+crit_sounds = [  ]
+hurt_sounds = [ ExtResource( 3 ) ]
+burn_sounds = [  ]
+dodge_sounds = [  ]
+stats = ExtResource( 2 )
+hp_regen_sounds = [  ]
+step_sounds = [  ]
+alien_sounds = [  ]
+
+[node name="RunningSmoke" parent="." index="0" instance=ExtResource( 26 )]
+position = Vector2( 0, 0 )
+process_material = SubResource( 4 )
+
+[node name="Shadow" type="Sprite" parent="Animation" index="0"]
+modulate = Color( 0, 0, 0, 0.392157 )
+show_behind_parent = true
+position = Vector2( 0, 38 )
+scale = Vector2( 1, -0.3 )
+texture = ExtResource( 4 )
+
+[node name="Highlight" type="Sprite" parent="Animation" index="1"]
+visible = false
+modulate = Color( 0.447059, 1, 0.94902, 1 )
+show_behind_parent = true
+position = Vector2( 0, 36 )
+texture = ExtResource( 16 )
+
+[node name="Sprite" parent="Animation" index="2"]
+material = SubResource( 9 )
+texture = ExtResource( 4 )
+
+[node name="Legs" type="Node2D" parent="Animation" index="3"]
+show_behind_parent = true
+
+[node name="LegL" parent="Animation/Legs" index="0" instance=ExtResource( 28 )]
+show_behind_parent = true
+position = Vector2( 15, 18 )
+
+[node name="LegR" parent="Animation/Legs" index="1" instance=ExtResource( 27 )]
+show_behind_parent = true
+position = Vector2( -16, 18 )
+
+[node name="Collision" parent="." index="2"]
+modulate = Color( 1, 0, 0, 1 )
+position = Vector2( 0, -12 )
+shape = SubResource( 7 )
+
+[node name="Hurtbox" parent="." index="3"]
+modulate = Color( 0.968627, 0, 1, 1 )
+position = Vector2( 0, -25 )
+collision_mask = 20
+
+[node name="Collision" parent="Hurtbox" index="0"]
+position = Vector2( 0, 13 )
+shape = SubResource( 10 )
+
+[node name="Weapons" type="Node2D" parent="." index="4"]
+position = Vector2( 0, -24 )
+script = ExtResource( 23 )
+
+[node name="One" type="Node2D" parent="Weapons" index="0"]
+visible = false
+
+[node name="Attach1" type="Position2D" parent="Weapons/One" index="0"]
+visible = false
+position = Vector2( 0, 30 )
+
+[node name="Two" type="Node2D" parent="Weapons" index="1"]
+visible = false
+
+[node name="Attach1" type="Position2D" parent="Weapons/Two" index="0"]
+position = Vector2( 40, 20 )
+
+[node name="Attach2" type="Position2D" parent="Weapons/Two" index="1"]
+position = Vector2( -40, 20 )
+
+[node name="Three" type="Node2D" parent="Weapons" index="2"]
+visible = false
+
+[node name="Attach1" type="Position2D" parent="Weapons/Three" index="0"]
+position = Vector2( 40, 20 )
+
+[node name="Attach2" type="Position2D" parent="Weapons/Three" index="1"]
+position = Vector2( -40, 20 )
+
+[node name="Attach3" type="Position2D" parent="Weapons/Three" index="2"]
+position = Vector2( 0, -45 )
+
+[node name="Four" type="Node2D" parent="Weapons" index="3"]
+visible = false
+
+[node name="Attach1" type="Position2D" parent="Weapons/Four" index="0"]
+position = Vector2( 40, 35 )
+
+[node name="Attach2" type="Position2D" parent="Weapons/Four" index="1"]
+position = Vector2( -40, 35 )
+
+[node name="Attach3" type="Position2D" parent="Weapons/Four" index="2"]
+position = Vector2( -40, -30 )
+
+[node name="Attach4" type="Position2D" parent="Weapons/Four" index="3"]
+position = Vector2( 40, -30 )
+
+[node name="Five" type="Node2D" parent="Weapons" index="4"]
+visible = false
+
+[node name="Attach1" type="Position2D" parent="Weapons/Five" index="0"]
+position = Vector2( 35, 35 )
+
+[node name="Attach2" type="Position2D" parent="Weapons/Five" index="1"]
+position = Vector2( -35, 35 )
+
+[node name="Attach3" type="Position2D" parent="Weapons/Five" index="2"]
+position = Vector2( -55, -20 )
+
+[node name="Attach4" type="Position2D" parent="Weapons/Five" index="3"]
+position = Vector2( 55, -20 )
+
+[node name="Attach5" type="Position2D" parent="Weapons/Five" index="4"]
+position = Vector2( 0, -55 )
+
+[node name="Six" type="Node2D" parent="Weapons" index="5"]
+
+[node name="Attach1" type="Position2D" parent="Weapons/Six" index="0"]
+position = Vector2( 35, 45 )
+
+[node name="Attach2" type="Position2D" parent="Weapons/Six" index="1"]
+position = Vector2( -35, 45 )
+
+[node name="Attach3" type="Position2D" parent="Weapons/Six" index="2"]
+position = Vector2( -60, 0 )
+
+[node name="Attach4" type="Position2D" parent="Weapons/Six" index="3"]
+position = Vector2( 60, 0 )
+
+[node name="Attach5" type="Position2D" parent="Weapons/Six" index="4"]
+position = Vector2( -35, -45 )
+
+[node name="Attach6" type="Position2D" parent="Weapons/Six" index="5"]
+position = Vector2( 35, -45 )
+
+[node name="AnimationPlayer" parent="." index="5"]
+anims/idle = ExtResource( 24 )
+anims/move = ExtResource( 25 )
+
+[node name="RemoteTransform2D" type="RemoteTransform2D" parent="." index="9"]
+update_rotation = false
+update_scale = false
+
+[node name="LifeBarTransform" type="RemoteTransform2D" parent="." index="10"]
+update_rotation = false
+update_scale = false
+
+[node name="ItemAttractArea" type="Area2D" parent="." index="11"]
+visible = false
+collision_layer = 0
+collision_mask = 96
+monitorable = false
+script = ExtResource( 21 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ItemAttractArea" index="0"]
+shape = SubResource( 8 )
+
+[node name="ItemPickupArea" type="Area2D" parent="." index="12"]
+visible = false
+collision_layer = 0
+collision_mask = 96
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ItemPickupArea" index="0"]
+position = Vector2( 0, -24 )
+shape = SubResource( 6 )
+
+[node name="MovementBehavior" type="Node2D" parent="." index="13"]
+script = ExtResource( 22 )
+
+[node name="Listener2D" type="Listener2D" parent="." index="14"]
+current = true
+
+[node name="HealthRegenTimer" type="Timer" parent="." index="15"]
+wait_time = 5.0
+
+[node name="LoseHealthTimer" type="Timer" parent="." index="16"]
+
+[node name="LifestealTimer" type="Timer" parent="." index="17"]
+wait_time = 0.1
+one_shot = true
+
+[node name="InvincibilityTimer" type="Timer" parent="." index="18"]
+one_shot = true
+
+[node name="NotMovingTimer" type="Timer" parent="." index="19"]
+
+[node name="MovingTimer" type="Timer" parent="." index="20"]
+
+[connection signal="area_entered" from="ItemAttractArea" to="." method="_on_ItemAttractArea_area_entered"]
+[connection signal="area_exited" from="ItemAttractArea" to="." method="_on_ItemAttractArea_area_exited"]
+[connection signal="area_entered" from="ItemPickupArea" to="." method="_on_ItemPickupArea_area_entered"]
+[connection signal="timeout" from="HealthRegenTimer" to="." method="_on_HealthRegenTimer_timeout"]
+[connection signal="timeout" from="LoseHealthTimer" to="." method="_on_LoseHealthTimer_timeout"]
+[connection signal="timeout" from="InvincibilityTimer" to="." method="_on_InvincibilityTimer_timeout"]
+[connection signal="timeout" from="NotMovingTimer" to="." method="_on_NotMovingTimer_timeout"]
+[connection signal="timeout" from="MovingTimer" to="." method="_on_MovingTimer_timeout"]
+
+[editable path="Hurtbox"]
