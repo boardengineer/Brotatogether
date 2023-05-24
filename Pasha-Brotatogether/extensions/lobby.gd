@@ -131,10 +131,10 @@ remote func update_client_position(client_positions:Dictionary):
 					var weapon_data = client_positions.weapons[weapon_data_index]
 					var weapon = player.current_weapons[weapon_data_index]
 					var disabled = weapon_data.hitbox_disabled
-					if disabled:
-						weapon.disable_hitbox()
-					else:
-						weapon.enable_hitbox()
+#					if disabled:
+#						weapon.disable_hitbox()
+#					else:
+#						weapon.enable_hitbox()
 					
 					weapon.sprite.position = weapon_data.position
 					weapon.sprite.rotation = weapon_data.rotation
@@ -153,7 +153,6 @@ remote func send_shot(shot_data:Dictionary):
 	)
 
 remote func enemy_death(enemy_id):
-	print_debug("received death")
 	if client_enemies.has(enemy_id):
 		if is_instance_valid(client_enemies[enemy_id]):
 			client_enemies[enemy_id].die()
@@ -289,6 +288,7 @@ remote func update_player_position(data):
 			tracked_players[player_id] = {}
 			tracked_players[player_id]["player"] = spawn_player(player_data)
 			
+		var player = tracked_players[player_id]["player"]
 		if player_id == self_peer_id:
 			if $"/root/ClientMain":
 				var main = $"/root/ClientMain"
@@ -296,16 +296,15 @@ remote func update_player_position(data):
 				main.set_life_label(player_data.current_health, player_data.max_health)
 				main._damage_vignette.update_from_hp(player_data.current_health, player_data.max_health)
 		else:
-			var player = tracked_players[player_id]["player"]
 			if is_instance_valid(player):
 				player.position = player_data.position
 				player.call_deferred("maybe_update_animation", player_data.movement, true)
-				
-				for weapon_data_index in player.current_weapons.size():
-					var weapon_data = player_data.weapons[weapon_data_index]
-					var weapon = player.current_weapons[weapon_data_index]
-					weapon.sprite.position = weapon_data.position
-					weapon.sprite.rotation = weapon_data.rotation
+			
+		for weapon_data_index in player.current_weapons.size():
+			var weapon_data = player_data.weapons[weapon_data_index]
+			var weapon = player.current_weapons[weapon_data_index]
+			weapon.sprite.position = weapon_data.position
+			weapon.sprite.rotation = weapon_data.rotation
 
 func spawn_enemy(enemy_data: Dictionary):
 	var entity = load(enemy_data.filename).instance()
@@ -332,8 +331,8 @@ func spawn_player(player_data:Dictionary):
 	
 	if player_data.id == self_peer_id:
 		spawned_player.get_remote_transform().remote_path = $"/root/ClientMain/Camera".get_path()
-	else:
-		_clear_movement_behavior(spawned_player, true)
+	spawned_player.call_deferred("remove_weapon_behaviors")
+	
 	return spawned_player
 
 func spawn_entity_birth(entity_birth_data:Dictionary):
@@ -371,7 +370,6 @@ func spawn_player_projectile(projectile_data:Dictionary):
 	projectile.set_physics_process(false)
 	
 	main.add_child(projectile, true)
-	print_debug("should be client projectile spawning ", projectile_data)
 	
 	projectile.call_deferred("set_physics_process", false)
 	

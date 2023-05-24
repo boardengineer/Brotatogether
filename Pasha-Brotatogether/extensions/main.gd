@@ -176,12 +176,10 @@ func _clear_movement_behavior(player:Player) -> void:
 	player.add_child(client_movement_behavior)
 	player._current_movement_behavior = client_movement_behavior
 	
-	for weapon in player.current_weapons:
-		print_debug("Clearing Weapon Behavior")
-		var shooting_behavior = weapon.get_node("ShootingBehavior")
-		weapon.remove_child(shooting_behavior)
-		print_debug("Still has behavior? ", weapon.has_node("ShootingBehavior"))
-		var client_shooting_behavior = WeaponShootingBehavior.new()
-		client_shooting_behavior.set_name("ShootingBehavior")
-		weapon.add_child(client_shooting_behavior)
-		weapon._shooting_behavior = client_shooting_behavior
+#	for weapon in player.current_weapons:
+#		var shooting_behavior = weapon.get_node("ShootingBehavior")
+#		weapon.remove_child(shooting_behavior)
+#		var client_shooting_behavior = WeaponShootingBehavior.new()
+#		client_shooting_behavior.set_name("ShootingBehavior")
+#		weapon.add_child(client_shooting_behavior)
+#		weapon._shooting_behavior = client_shooting_behavior
