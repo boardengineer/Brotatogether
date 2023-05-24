@@ -20,6 +20,11 @@ func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false)->v
 		if get_tree().is_network_server():
 			$"/root/networking".rpc("enemy_death", id)
 	.die(knockback_vector, p_cleaning_up)
+	
+func flash()->void :
+	if get_tree().is_network_server():
+		$"/root/networking".rpc("flash_enemy", id)
+	.flash()
 
 func _on_Hurtbox_area_entered(hitbox:Area2D)->void :
 	if not get_tree().is_network_server():

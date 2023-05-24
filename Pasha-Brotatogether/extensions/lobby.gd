@@ -155,6 +155,16 @@ remote func end_wave():
 	reset_client_items()
 	get_tree().change_scene("res://mods-unpacked/pasha-Brotatogether/extensions/waiting.tscn")
 
+remote func flash_enemy(enemy_id):
+	if client_enemies.has(enemy_id):
+		if is_instance_valid(client_enemies[enemy_id]):
+			client_enemies[enemy_id].flash()
+			
+remote func flash_neutral(neutral_id):
+	if client_neutrals.has(neutral_id):
+		if is_instance_valid(client_neutrals[neutral_id]):
+			client_neutrals[neutral_id].flash()
+
 remote func update_player_position(data):
 	if current_scene_name != "ClientMain":
 #		print_debug(currentK)

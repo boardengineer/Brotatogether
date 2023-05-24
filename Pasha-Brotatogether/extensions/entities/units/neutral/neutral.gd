@@ -17,3 +17,8 @@ func on_hurt()->void :
 	if not get_tree().is_network_server():
 		return
 	.on_hurt()
+
+func flash()->void :
+	if get_tree().is_network_server():
+		$"/root/networking".rpc("flash_neutral", id)
+	.flash()
