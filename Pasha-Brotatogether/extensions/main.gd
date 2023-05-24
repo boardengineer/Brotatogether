@@ -112,6 +112,7 @@ func send_player_position():
 				weapon_data["weapon_id"] = weapon.weapon_id
 				weapon_data["position"] = weapon.sprite.position
 				weapon_data["rotation"] = weapon.sprite.rotation
+				weapon_data["shooting"] = weapon._is_shooting
 				
 				if weapon.has_node("data_node"):
 					var weapon_data_path = RunData.weapon_paths[weapon.get_node("data_node").weapon_data.my_id]

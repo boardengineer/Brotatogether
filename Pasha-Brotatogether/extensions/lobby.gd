@@ -305,6 +305,7 @@ remote func update_player_position(data):
 			var weapon = player.current_weapons[weapon_data_index]
 			weapon.sprite.position = weapon_data.position
 			weapon.sprite.rotation = weapon_data.rotation
+			weapon._is_shooting = weapon_data.shooting
 
 func spawn_enemy(enemy_data: Dictionary):
 	var entity = load(enemy_data.filename).instance()
