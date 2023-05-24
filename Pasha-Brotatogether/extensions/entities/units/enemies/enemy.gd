@@ -18,7 +18,6 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false)->void :
 	if get_tree():
 		if get_tree().is_network_server():
-			print_debug("sending death")
 			$"/root/networking".rpc("enemy_death", id)
 	.die(knockback_vector, p_cleaning_up)
 

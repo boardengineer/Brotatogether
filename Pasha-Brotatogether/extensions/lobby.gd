@@ -77,7 +77,7 @@ remotesync func register_player():
 		client_players[id] = {}
 
 remote func start_game(game_info: Dictionary):
-	
+	print_debug("should be trying to start game")
 	tracked_players = {}
 	RunData.current_wave = game_info.current_wave
 	RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
@@ -396,6 +396,8 @@ func spawn_neutral(neutral_data:Dictionary):
 	return neutral
 
 func _process(delta):
+	if not get_tree().has_network_peer():
+		return
 	var scene_name = get_tree().get_current_scene().get_name()
 	if get_tree().is_network_server():
 		# TODO i can't seem to override Shop.gd because it errors trying to get

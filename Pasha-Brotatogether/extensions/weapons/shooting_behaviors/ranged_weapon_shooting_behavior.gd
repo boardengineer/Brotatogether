@@ -1,5 +1,9 @@
 extends RangedWeaponShootingBehavior
 
+func shoot(_distance:float)->void :
+	if get_tree().is_network_server():
+		.shoot(_distance)
+	
 func shoot_projectile(rotation:float = _parent.rotation, knockback:Vector2 = Vector2.ZERO)->void :
 	var is_client = not get_tree().is_network_server()
 	if is_client:

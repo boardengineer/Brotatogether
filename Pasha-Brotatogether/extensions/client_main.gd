@@ -95,7 +95,6 @@ onready var _challenge_completed_ui = $UI / ChallengeCompletedUI
 
 onready var _damage_vignette = $UI / DamageVignette
 onready var _info_popup = $UI / InfoPopup
-onready var _test_button = $"%TestButton"
 
 onready var networking = $"/root/networking"
 

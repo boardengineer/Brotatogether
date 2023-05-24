@@ -135,7 +135,6 @@ func send_player_position():
 				projectile_data["position"] = child.position
 				projectile_data["global_position"] = child.global_position
 				projectile_data["rotation"] = child.rotation
-				print_debug("sending projectile ", child.id)
 				
 				projectiles.push_back(projectile_data)
 		data["projectiles"] = projectiles
