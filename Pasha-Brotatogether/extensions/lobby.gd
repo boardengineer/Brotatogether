@@ -32,14 +32,12 @@ var enabled = false
 var current_scene_name = ""
 
 func _ready():
-	print_debug("network signals connecting")
 	get_tree().connect("network_peer_connected", self, "_player_connected")
 	get_tree().connect("network_peer_disconnected", self, "_player_disconnected")
 	get_tree().connect("connected_to_server", self, "_connected_ok")
 	get_tree().connect("connection_failed", self, "_connected_fail")
 	get_tree().connect("server_disconnected", self, "_server_disconnected")
-	print_debug("network signals connected")
-
+	
 func _player_connected(id):
 	rpc("register_player")
 
@@ -56,7 +54,6 @@ func reset_client_items():
 	client_neutrals = {}
 
 func _connected_ok():
-	print_debug("Connection ooookay")
 	var current_scene_name = get_tree().get_current_scene().get_name()
 	if current_scene_name == "MultiplayerMenu":
 		$"/root/MultiplayerMenu/HBoxContainer/InfoBox/Label".text = "connected"
@@ -66,18 +63,14 @@ func _server_disconnected():
 	pass # Server kicked us; show error and abort.
 
 func _connected_fail():
-	print_debug("Connection Failllled")
 	pass # Could not even connect to server; abort.
 
 remotesync func register_player():
 	var id = get_tree().get_rpc_sender_id()
-	print_debug("player registered ", id)
-	
 	if not client_players.has(id):
 		client_players[id] = {}
 
 remote func start_game(game_info: Dictionary):
-	print_debug("should be trying to start game")
 	tracked_players = {}
 	RunData.current_wave = game_info.current_wave
 	RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
@@ -284,7 +277,6 @@ remote func update_player_position(data):
 	for player_data in data.players:
 		var player_id = player_data.id
 		if not player_id in tracked_players:
-			print_debug("spawning player for ", player_id)
 			tracked_players[player_id] = {}
 			tracked_players[player_id]["player"] = spawn_player(player_data)
 			
@@ -325,7 +317,6 @@ func spawn_player(player_data:Dictionary):
 	spawned_player.current_stats.speed = player_data.speed
 	
 	for weapon in player_data.weapons:
-		print_debug("spawning player with weapon ", weapon.data_path)
 		spawned_player.call_deferred("add_weapon", load(weapon.data_path), spawned_player.current_weapons.size())
 	
 	$"/root/ClientMain/Entities".add_child(spawned_player)
