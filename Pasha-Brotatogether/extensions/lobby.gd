@@ -297,6 +297,9 @@ remote func update_player_position(data):
 				main._life_bar.update_value(player_data.current_health, player_data.max_health)
 				main.set_life_label(player_data.current_health, player_data.max_health)
 				main._damage_vignette.update_from_hp(player_data.current_health, player_data.max_health)
+				print_debug("received gold ", player_data.gold)
+				RunData.gold = player_data.gold
+				$"/root/ClientMain"._ui_gold.on_gold_changed(player_data.gold)
 		else:
 			if is_instance_valid(player):
 				player.position = player_data.position

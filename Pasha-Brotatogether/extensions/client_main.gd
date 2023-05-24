@@ -340,7 +340,6 @@ func spawn_gold(unit:Unit, entity_type:int)->void :
 		gold.rotation = rand_range(0, 2 * PI)
 		_items_container.call_deferred("add_child", gold)
 		gold.call_deferred("set_texture", gold_sprites[randi() % 11])
-		var _error = gold.connect("picked_up", self, "on_gold_picked_up")
 		var _error_effects = gold.connect("picked_up", _effects_manager, "on_gold_picked_up")
 		var _error_floating_text = gold.connect("picked_up", _floating_text_manager, "on_gold_picked_up")
 		gold.push_back_destination = Vector2(rand_range(pos.x - dist, pos.x + dist), rand_range(pos.y - dist, pos.y + dist))

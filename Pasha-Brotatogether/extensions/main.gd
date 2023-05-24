@@ -106,6 +106,10 @@ func send_player_position():
 			player_data["current_health"] = tracked_player.current_stats.health
 			player_data["max_health"] = tracked_player.max_stats.health
 			
+			# This would be where individual inventories are sent out instead of
+			# RunData.gold
+			player_data["gold"] = RunData.gold
+			
 			var weapons = []
 			for weapon in tracked_player.current_weapons:
 				var weapon_data = {}
@@ -183,3 +187,34 @@ func _clear_movement_behavior(player:Player) -> void:
 #		client_shooting_behavior.set_name("ShootingBehavior")
 #		weapon.add_child(client_shooting_behavior)
 #		weapon._shooting_behavior = client_shooting_behavior
+
+func on_gold_picked_up(gold:Node)->void :
+	_golds.erase(gold)
+	if ProgressData.settings.alt_gold_sounds:
+		SoundManager.play(Utils.get_rand_element(gold_alt_pickup_sounds), - 5, 0.2)
+	else :
+		SoundManager.play(Utils.get_rand_element(gold_pickup_sounds), 0, 0.2)
+	
+	var value = gold.value
+	
+	if randf() < RunData.effects["chance_double_gold"] / 100.0:
+		RunData.tracked_item_effects["item_metal_detector"] += value
+		value *= 2
+		gold.boosted *= 2
+	
+	if randf() < RunData.effects["heal_when_pickup_gold"] / 100.0:
+		RunData.emit_signal("healing_effect", 1, "item_cute_monkey")
+	
+	# NOTE: this is the only difference in this function, changing it from 
+	# THE player to ANY player, in the future there may be separate inventories.
+	if gold.attracted_by is Player:
+		
+		if RunData.effects["dmg_when_pickup_gold"].size() > 0:
+			var dmg_taken = handle_stat_damages(RunData.effects["dmg_when_pickup_gold"])
+			RunData.tracked_item_effects["item_baby_elephant"] += dmg_taken[1]
+		
+		RunData.add_gold(value)
+		RunData.add_xp(value)
+		ProgressData.add_data("materials_collected")
+	else :
+		RunData.add_bonus_gold(value)
