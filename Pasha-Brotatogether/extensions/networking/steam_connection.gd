@@ -25,7 +25,11 @@ func read_p2p_packet() -> bool:
 		var sender = packet["steam_id_remote"]
 		var data = bytes2var(packet["data"])
 		
+		
 		var type = data.type
+		
+		
+		print_debug("received packet ", type)
 		if type == "game_state":
 			print_debug("game state received", data.game_state)
 			parent.update_game_state(data.game_state)
@@ -169,7 +173,6 @@ func send_data(packet_data: Dictionary, target: int):
 	var compressed_data = var2bytes(packet_data)
 	
 	# Just use channel 0 for everything for now
-	print_debug("sending ", compressed_data)
 	Steam.sendP2PPacket(target, compressed_data, Steam.P2P_SEND_RELIABLE, 0)
 	
 # Done to trigger p2p session requests

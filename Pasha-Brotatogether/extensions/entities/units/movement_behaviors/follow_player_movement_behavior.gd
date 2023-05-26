@@ -1,7 +1,7 @@
 extends FollowPlayerMovementBehavior
 
 func get_movement()->Vector2:
-	if get_tree().has_network_peer() and get_tree().is_network_server():
+	if $"/root/GameController" and $"/root/GameController".is_host:
 		var entity_spawner = $"/root/Main"._entity_spawner
 		var closest_square_length = -1
 		var enemy_position = _parent.global_position

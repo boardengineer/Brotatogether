@@ -19,6 +19,8 @@ const NetworkedEnemy = preload("res://mods-unpacked/Pasha-Brotatogether/extensio
 
 
 func _ready():
+	if not game_controller:
+		return
 #	This is a good place to spawn a second player
 	var spawn_x_pos = _entity_spawner._zone_max_pos.x / 2 + 200
 	
@@ -40,7 +42,7 @@ func _ready():
 			spawn_x_pos += 200
 	
 func _process(delta):
-	if game_controller.is_host:
+	if game_controller and game_controller.is_host:
 		game_controller.send_game_state()
 
 func send_player_position():
@@ -49,7 +51,8 @@ func send_player_position():
 			game_controller.send_state()
 
 func _on_WaveTimer_timeout()->void :
-	game_controller.send_end_wave()
+	if game_controller and game_controller.is_host:
+		game_controller.send_end_wave()
 	._on_WaveTimer_timeout()
 
 func _clear_movement_behavior(player:Player) -> void:

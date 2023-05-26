@@ -143,6 +143,7 @@ func send_client_position() -> void:
 	var my_player = tracked_players[self_peer_id]["player"]
 	var client_position = {}
 	client_position["player"] = my_player.position
+	client_position["id"] = self_peer_id
 	client_position["movement"] = my_player._current_movement
 	var weapons = []
 	for weapon in my_player.current_weapons:
@@ -157,23 +158,14 @@ func send_client_position() -> void:
 	connection.send_client_position(client_position)
 
 func update_client_position(client_position:Dictionary) -> void:
-	print_debug("received clinet position")
 	if is_host:
-		var id = get_tree().get_rpc_sender_id()
+		var id = client_position.id
 		if tracked_players.has(id):
 			if tracked_players[id].has("player"):
 				var player = tracked_players[id]["player"]
 				player.position = client_position.player
 				player.maybe_update_animation(client_position.movement, true)
-				
-				for weapon_data_index in client_position.weapons.size():
-					var weapon_data = client_position.weapons[weapon_data_index]
-					var weapon = player.current_weapons[weapon_data_index]
-					var disabled = weapon_data.hitbox_disabled
-				
-					weapon.sprite.position = weapon_data.position
-					weapon.sprite.rotation = weapon_data.rotation
-	
+
 func get_enemies_state() -> Dictionary:
 	var main = $"/root/Main"
 	var enemies = []

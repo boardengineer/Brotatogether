@@ -62,6 +62,7 @@ func _connected_ok():
 func _server_disconnected():
 	pass # Server kicked us; show error and abort.
 
+
 func _connected_fail():
 	pass # Could not even connect to server; abort.
 

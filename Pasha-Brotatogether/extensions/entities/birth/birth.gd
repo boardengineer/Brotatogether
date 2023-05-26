@@ -6,6 +6,6 @@ onready var game_controller = $"/root/GameController"
 var id
 
 func _ready():
-	if get_tree().is_network_server():
+	if game_controller and game_controller.is_host:
 		id = game_controller.id_count
 		game_controller.id_count = id + 1
