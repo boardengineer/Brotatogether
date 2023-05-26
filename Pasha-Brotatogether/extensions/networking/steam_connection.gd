@@ -12,9 +12,10 @@ func _ready():
 
 func _process(delta):
 	if lobby_id > 0:
-		read_p2p_packet()
+		while read_p2p_packet():
+			pass
 
-func read_p2p_packet() -> void:
+func read_p2p_packet() -> bool:
 	var packet_size = Steam.getAvailableP2PPacketSize(0)
 	
 	if packet_size > 0:
@@ -22,7 +23,7 @@ func read_p2p_packet() -> void:
 		var packet = Steam.readP2PPacket(packet_size, 0)
 		
 		var sender = packet["steam_id_remote"]
-		var data = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
+		var data = bytes2var(packet["data"])
 		
 		var type = data.type
 		if type == "game_state":
@@ -42,8 +43,12 @@ func read_p2p_packet() -> void:
 			parent.flash_enemy(data.enemy_id)
 		elif type == "flash_neutral":
 			parent.flash_enemy(data.neutral_id)
+		elif type == "client_position_update":
+			parent.update_client_position(data.client_position)
 		else:
 			print_debug("unhandled type " , type)
+		return true
+	return false
 
 func _on_Lobby_Match_List(lobbies: Array):
 	print_debug("lobbies ", lobbies)
@@ -57,13 +62,14 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		lobby_id = connected_lobby_id
 		
 		Steam.setLobbyData(lobby_id, "game", "Brotatogether")
-		Steam.allowP2PPacketRelay(true)
+		Steam.allowP2PPacketRelay(false)
 	pass
 
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == 1:
 		lobby_id = joined_lobby_id
 		parent.self_peer_id = Steam.getSteamID()
+		send_handshakes()
 		print_debug("joined lobby ", lobby_id, " as ", parent.self_peer_id, " with permissions ", _permissions)
 	else:
 		print_debug("Lobby Join Failed with code ", response)
@@ -115,7 +121,7 @@ func send_state(game_state:Dictionary) -> void:
 func send_start_game(game_info:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "start_game"
-	send_data["game_info"] = "game_info"
+	send_data["game_info"] = game_info
 	send_data_to_all(send_data)
 	
 func send_display_floating_text(text_info:Dictionary) -> void:
@@ -153,7 +159,6 @@ func send_flash_neutral(neutral_id):
 	send_data["neutral_id"] = neutral_id
 	send_data_to_all(send_data)
 
-
 func send_data_to_all(packet_data: Dictionary):
 	for player_id in parent.tracked_players:
 		if player_id == parent.self_peer_id:
@@ -161,9 +166,10 @@ func send_data_to_all(packet_data: Dictionary):
 		send_data(packet_data, player_id)
 
 func send_data(packet_data: Dictionary, target: int):
-	var compressed_data = var2bytes(packet_data).compress(File.COMPRESSION_GZIP)
+	var compressed_data = var2bytes(packet_data)
 	
 	# Just use channel 0 for everything for now
+	print_debug("sending ", compressed_data)
 	Steam.sendP2PPacket(target, compressed_data, Steam.P2P_SEND_RELIABLE, 0)
 	
 # Done to trigger p2p session requests
@@ -179,3 +185,10 @@ func _on_P2P_Session_Request(remote_id: int) -> void:
 
 	# Make the initial handshake
 	send_handshakes()
+
+func send_client_position(client_position:Dictionary) -> void:
+	print_debug("shaking hands")
+	var send_data = {}
+	send_data["type"] = "client_position_update"
+	send_data["client_position"] = client_position
+	send_data_to_all(send_data)

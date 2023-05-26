@@ -103,3 +103,5 @@ func _on_CreateSteamLobby_pressed():
 		game_controller.connection = steam_connection
 		
 		steam_connection.parent = game_controller
+	else:
+		steam_connection.send_handshakes()
