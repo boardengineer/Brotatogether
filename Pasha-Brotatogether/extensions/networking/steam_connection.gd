@@ -21,6 +21,7 @@ func read_p2p_packet() -> void:
 	var packet_size = Steam.getAvailableP2PPacketSize(0)
 	
 	if packet_size > 0:
+		print_debug("reading packet")
 		var packet = Steam.readP2PPacket(packet_size, 0)
 		
 		var sender = packet["steam_id_remote"]
@@ -70,6 +71,7 @@ func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, re
 		print_debug("Lobby Join Failed with code ", response)
 	
 func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int, chat_state: int) -> void:
+	print_debug("someone joined?")
 	var username = Steam.getFriendPersonaName(change_id)
 	update_tracked_player()
 	
@@ -91,6 +93,7 @@ func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int,
 
 # clears tracked_players and resets tracked players based  
 func update_tracked_player() -> void:
+	print_debug("updating tracked players")
 	# Clear your previous lobby list
 	tracked_players.clear()
 
@@ -98,7 +101,7 @@ func update_tracked_player() -> void:
 	var num_members = Steam.getNumLobbyMembers(lobby_id)
 
 	# Get the data of these players from Steam
-	for member_index in range(lobby_id):
+	for member_index in range(num_members):
 		var member_steam_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
 		var member_username: String = Steam.getFriendPersonaName(member_steam_id)
 		
@@ -169,6 +172,7 @@ func send_handshakes() -> void:
 	send_data_to_all(send_data)
 
 func _on_P2P_Session_Request(remote_id: int) -> void:
+	print("_on_P2P_Session_Request")
 	Steam.acceptP2PSessionWithUser(remote_id)
 
 	# Make the initial handshake

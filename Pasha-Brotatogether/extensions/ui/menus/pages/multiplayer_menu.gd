@@ -88,8 +88,8 @@ func _on_SteamLobbies_pressed():
 	Steam.requestLobbyList()
 	
 	#TODO move this elsewhere
-	game_controller.connection = direct_connection
-	direct_connection.parent = game_controller
+	game_controller.connection = steam_connection
+	steam_connection.parent = game_controller
 	
 	print_debug("pressed steam lobbies button")
 	
