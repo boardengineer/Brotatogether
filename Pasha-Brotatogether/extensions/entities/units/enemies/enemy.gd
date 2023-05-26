@@ -5,8 +5,7 @@ onready var game_controller = $"/root/GameController"
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	print_debug("we are also here")
-	if get_tree().is_network_server():
+	if game_controller.is_host:
 		id = game_controller.id_count
 		game_controller.id_count = id + 1
 
