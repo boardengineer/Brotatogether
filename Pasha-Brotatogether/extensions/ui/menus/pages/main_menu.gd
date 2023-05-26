@@ -4,9 +4,9 @@ const BrotatogetherLobby = preload("res://mods-unpacked/Pasha-Brotatogether/exte
 
 # Add a multiplayer button to the main menu
 func _ready():
-	var networking_node = BrotatogetherLobby.new()
-	networking_node.set_name("networking")
-	get_tree().root.call_deferred("add_child", networking_node)
+#	var networking_node = BrotatogetherLobby.new()
+#	networking_node.set_name("networking")
+#	get_tree().root.call_deferred("add_child", networking_node)
 	
 	var buttons_node = $"HBoxContainer/ButtonsLeft"
 	

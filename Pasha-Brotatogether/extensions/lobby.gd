@@ -93,23 +93,24 @@ remote func display_hit_effect(effect_info: Dictionary):
 		effects_manager.play_hit_effect(effect_info.position, effect_info.direction, effect_info.scale)
 
 func send_client_position():
-	if not tracked_players.has(self_peer_id):
-		return
-	var my_player = tracked_players[self_peer_id]["player"]
-	var client_positions = {}
-	client_positions["player"] = my_player.position
-	client_positions["movement"] = my_player._current_movement
-	var weapons = []
-	for weapon in my_player.current_weapons:
-		var weapon_data = {}
-		weapon_data["weapon_id"] = weapon.weapon_id
-		weapon_data["position"] = weapon.sprite.position
-		weapon_data["rotation"] = weapon.sprite.rotation
-		weapon_data["hitbox_disabled"] = weapon._hitbox._collision.disabled
-		weapons.push_back(weapon_data)
-	client_positions["weapons"] = weapons
-	
-	rpc("update_client_position", client_positions)
+	pass
+#	if not tracked_players.has(self_peer_id):
+#		return
+#	var my_player = tracked_players[self_peer_id]["player"]
+#	var client_positions = {}
+#	client_positions["player"] = my_player.position
+#	client_positions["movement"] = my_player._current_movement
+#	var weapons = []
+#	for weapon in my_player.current_weapons:
+#		var weapon_data = {}
+#		weapon_data["weapon_id"] = weapon.weapon_id
+#		weapon_data["position"] = weapon.sprite.position
+#		weapon_data["rotation"] = weapon.sprite.rotation
+#		weapon_data["hitbox_disabled"] = weapon._hitbox._collision.disabled
+#		weapons.push_back(weapon_data)
+#	client_positions["weapons"] = weapons
+#
+#	rpc("update_client_position", client_positions)
 
 remote func update_client_position(client_positions:Dictionary):
 	if get_tree().is_network_server():

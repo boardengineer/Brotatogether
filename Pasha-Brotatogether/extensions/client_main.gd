@@ -96,7 +96,7 @@ onready var _challenge_completed_ui = $UI / ChallengeCompletedUI
 onready var _damage_vignette = $UI / DamageVignette
 onready var _info_popup = $UI / InfoPopup
 
-onready var networking = $"/root/networking"
+onready var game_controller = $"/root/GameController"
 
 const refresh_time = 1.0 / 100.0
 var update_timer = refresh_time
@@ -108,7 +108,7 @@ func _physics_process(delta:float)->void :
 		update_timer = refresh_time
 
 func send_player_position():
-	networking.send_client_position()
+	game_controller.send_client_position()
 
 func _ready()->void :
 	_convert_stats_half_wave_proced = false

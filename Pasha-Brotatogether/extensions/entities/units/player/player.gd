@@ -43,8 +43,8 @@ func update_animation(movement:Vector2)->void :
 	maybe_update_animation(movement, false)
 
 func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
-	var networking = $"/root/networking"
-	if force_animation or networking.tracked_players[networking.self_peer_id]["player"] == self:
+	var game_controller = $"/root/GameController"
+	if force_animation or game_controller.tracked_players[game_controller.self_peer_id]["player"] == self:
 		pass
 	else:
 		return
