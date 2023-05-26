@@ -10,9 +10,6 @@ func _ready():
 	Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
 	Steam.connect("p2p_session_request", self, "_on_P2P_Session_Request")
 
-# here they'll be keyed by steam user ids
-var tracked_players = {}
-
 func _process(delta):
 	if lobby_id > 0:
 		read_p2p_packet()
@@ -66,7 +63,8 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == 1:
 		lobby_id = joined_lobby_id
-		print_debug("joined lobby ", lobby_id, " with permissions ", _permissions)
+		parent.self_peer_id = Steam.getSteamID()
+		print_debug("joined lobby ", lobby_id, " as ", parent.self_peer_id, " with permissions ", _permissions)
 	else:
 		print_debug("Lobby Join Failed with code ", response)
 	
@@ -95,7 +93,7 @@ func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int,
 func update_tracked_player() -> void:
 	print_debug("updating tracked players")
 	# Clear your previous lobby list
-	tracked_players.clear()
+	parent.tracked_players.clear()
 
 	# Get the number of members from this lobby from Steam
 	var num_members = Steam.getNumLobbyMembers(lobby_id)
@@ -105,7 +103,8 @@ func update_tracked_player() -> void:
 		var member_steam_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
 		var member_username: String = Steam.getFriendPersonaName(member_steam_id)
 		
-		tracked_players[member_steam_id] = {"username": member_username}
+		parent.tracked_players[member_steam_id] = {"username": member_username}
+		print_debug(parent.tracked_players)
 
 func send_state(game_state:Dictionary) -> void:
 	var send_data = {}
@@ -116,6 +115,7 @@ func send_state(game_state:Dictionary) -> void:
 func send_start_game(game_info:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "start_game"
+	send_data["game_info"] = "game_info"
 	send_data_to_all(send_data)
 	
 func send_display_floating_text(text_info:Dictionary) -> void:
@@ -155,7 +155,9 @@ func send_flash_neutral(neutral_id):
 
 
 func send_data_to_all(packet_data: Dictionary):
-	for player_id in tracked_players:
+	for player_id in parent.tracked_players:
+		if player_id == parent.self_peer_id:
+			continue
 		send_data(packet_data, player_id)
 
 func send_data(packet_data: Dictionary, target: int):

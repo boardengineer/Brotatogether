@@ -287,6 +287,7 @@ func get_players_state() -> Dictionary:
 	var players = []
 	for player_id in tracked_players:
 		var player_data = {}
+		print_debug(tracked_players)
 		var tracked_player = tracked_players[player_id]["player"]
 		player_data["id"] = player_id
 		player_data["position"] = tracked_player.position

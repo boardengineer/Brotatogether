@@ -23,11 +23,10 @@ func _ready():
 	var spawn_x_pos = _entity_spawner._zone_max_pos.x / 2 + 200
 	
 	# The first player was created on at startup, create the rest manually
-	game_controller.tracked_players[1] = {}
-	game_controller.tracked_players[1]["player"] = _player
-	if get_tree().is_network_server():
+	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
+	if game_controller.is_host:
 		for player_id in game_controller.tracked_players: 
-			if player_id == 1:
+			if player_id == game_controller.self_peer_id:
 				continue
 				
 			var spawn_pos = Vector2(spawn_x_pos, _entity_spawner._zone_max_pos.y / 2)
