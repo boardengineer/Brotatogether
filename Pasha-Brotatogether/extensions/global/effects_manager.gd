@@ -3,7 +3,7 @@ extends EffectsManager
 onready var game_controller = $"/root/GameController"
 
 func play_hit_particles(effect_pos:Vector2, direction:Vector2, effect_scale:float)->void :
-	if game_controller and game_controller.is_host:
+	if game_controller and game_controller.is_source_of_truth:
 		var rpc_data = {}
 		rpc_data["position"] = effect_pos
 		rpc_data["direction"] = direction

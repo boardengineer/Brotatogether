@@ -25,7 +25,7 @@ func _process(delta):
 	pass
 
 func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0, bypass_invincibility:bool = false)->Array:
-	if game_controller and not game_controller.is_host:
+	if game_controller and not game_controller.is_source_of_truth:
 		return [0, 0 ,0]
 	return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale, bypass_invincibility)
 
@@ -72,6 +72,6 @@ func play_step_sound()->void :
 	pass
 	
 func _on_ItemAttractArea_area_entered(area:Area2D)->void :
-	if $"/root/GameController" and not $"/root/GameController".is_host:
+	if game_controller and not game_controller.is_source_of_truth:
 		return
 	._on_ItemAttractArea_area_entered(area)

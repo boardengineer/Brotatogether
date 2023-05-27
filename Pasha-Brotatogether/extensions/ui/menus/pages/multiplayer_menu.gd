@@ -59,6 +59,7 @@ func _on_ServerButton_pressed():
 	
 	game_controller.self_peer_id = 1
 	game_controller.is_host = true
+	game_controller.is_source_of_truth = true
 	
 	get_tree().network_peer = peer
 	
@@ -100,6 +101,7 @@ func _on_CreateSteamLobby_pressed():
 		
 		# TODO move this elsewhere
 		game_controller.is_host = true
+		game_controller.is_source_of_truth = true
 		game_controller.connection = steam_connection
 		
 		steam_connection.parent = game_controller

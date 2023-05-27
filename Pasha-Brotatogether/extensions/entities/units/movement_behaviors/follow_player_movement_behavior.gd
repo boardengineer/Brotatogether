@@ -1,7 +1,9 @@
 extends FollowPlayerMovementBehavior
 
+onready var game_controller = $"/root/GameController"
+
 func get_movement()->Vector2:
-	if $"/root/GameController" and $"/root/GameController".is_host:
+	if game_controller and game_controller.is_source_of_truth:
 		var entity_spawner = $"/root/Main"._entity_spawner
 		var closest_square_length = -1
 		var enemy_position = _parent.global_position

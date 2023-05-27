@@ -12,8 +12,17 @@ var client_player_projectiles = {}
 var client_consumables = {}
 var client_neutrals = {}
 
+# The id of this player, in direct ip connections this will be 1 for the host.
+# in steam connections this will be a steam id against which a username can
+# be queried
 var self_peer_id
+
+# True iff the user hosted the lobby
 var is_host
+
+var is_source_of_truth
+
+# A counter user to assign ids for game components
 var id_count = 0
 
 const player_scene = preload("res://entities/units/player/player.tscn")
@@ -35,7 +44,7 @@ var run_updates = false
 
 func _process(delta):
 	var scene_name = get_tree().get_current_scene().get_name()
-	if is_host:
+	if is_source_of_truth:
 		# TODO i can't seem to override Shop.gd because it errors trying to get
 		# a RunData field, we'll do this gargbage instead.
 		scene_name = get_tree().get_current_scene().get_name()
@@ -158,7 +167,7 @@ func send_client_position() -> void:
 	connection.send_client_position(client_position)
 
 func update_client_position(client_position:Dictionary) -> void:
-	if is_host:
+	if is_source_of_truth:
 		var id = client_position.id
 		if tracked_players.has(id):
 			if tracked_players[id].has("player"):

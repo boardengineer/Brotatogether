@@ -1,13 +1,7 @@
 extends "res://ui/menus/pages/main_menu.gd"
 
-const BrotatogetherLobby = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/lobby.gd")
-
 # Add a multiplayer button to the main menu
 func _ready():
-#	var networking_node = BrotatogetherLobby.new()
-#	networking_node.set_name("networking")
-#	get_tree().root.call_deferred("add_child", networking_node)
-	
 	var buttons_node = $"HBoxContainer/ButtonsLeft"
 	
 	# Duplicate a Button to get the styling
