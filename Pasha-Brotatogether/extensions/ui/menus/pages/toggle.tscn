@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://resources/fonts/actual/base/font_big_outlined.tres" type="DynamicFont" id=1]
+
+[node name="DamageDisplayButton" type="CheckButton"]
+unique_name_in_owner = true
+margin_top = 365.0
+margin_right = 780.0
+margin_bottom = 435.0
+focus_neighbour_right = NodePath("../../../../Column2/SoundContainer/PauseOnFocusLostButton")
+custom_fonts/font = ExtResource( 1 )
+text = "Ready"

@@ -68,6 +68,12 @@ func send_end_wave() -> void:
 remote func end_wave() -> void:
 	parent.end_wave()
 	
+func send_more_enemies() -> void:
+	rpc("receive_more_enemies")
+
+remote func receive_more_enemies() -> void:
+	parent.received_more_enemies(get_tree().get_rpc_sender_id())
+
 func send_flash_enemy(enemy_id:int) -> void:
 	rpc("flash_enemy", enemy_id)
 
@@ -85,4 +91,13 @@ func send_client_position(client_position:Dictionary) -> void:
 
 remote func update_client_position(client_position:Dictionary) -> void:
 	parent.update_client_position(client_position)
+	
+func send_ready(is_ready:bool) -> void:
+	print_debug("sent")
+	rpc("ready", is_ready)
+	
+remote func ready(is_ready:bool) -> void:
+	print_debug("received")
+	var sender_id = get_tree().get_rpc_sender_id()
+	parent.update_ready_state(sender_id, is_ready)
 	

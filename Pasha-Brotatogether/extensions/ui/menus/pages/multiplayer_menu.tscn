@@ -12,29 +12,29 @@ alignment = 1
 script = ExtResource( 2 )
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
-margin_top = 287.0
+margin_top = 242.0
 margin_right = 1920.0
-margin_bottom = 793.0
+margin_bottom = 838.0
 alignment = 1
 
 [node name="InfoBox" type="VBoxContainer" parent="HBoxContainer"]
 margin_right = 958.0
-margin_bottom = 506.0
+margin_bottom = 596.0
 size_flags_horizontal = 3
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/InfoBox"]
-margin_top = 197.0
+margin_top = 242.0
 margin_right = 958.0
-margin_bottom = 228.0
+margin_bottom = 273.0
 custom_fonts/font = ExtResource( 3 )
 text = "Connection Information will one day be here"
 
 [node name="ServerIp" type="TextEdit" parent="HBoxContainer/InfoBox"]
-margin_top = 278.0
+margin_top = 323.0
 margin_right = 958.0
-margin_bottom = 308.0
+margin_bottom = 353.0
 grow_horizontal = 0
 grow_vertical = 0
 text = "127.0.0.1"
@@ -42,7 +42,7 @@ text = "127.0.0.1"
 [node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
 margin_left = 1141.0
 margin_right = 1741.0
-margin_bottom = 506.0
+margin_bottom = 596.0
 size_flags_horizontal = 6
 custom_constants/separation = 50
 alignment = 1
@@ -56,7 +56,7 @@ text = "This is a label text for controls"
 [node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
 margin_top = 81.0
 margin_right = 600.0
-margin_bottom = 506.0
+margin_bottom = 596.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
@@ -80,22 +80,31 @@ text = "CONNECT_CLIENT"
 margin_top = 180.0
 margin_right = 600.0
 margin_bottom = 245.0
+rect_pivot_offset = Vector2( 13, 259 )
 text = "START_GAME"
 
-[node name="SteamLobbies" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+[node name="StartButton2" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 270.0
 margin_right = 600.0
 margin_bottom = 335.0
-text = "STEAM_LOBBIES"
+rect_pivot_offset = Vector2( 13, 259 )
+text = "START_OTHER_GAME"
 
-[node name="CreateSteamLobby" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+[node name="SteamLobbies" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 360.0
 margin_right = 600.0
 margin_bottom = 425.0
+text = "STEAM_LOBBIES"
+
+[node name="CreateSteamLobby" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+margin_top = 450.0
+margin_right = 600.0
+margin_bottom = 515.0
 text = "START_STEAM_LOBBY"
 
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ServerButton" to="." method="_on_ServerButton_pressed"]
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ClientButton" to="." method="_on_ClientButton_pressed"]
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
+[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton2" to="." method="_on_StartButton2_pressed"]
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/SteamLobbies" to="." method="_on_SteamLobbies_pressed"]
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/CreateSteamLobby" to="." method="_on_CreateSteamLobby_pressed"]

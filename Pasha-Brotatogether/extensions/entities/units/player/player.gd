@@ -25,7 +25,7 @@ func _process(delta):
 	pass
 
 func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0, bypass_invincibility:bool = false)->Array:
-	if game_controller and not game_controller.is_source_of_truth:
+	if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 		return [0, 0 ,0]
 	return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale, bypass_invincibility)
 
@@ -44,7 +44,7 @@ func update_animation(movement:Vector2)->void :
 
 func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 	var game_controller = $"/root/GameController"
-	if (not game_controller) or force_animation or game_controller.tracked_players[game_controller.self_peer_id]["player"] == self:
+	if (not game_controller) or force_animation or game_controller.game_mode != "shared" or game_controller.tracked_players[game_controller.self_peer_id]["player"] == self:
 		pass
 	else:
 		return
@@ -72,6 +72,6 @@ func play_step_sound()->void :
 	pass
 	
 func _on_ItemAttractArea_area_entered(area:Area2D)->void :
-	if game_controller and not game_controller.is_source_of_truth:
+	if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 		return
 	._on_ItemAttractArea_area_entered(area)

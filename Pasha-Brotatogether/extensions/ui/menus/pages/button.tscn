@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://ui/menus/global/my_menu_button.gd" type="Script" id=1]
+
+[node name="GoButton" type="Button"]
+margin_top = 1522.0
+margin_right = 411.0
+margin_bottom = 1587.0
+focus_neighbour_top = NodePath("../../VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+size_flags_horizontal = 3
+size_flags_vertical = 8
+text = "MORE_BADDIES"
+script = ExtResource( 1 )

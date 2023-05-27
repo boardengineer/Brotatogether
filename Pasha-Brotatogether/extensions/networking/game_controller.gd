@@ -18,9 +18,10 @@ var client_neutrals = {}
 var self_peer_id
 
 # True iff the user hosted the lobby
-var is_host
+var is_host = false
 
-var is_source_of_truth
+var is_source_of_truth = false
+var game_mode = ""
 
 # A counter user to assign ids for game components
 var id_count = 0
@@ -36,33 +37,136 @@ const consumable_texture = preload("res://items/consumables/fruit/fruit.png")
 # TODO all neutrals are going to be trees for now
 const tree_scene = preload("res://entities/units/neutral/tree.tscn")
 
+const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/toggle.tscn")
+const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")
+
 #TODO this is the sussiest of bakas
 var weapon_stats_resource = ResourceLoader.load("res://weapons/ranged/pistol/1/pistol_stats.tres")
 
 var current_scene_name = ""
 var run_updates = false
 
+var ready_toggle
+
 func _process(delta):
 	var scene_name = get_tree().get_current_scene().get_name()
-	if is_source_of_truth:
+	if game_mode == "shared" and is_source_of_truth:
 		# TODO i can't seem to override Shop.gd because it errors trying to get
 		# a RunData field, we'll do this gargbage instead.
-		scene_name = get_tree().get_current_scene().get_name()
 		if scene_name != current_scene_name:
 			if current_scene_name == "Shop":
 				# First frame where we left the shop
-				var wave_data = {"current_wave":RunData.current_wave}
+				var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
 				send_start_game(wave_data)
+	elif game_mode == "async":
+		if scene_name != current_scene_name:
+			if scene_name == "Shop":
+				# Just entered the shop
+				$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_send_enemies_button())
+				if is_host:
+					# TODO, this isn't a good place for this reset, might miss calls
+					reset_extra_creatures()
+					reset_ready_map()
+					init_shop_go_button()
+				else:
+					$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
+					$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
+			elif current_scene_name == "Shop":
+				# Just left the shop
+				if is_host:
+					send_start_game(make_async_game_data())
+					reset_extra_creatures()
+				
 	current_scene_name = scene_name
 
+func init_shop_go_button() -> void:
+	var shop = get_tree().get_current_scene()
+	var button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton"
+	
+	button.disconnect("pressed", shop, "_on_GoButton_pressed")
+	button.connect("pressed", self, "_on_GoButton_pressed")
+	
+	update_go_button()
+
+func _on_GoButton_pressed()-> void:
+	var shop = get_tree().get_current_scene()
+	if shop._go_button_pressed:
+		return 
+	
+	shop._go_button_pressed = true
+	RunData.current_wave += 1
+	MusicManager.tween(0)
+	
+	RunData.effects["extra_enemies_next_wave"] = tracked_players[self_peer_id]["extra_enemies_next_wave"]
+	
+	var _error = get_tree().change_scene(MenuData.game_scene)
+
+func make_async_game_data() -> Dictionary:
+	var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
+	
+	var extra_creatures_map = {}
+	
+	for player_id in tracked_players:
+		print_debug("we are here?")
+		extra_creatures_map[player_id] = tracked_players[player_id]["extra_enemies_next_wave"]
+	
+	print_debug("tracked players ", tracked_players)
+	
+	wave_data["extra_enemies_next_wave"] = extra_creatures_map
+	
+	return wave_data
+
 func start_game(game_info: Dictionary):
-	tracked_players = {}
-	RunData.current_wave = game_info.current_wave
-	RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
-	get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
-	reset_client_items()
-	run_updates = true
-#	enabled = true
+	game_mode = game_info.mode
+	if game_mode == "shared":
+		tracked_players = {}
+		RunData.current_wave = game_info.current_wave
+		
+		# TODO, I think i only need to do this in the first frame but i need to do the testing to 
+		# make sure
+		RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
+		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
+		reset_client_items()
+		run_updates = true
+	elif game_mode == "async":
+		if game_info.current_wave == 1:
+			RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
+			RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
+	#		RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
+		if game_info.has("extra_enemies_next_wave"):
+			print_debug(game_info)
+			RunData.effects["extra_enemies_next_wave"] = RunData.effects["extra_enemies_next_wave"] + game_info.extra_enemies_next_wave[self_peer_id]
+		RunData.current_wave = game_info.current_wave
+		get_tree().change_scene(MenuData.game_scene)
+
+func create_send_enemies_button() -> Node:
+	var button = button_scene.instance()
+	button.text = "send 8 - $15"
+	button.connect("pressed", self, "_on_send_enemies_button_pressed")
+	return button
+
+func _on_send_enemies_button_pressed() -> void:
+	if RunData.gold >= 15:
+		RunData.remove_gold(15)
+	if is_host:
+		received_more_enemies(self_peer_id)
+	else:
+		connection.send_more_enemies()
+
+func received_more_enemies(source_player_id:int) -> void:
+	print_debug("received more enemies from ", source_player_id)
+	for player_id in tracked_players:
+		if player_id != source_player_id:
+			tracked_players[player_id]["extra_enemies_next_wave"] = tracked_players[player_id]["extra_enemies_next_wave"] + 1
+
+func create_ready_toggle() -> Node:
+	ready_toggle = toggle_scene.instance()
+	ready_toggle.connect("pressed", self, "_on_ready_toggle")
+	return ready_toggle
+
+func _on_ready_toggle() -> void:
+	print_debug("toggled")
+	connection.send_ready(ready_toggle.pressed)
 
 func display_floating_text(text_info:Dictionary):
 	if $"/root/ClientMain":
@@ -93,6 +197,9 @@ func flash_neutral(neutral_id):
 	if client_neutrals.has(neutral_id):
 		if is_instance_valid(client_neutrals[neutral_id]):
 			client_neutrals[neutral_id].flash()
+
+func send_ready(is_ready:bool) -> void:
+	connection.send_ready(is_ready)
 
 func send_game_state() -> void:
 	connection.send_state(get_game_state())
@@ -174,6 +281,33 @@ func update_client_position(client_position:Dictionary) -> void:
 				var player = tracked_players[id]["player"]
 				player.position = client_position.player
 				player.maybe_update_animation(client_position.movement, true)
+
+func update_ready_state(sender_id, is_ready):
+	print_debug("received ", sender_id, " ", is_ready)
+	if is_host:
+		tracked_players[sender_id]["is_ready"] = is_ready
+	if current_scene_name == "Shop":
+		update_go_button()
+
+func reset_ready_map():
+	for player_id in tracked_players:
+		tracked_players[player_id]["is_ready"] = false
+		
+func reset_extra_creatures():
+	for player_id in tracked_players:
+		tracked_players[player_id]["extra_enemies_next_wave"] = 0
+
+func update_go_button():
+	var should_enable = true
+	for player_id in tracked_players:
+		if player_id != self_peer_id and not tracked_players[player_id]["is_ready"]:
+			should_enable = false
+			break
+	var shop_button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton"
+	if not should_enable:
+		shop_button.hide()
+	else:
+		shop_button.show()
 
 func get_enemies_state() -> Dictionary:
 	var main = $"/root/Main"

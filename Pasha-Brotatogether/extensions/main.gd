@@ -19,14 +19,15 @@ const NetworkedEnemy = preload("res://mods-unpacked/Pasha-Brotatogether/extensio
 
 
 func _ready():
-	if not game_controller:
+	if not game_controller or game_controller.game_mode != "shared":
 		return
-#	This is a good place to spawn a second player
+		
+	#	spawn additional players in increading x coordinates
 	var spawn_x_pos = _entity_spawner._zone_max_pos.x / 2 + 200
 	
 	# The first player was created on at startup, create the rest manually
 	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
-	if game_controller.is_host:
+	if game_controller.is_source_of_truth:
 		for player_id in game_controller.tracked_players: 
 			if player_id == game_controller.self_peer_id:
 				continue
@@ -42,7 +43,7 @@ func _ready():
 			spawn_x_pos += 200
 	
 func _process(delta):
-	if game_controller and game_controller.is_host:
+	if game_controller and game_controller.is_source_of_truth and game_controller.game_mode == "shared":
 		game_controller.send_game_state()
 
 func send_player_position():
@@ -51,7 +52,7 @@ func send_player_position():
 			game_controller.send_state()
 
 func _on_WaveTimer_timeout()->void :
-	if game_controller and game_controller.is_host:
+	if game_controller and game_controller.is_source_of_truth:
 		game_controller.send_end_wave()
 	._on_WaveTimer_timeout()
 

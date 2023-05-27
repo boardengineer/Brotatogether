@@ -59,7 +59,7 @@ func _on_ServerButton_pressed():
 	
 	game_controller.self_peer_id = 1
 	game_controller.is_host = true
-	game_controller.is_source_of_truth = true
+	game_controller.tracked_players[1] = {}
 	
 	get_tree().network_peer = peer
 	
@@ -77,11 +77,29 @@ func _on_ClientButton_pressed():
 	text_box.text = str(get_tree().get_current_scene().get_name())
 
 func _on_StartButton_pressed():
-	game_controller.send_start_game({"current_wave":1})
+	if game_controller.is_host:
+		game_controller.is_source_of_truth = true
+	var game_mode = "shared"
+	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
+	game_controller.game_mode = game_mode
 	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
-	RunData.add_weapon(preload("res://weapons/melee/dagger/1/dagger_data.tres"), true)
+	RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
 #	RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
 	get_tree().change_scene(MenuData.game_scene)
+
+func _on_StartButton2_pressed():
+	if game_controller.is_host:
+		game_controller.is_source_of_truth = false
+		
+	var game_mode = "async"
+		
+	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
+	game_controller.game_mode = game_mode
+	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
+	RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
+#	RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
+	get_tree().change_scene(MenuData.game_scene)
+
 
 func _on_SteamLobbies_pressed():
 	Steam.addRequestLobbyListDistanceFilter(3)
