@@ -13,6 +13,7 @@ func _ready():
 	pass # Replace with function body.
 
 func add_weapon(weapon:WeaponData, is_starting:bool = false)->WeaponData:
+	# TODO, this doesn't look right.
 	weapon_paths[weapon.my_id] = weapon.get_path()
 	var result = .add_weapon(weapon, is_starting)
 	var path = weapon.get_path()

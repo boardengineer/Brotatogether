@@ -27,6 +27,8 @@ func _init(modLoader = ModLoader):
 	modLoader.install_script_extension(ext_dir + "singletons/run_data.gd")
 	modLoader.install_script_extension(ext_dir + "projectiles/player_projectile.gd")
 	modLoader.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
+	modLoader.install_script_extension(ext_dir + "ui/menus/shop/stats_container.gd")
+	modLoader.install_script_extension(ext_dir + "zones/wave_manager.gd")
 	modLoader.install_script_extension(ext_dir + "weapons/shooting_behaviors/ranged_weapon_shooting_behavior.gd")
 	modLoader.install_script_extension(ext_dir + "visual_effects/floating_text/floating_text_manager.gd")
 	modLoader.install_script_extension(ext_dir + "global/effects_manager.gd")

@@ -13,12 +13,15 @@ var last_detailed_index = -1
 var update_timer = refresh_time
 var player_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/player/server_player.tscn")
 
-onready var game_controller = $"/root/GameController"
+#onready var game_controller = $"/root/GameController"
 
 const NetworkedEnemy = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/enemy.gd")
 
 
 func _ready():
+	if not $"/root".has_node("GameController"):
+		return
+	var game_controller = $"/root/GameController"
 	if not game_controller or game_controller.game_mode != "shared":
 		return
 		
@@ -43,17 +46,23 @@ func _ready():
 			spawn_x_pos += 200
 	
 func _process(delta):
-	if game_controller and game_controller.is_source_of_truth and game_controller.game_mode == "shared":
-		game_controller.send_game_state()
+	if  $"/root".has_node("GameController"):
+		var game_controller = $"/root/GameController"
+		if game_controller and game_controller.is_source_of_truth and game_controller.game_mode == "shared":
+			game_controller.send_game_state()
 
 func send_player_position():
-	if get_tree().is_network_server():
-		if not _end_wave_timer_timedout:
-			game_controller.send_state()
+	if  $"/root".has_node("GameController"):
+		var game_controller = $"/root/GameController"
+		if get_tree().is_network_server():
+			if not _end_wave_timer_timedout:
+				game_controller.send_state()
 
 func _on_WaveTimer_timeout()->void :
-	if game_controller and game_controller.is_source_of_truth:
-		game_controller.send_end_wave()
+	if  $"/root".has_node("GameController"):
+		var game_controller = $"/root/GameController"
+		if game_controller and game_controller.is_source_of_truth:
+			game_controller.send_end_wave()
 	._on_WaveTimer_timeout()
 
 func _clear_movement_behavior(player:Player) -> void:

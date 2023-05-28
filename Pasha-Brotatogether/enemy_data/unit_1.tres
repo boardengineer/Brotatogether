@@ -1,0 +1,12 @@
+[gd_resource type="Resource" load_steps=3 format=2]
+
+[ext_resource path="res://zones/wave_unit_data.gd" type="Script" id=1]
+[ext_resource path="res://entities/units/enemies/001/1.tscn" type="PackedScene" id=2]
+
+[resource]
+script = ExtResource( 1 )
+type = 1
+unit_scene = ExtResource( 2 )
+min_number = 20
+max_number = 20
+spawn_chance = 1.0

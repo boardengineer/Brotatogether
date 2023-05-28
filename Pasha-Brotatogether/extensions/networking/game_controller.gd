@@ -40,6 +40,8 @@ const tree_scene = preload("res://entities/units/neutral/tree.tscn")
 const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/toggle.tscn")
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")
 
+const shop_monster_container_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/shop/shop_monster_container.tscn")
+
 #TODO this is the sussiest of bakas
 var weapon_stats_resource = ResourceLoader.load("res://weapons/ranged/pistol/1/pistol_stats.tres")
 
@@ -61,23 +63,62 @@ func _process(delta):
 	elif game_mode == "async":
 		if scene_name != current_scene_name:
 			if scene_name == "Shop":
-				# Just entered the shop
-				$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_send_enemies_button())
-				if is_host:
-					# TODO, this isn't a good place for this reset, might miss calls
-					reset_extra_creatures()
-					reset_ready_map()
-					init_shop_go_button()
-				else:
-					$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
-					$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
+				enter_async_shop()		
 			elif current_scene_name == "Shop":
-				# Just left the shop
-				if is_host:
-					send_start_game(make_async_game_data())
-					reset_extra_creatures()
+				exit_async_shop()
 				
 	current_scene_name = scene_name
+
+func enter_async_shop() -> void:
+	$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_send_enemies_button())
+	
+	var stats_label = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/StatsLabel"
+	var primary_button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/HBoxContainer/Primary"
+	var stats_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer"
+	
+	var opponents_button = primary_button.duplicate()
+	opponents_button.disconnect("pressed", stats_container, "_on_Primary_pressed")
+	opponents_button.connect("pressed", self, "_on_opponents_pressed")
+	opponents_button.text = "Opponents"
+	opponents_button.set_name("OpponentsButton")
+	opponents_button.flat = false
+	
+	var button_container =  $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2"
+	
+	button_container.add_child(opponents_button)
+	button_container.move_child(opponents_button, 0)
+	button_container.remove_child(stats_label)
+	
+	var primary_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/PrimaryStats"
+	var opponents_shop = primary_container.duplicate()
+	opponents_shop.set_name("OpponentsShop")
+	opponents_shop.hide()
+	
+	for node in opponents_shop.get_children():
+		opponents_shop.remove_child(node)
+		node.queue_free()
+		
+	opponents_shop.add_child(shop_monster_container_scene.instance())
+	
+	button_container.add_child(opponents_shop)
+			
+	if is_host:
+		# TODO, this isn't a good place for this reset, might miss calls
+		reset_extra_creatures()
+		reset_ready_map()
+		init_shop_go_button()
+	else:
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
+
+func _on_opponents_pressed() -> void:
+	var stats_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer"
+	stats_container.update_tab(3)
+
+func exit_async_shop() -> void:
+	if is_host:
+		send_start_game(make_async_game_data())
+		reset_extra_creatures()
 
 func init_shop_go_button() -> void:
 	var shop = get_tree().get_current_scene()
