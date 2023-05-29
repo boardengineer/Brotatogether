@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=3 format=2]
+
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/normal_enemy_spawn.tres" type="Resource" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/shop_option.gd" type="Script" id=2]
+
+[resource]
+script = ExtResource( 2 )
+price = 15
+effect = ExtResource( 1 )
+display_text = "Normal Enemy"

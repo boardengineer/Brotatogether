@@ -39,9 +39,11 @@ remote func update_game_state(game_state:Dictionary) -> void:
 	parent.update_game_state(game_state)
 
 func send_start_game(game_info:Dictionary) -> void:
+	print_debug("send start game 22 ", game_info)
 	rpc("start_game", game_info)
 
 remote func start_game(game_info: Dictionary) -> void:
+	print_debug("game 22 ", game_info)
 	parent.start_game(game_info)
 
 func send_display_floating_text(text_info:Dictionary) -> void:
@@ -73,6 +75,14 @@ func send_more_enemies() -> void:
 
 remote func receive_more_enemies() -> void:
 	parent.received_more_enemies(get_tree().get_rpc_sender_id())
+
+func send_bought_item(shop_item:Resource) -> void:
+	rpc("receive_bought_item", shop_item.get_path())
+	
+remote func receive_bought_item(resource_path: String) -> void:
+	var sender_id = get_tree().get_rpc_sender_id()
+	var resource = load(resource_path)
+	parent.receive_bought_item(resource, sender_id)
 
 func send_flash_enemy(enemy_id:int) -> void:
 	rpc("flash_enemy", enemy_id)

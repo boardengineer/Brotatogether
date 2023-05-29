@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=3 format=2]
+
+[ext_resource path="res://zones/wave_group_data.gd" type="Script" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/elite_enemy_wave.tres" type="Resource" id=2]
+
+[resource]
+script = ExtResource( 1 )
+spawn_chance = 1.0
+spawn_timing = 2
+repeating = -1
+repeating_interval = -1
+reduce_repeating_interval = 0
+min_repeating_interval = 1
+area = -1
+spawn_dist_away_from_edges = 200
+spawn_edge_of_map = false
+wave_units_data = [ ExtResource( 2 ) ]
+is_neutral = false
+is_boss = false
+is_horde = false
+min_difficulty = 0
+min_wave = 0
+max_wave = 99

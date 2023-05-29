@@ -41,6 +41,7 @@ const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")
 
 const shop_monster_container_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/shop/shop_monster_container.tscn")
+const shop_options_resource = preload("res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/opponents_shop_options.tres")
 
 #TODO this is the sussiest of bakas
 var weapon_stats_resource = ResourceLoader.load("res://weapons/ranged/pistol/1/pistol_stats.tres")
@@ -49,6 +50,7 @@ var current_scene_name = ""
 var run_updates = false
 
 var ready_toggle
+var extra_enemies_next_wave = {}
 
 func _process(delta):
 	var scene_name = get_tree().get_current_scene().get_name()
@@ -65,6 +67,7 @@ func _process(delta):
 			if scene_name == "Shop":
 				enter_async_shop()		
 			elif current_scene_name == "Shop":
+				print_debug("exit shop async")
 				exit_async_shop()
 				
 	current_scene_name = scene_name
@@ -97,8 +100,13 @@ func enter_async_shop() -> void:
 	for node in opponents_shop.get_children():
 		opponents_shop.remove_child(node)
 		node.queue_free()
-		
-	opponents_shop.add_child(shop_monster_container_scene.instance())
+	
+	for opponents_shop_option in shop_options_resource.shop_options:
+		var shop_option = shop_monster_container_scene.instance()
+		shop_option.init(opponents_shop_option, self)
+		opponents_shop.add_child(shop_option)
+		print_debug("opponents_shop_option ", opponents_shop_option.display_text)
+	
 	
 	button_container.add_child(opponents_shop)
 			
@@ -117,8 +125,23 @@ func _on_opponents_pressed() -> void:
 
 func exit_async_shop() -> void:
 	if is_host:
-		send_start_game(make_async_game_data())
+		var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
+	
+		var extra_creatures_map = create_extra_creatures_map()
+		
+		wave_data["extra_enemies_next_wave"] = extra_creatures_map
+		
+		print_debug("sending start game ", wave_data)
+		
+		send_start_game(wave_data)
 		reset_extra_creatures()
+
+func create_extra_creatures_map() -> Dictionary:
+	var extra_creatures_map = {}
+	
+	for player_id in tracked_players:
+		extra_creatures_map[player_id] = tracked_players[player_id]["extra_enemies_next_wave"]
+	return extra_creatures_map
 
 func init_shop_go_button() -> void:
 	var shop = get_tree().get_current_scene()
@@ -135,29 +158,16 @@ func _on_GoButton_pressed()-> void:
 		return 
 	
 	shop._go_button_pressed = true
+	extra_enemies_next_wave = create_extra_creatures_map()
 	RunData.current_wave += 1
 	MusicManager.tween(0)
 	
-	RunData.effects["extra_enemies_next_wave"] = tracked_players[self_peer_id]["extra_enemies_next_wave"]
+#	RunData.effects["extra_enemies_next_wave"] = tracked_players[self_peer_id]["extra_enemies_next_wave"]
 	
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
-func make_async_game_data() -> Dictionary:
-	var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
-	
-	var extra_creatures_map = {}
-	
-	for player_id in tracked_players:
-		print_debug("we are here?")
-		extra_creatures_map[player_id] = tracked_players[player_id]["extra_enemies_next_wave"]
-	
-	print_debug("tracked players ", tracked_players)
-	
-	wave_data["extra_enemies_next_wave"] = extra_creatures_map
-	
-	return wave_data
-
 func start_game(game_info: Dictionary):
+	print_debug("starting game ", game_info)
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		tracked_players = {}
@@ -174,10 +184,11 @@ func start_game(game_info: Dictionary):
 			RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
 			RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
 	#		RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
-		if game_info.has("extra_enemies_next_wave"):
-			print_debug(game_info)
-			RunData.effects["extra_enemies_next_wave"] = RunData.effects["extra_enemies_next_wave"] + game_info.extra_enemies_next_wave[self_peer_id]
+#		if game_info.has("extra_enemies_next_wave"):
+#			RunData.effects["extra_enemies_next_wave"] = RunData.effects["extra_enemies_next_wave"] + game_info.extra_enemies_next_wave[self_peer_id]
 		RunData.current_wave = game_info.current_wave
+		if game_info.has("extra_enemies_next_wave"):
+			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
 		get_tree().change_scene(MenuData.game_scene)
 
 func create_send_enemies_button() -> Node:
@@ -186,6 +197,24 @@ func create_send_enemies_button() -> Node:
 	button.connect("pressed", self, "_on_send_enemies_button_pressed")
 	return button
 
+func send_bought_item(shop_item:Resource) -> void:
+	if is_host:
+		receive_bought_item(shop_item, self_peer_id)
+	else:
+		connection.send_bought_item(shop_item)
+	
+func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
+	print_debug(source_player_id, " bought ", shop_item.get_path())
+	if shop_item.effect is WaveGroupData:
+		var effect_path = shop_item.effect.get_path()
+		for player_id in tracked_players:
+			if player_id != source_player_id:
+				if not tracked_players[player_id]["extra_enemies_next_wave"].has(effect_path):
+					tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = 0
+				tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = tracked_players[player_id]["extra_enemies_next_wave"][effect_path] + 1
+	print_debug(tracked_players)			
+			
+				
 func _on_send_enemies_button_pressed() -> void:
 	if RunData.gold >= 15:
 		RunData.remove_gold(15)
@@ -194,11 +223,12 @@ func _on_send_enemies_button_pressed() -> void:
 	else:
 		connection.send_more_enemies()
 
+
 func received_more_enemies(source_player_id:int) -> void:
-	print_debug("received more enemies from ", source_player_id)
-	for player_id in tracked_players:
-		if player_id != source_player_id:
-			tracked_players[player_id]["extra_enemies_next_wave"] = tracked_players[player_id]["extra_enemies_next_wave"] + 1
+	pass
+#	for player_id in tracked_players:
+#		if player_id != source_player_id:
+#			tracked_players[player_id]["extra_enemies_next_wave"] = tracked_players[player_id]["extra_enemies_next_wave"] + 1
 
 func create_ready_toggle() -> Node:
 	ready_toggle = toggle_scene.instance()
@@ -246,6 +276,7 @@ func send_game_state() -> void:
 	connection.send_state(get_game_state())
 
 func send_start_game(game_info:Dictionary) -> void:
+	print_debug("send start game 11 ", game_info)
 	connection.send_start_game(game_info)
 
 func send_display_floating_text(text_info:Dictionary) -> void:
@@ -336,7 +367,7 @@ func reset_ready_map():
 		
 func reset_extra_creatures():
 	for player_id in tracked_players:
-		tracked_players[player_id]["extra_enemies_next_wave"] = 0
+		tracked_players[player_id]["extra_enemies_next_wave"] = {}
 
 func update_go_button():
 	var should_enable = true

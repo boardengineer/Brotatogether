@@ -85,7 +85,7 @@ func _clear_movement_behavior(player:Player) -> void:
 #		weapon.add_child(client_shooting_behavior)
 #		weapon._shooting_behavior = client_shooting_behavior
 
-func on_gold_picked_up(gold:Node)->void :
+func on_gold_picked_up(gold:Node) -> void:
 	_golds.erase(gold)
 	if ProgressData.settings.alt_gold_sounds:
 		SoundManager.play(Utils.get_rand_element(gold_alt_pickup_sounds), - 5, 0.2)

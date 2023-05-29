@@ -1,16 +1,18 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://resources/themes/small_button_theme.tres" type="Theme" id=1]
+[ext_resource path="res://resources/fonts/actual/base/font_small_button.tres" type="DynamicFont" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/shop/shop_monster_container.gd" type="Script" id=2]
 [ext_resource path="res://resources/fonts/actual/base/font_subtitle.tres" type="DynamicFont" id=3]
 [ext_resource path="res://entities/units/enemies/001/1.png" type="Texture" id=4]
 
 [node name="ShopMonsterContainer" type="HBoxContainer"]
 margin_right = 78.0
 margin_bottom = 27.0
+script = ExtResource( 2 )
 
-[node name="Icon22" type="TextureRect" parent="."]
+[node name="Icon" type="TextureRect" parent="."]
 margin_right = 48.0
-margin_bottom = 30.0
+margin_bottom = 37.0
 rect_min_size = Vector2( 48, 0 )
 texture = ExtResource( 4 )
 expand = true
@@ -18,36 +20,37 @@ stretch_mode = 6
 
 [node name="Label" type="Button" parent="."]
 margin_left = 52.0
-margin_right = 277.0
-margin_bottom = 30.0
-rect_min_size = Vector2( 225, 0 )
-theme = ExtResource( 1 )
-custom_fonts/font = ExtResource( 3 )
-text = "MONSTER_1"
-flat = true
-clip_text = true
-align = 0
+margin_right = 214.0
+margin_bottom = 37.0
+focus_neighbour_left = NodePath("../../../ShopItem/HBoxContainer/LockButton")
+focus_neighbour_right = NodePath("../../../ShopItem3/HBoxContainer/LockButton")
+custom_fonts/font = ExtResource( 1 )
+toggle_mode = true
+text = "MENU_LOCK"
+__meta__ = {
+"_edit_use_anchors_": false
+}
 
 [node name="EmptySpace" type="Control" parent="."]
-margin_left = 281.0
-margin_right = 281.0
-margin_bottom = 30.0
+margin_left = 218.0
+margin_right = 218.0
+margin_bottom = 37.0
 size_flags_horizontal = 3
 
 [node name="Value" type="Label" parent="."]
-margin_left = 285.0
-margin_top = 3.0
-margin_right = 297.0
-margin_bottom = 27.0
+margin_left = 222.0
+margin_top = 6.0
+margin_right = 234.0
+margin_bottom = 30.0
 grow_horizontal = 0
 custom_fonts/font = ExtResource( 3 )
 text = "0"
 align = 2
 
 [node name="EmptySpace2" type="Control" parent="."]
-margin_left = 301.0
-margin_right = 306.0
-margin_bottom = 30.0
+margin_left = 238.0
+margin_right = 243.0
+margin_bottom = 37.0
 rect_min_size = Vector2( 5, 0 )
 size_flags_horizontal = 0
 __meta__ = {
