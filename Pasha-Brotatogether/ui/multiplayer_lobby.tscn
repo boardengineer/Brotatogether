@@ -56,16 +56,16 @@ custom_constants/separation = 50
 alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/ControlBox"]
-margin_top = 397.0
+margin_top = 442.0
 margin_right = 600.0
-margin_bottom = 428.0
+margin_bottom = 473.0
 custom_fonts/font = ExtResource( 7 )
 text = "This is a label text for controls"
 
 [node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
-margin_top = 478.0
+margin_top = 523.0
 margin_right = 600.0
-margin_bottom = 633.0
+margin_bottom = 588.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
@@ -80,9 +80,4 @@ margin_bottom = 65.0
 rect_pivot_offset = Vector2( 13, 259 )
 text = "START_GAME"
 
-[node name="StartButton2" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_top = 90.0
-margin_right = 600.0
-margin_bottom = 155.0
-rect_pivot_offset = Vector2( 13, 259 )
-text = "START_OTHER_GAME"
+[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]

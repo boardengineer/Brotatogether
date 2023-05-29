@@ -63,13 +63,13 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		
 		Steam.setLobbyData(lobby_id, "game", "Brotatogether")
 		Steam.allowP2PPacketRelay(false)
-		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 	pass
 
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == 1:
 		lobby_id = joined_lobby_id
 		parent.self_peer_id = Steam.getSteamID()
+		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 		send_handshakes()
 		print_debug("joined lobby ", lobby_id, " as ", parent.self_peer_id, " with permissions ", _permissions)
 	else:
