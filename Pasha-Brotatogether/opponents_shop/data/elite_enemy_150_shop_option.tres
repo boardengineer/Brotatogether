@@ -7,4 +7,4 @@
 script = ExtResource( 2 )
 price = 150
 effect = ExtResource( 1 )
-display_text = "Buy Elite"
+display_text = "Single Monk Elite"

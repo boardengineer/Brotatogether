@@ -1,0 +1,88 @@
+[gd_scene load_steps=10 format=2]
+
+[ext_resource path="res://resources/fonts/raw/NotoSansKR-Medium.otf" type="DynamicFontData" id=1]
+[ext_resource path="res://resources/fonts/raw/Anybody-Medium.ttf" type="DynamicFontData" id=2]
+[ext_resource path="res://resources/fonts/raw/NotoSansJP-Medium.otf" type="DynamicFontData" id=3]
+[ext_resource path="res://resources/fonts/raw/NotoSansTC-Medium.otf" type="DynamicFontData" id=4]
+[ext_resource path="res://resources/fonts/raw/NotoSansSC-Medium.otf" type="DynamicFontData" id=5]
+[ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=6]
+[ext_resource path="res://resources/fonts/actual/base/font_small_title.tres" type="DynamicFont" id=7]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.gd" type="Script" id=8]
+
+[sub_resource type="DynamicFont" id=1]
+size = 40
+outline_size = 1
+outline_color = Color( 0, 0, 0, 1 )
+extra_spacing_top = 3
+font_data = ExtResource( 2 )
+fallback/0 = ExtResource( 3 )
+fallback/1 = ExtResource( 1 )
+fallback/2 = ExtResource( 5 )
+fallback/3 = ExtResource( 4 )
+
+[node name="MultiplayerLobby" type="VBoxContainer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 47.0
+theme = ExtResource( 6 )
+alignment = 1
+script = ExtResource( 8 )
+
+[node name="Label" type="Label" parent="."]
+margin_right = 1873.0
+margin_bottom = 45.0
+custom_fonts/font = SubResource( 1 )
+text = "Multiplayer Lobby"
+align = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+margin_top = 49.0
+margin_right = 1873.0
+margin_bottom = 1080.0
+size_flags_vertical = 3
+
+[node name="PlayerList" type="VBoxContainer" parent="HBoxContainer"]
+margin_bottom = 1031.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
+[node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
+margin_left = 1105.0
+margin_right = 1705.0
+margin_bottom = 1031.0
+size_flags_horizontal = 6
+custom_constants/separation = 50
+alignment = 1
+
+[node name="Label" type="Label" parent="HBoxContainer/ControlBox"]
+margin_top = 397.0
+margin_right = 600.0
+margin_bottom = 428.0
+custom_fonts/font = ExtResource( 7 )
+text = "This is a label text for controls"
+
+[node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
+margin_top = 478.0
+margin_right = 600.0
+margin_bottom = 633.0
+rect_min_size = Vector2( 600, 0 )
+size_flags_horizontal = 4
+custom_constants/separation = 25
+alignment = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="StartButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+margin_right = 600.0
+margin_bottom = 65.0
+rect_pivot_offset = Vector2( 13, 259 )
+text = "START_GAME"
+
+[node name="StartButton2" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
+margin_top = 90.0
+margin_right = 600.0
+margin_bottom = 155.0
+rect_pivot_offset = Vector2( 13, 259 )
+text = "START_OTHER_GAME"

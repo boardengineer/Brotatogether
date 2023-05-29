@@ -73,8 +73,6 @@ func _process(delta):
 	current_scene_name = scene_name
 
 func enter_async_shop() -> void:
-	$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_send_enemies_button())
-	
 	var stats_label = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/StatsLabel"
 	var primary_button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/HBoxContainer/Primary"
 	var stats_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer"
@@ -82,7 +80,7 @@ func enter_async_shop() -> void:
 	var opponents_button = primary_button.duplicate()
 	opponents_button.disconnect("pressed", stats_container, "_on_Primary_pressed")
 	opponents_button.connect("pressed", self, "_on_opponents_pressed")
-	opponents_button.text = "Opponents"
+	opponents_button.text = "Opponents Shop"
 	opponents_button.set_name("OpponentsButton")
 	opponents_button.flat = false
 	
@@ -183,19 +181,10 @@ func start_game(game_info: Dictionary):
 		if game_info.current_wave == 1:
 			RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
 			RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
-	#		RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
-#		if game_info.has("extra_enemies_next_wave"):
-#			RunData.effects["extra_enemies_next_wave"] = RunData.effects["extra_enemies_next_wave"] + game_info.extra_enemies_next_wave[self_peer_id]
 		RunData.current_wave = game_info.current_wave
 		if game_info.has("extra_enemies_next_wave"):
 			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
 		get_tree().change_scene(MenuData.game_scene)
-
-func create_send_enemies_button() -> Node:
-	var button = button_scene.instance()
-	button.text = "send 8 - $15"
-	button.connect("pressed", self, "_on_send_enemies_button_pressed")
-	return button
 
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:
@@ -204,7 +193,6 @@ func send_bought_item(shop_item:Resource) -> void:
 		connection.send_bought_item(shop_item)
 	
 func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
-	print_debug(source_player_id, " bought ", shop_item.get_path())
 	if shop_item.effect is WaveGroupData:
 		var effect_path = shop_item.effect.get_path()
 		for player_id in tracked_players:
@@ -212,23 +200,6 @@ func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
 				if not tracked_players[player_id]["extra_enemies_next_wave"].has(effect_path):
 					tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = 0
 				tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = tracked_players[player_id]["extra_enemies_next_wave"][effect_path] + 1
-	print_debug(tracked_players)			
-			
-				
-func _on_send_enemies_button_pressed() -> void:
-	if RunData.gold >= 15:
-		RunData.remove_gold(15)
-	if is_host:
-		received_more_enemies(self_peer_id)
-	else:
-		connection.send_more_enemies()
-
-
-func received_more_enemies(source_player_id:int) -> void:
-	pass
-#	for player_id in tracked_players:
-#		if player_id != source_player_id:
-#			tracked_players[player_id]["extra_enemies_next_wave"] = tracked_players[player_id]["extra_enemies_next_wave"] + 1
 
 func create_ready_toggle() -> Node:
 	ready_toggle = toggle_scene.instance()

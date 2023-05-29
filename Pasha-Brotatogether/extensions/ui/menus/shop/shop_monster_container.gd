@@ -10,10 +10,8 @@ func init(shop_option: Resource, parent_game_controller) -> void:
 	var effect: Resource = shop_option.effect
 	var display_text: String = shop_option.display_text
 	
-	var buy_button = get_node("Label") 
-	buy_button.text = display_text
-	
-	buy_button.connect("pressed", self, "_on_buyButton_pressed", [shop_option])
+	get_node("Title").text = display_text
+	get_node("BuyButton") .connect("pressed", self, "_on_buyButton_pressed", [shop_option])
 	
 	print_debug("we set the text ", display_text)
 	
@@ -22,8 +20,12 @@ func init(shop_option: Resource, parent_game_controller) -> void:
 			var enemy = wave_unit_data.unit_scene.instance()
 			get_node("Icon").texture = enemy.get_node("Animation/Sprite").texture
 			
-	get_node("Value").text = str(shop_option.price)
+	get_node("BuyButton").text = str(shop_option.price)
 	
 func _on_buyButton_pressed(shop_option: Resource) -> void:
-	game_controller.send_bought_item(shop_option)
-	print_debug("pressed buy button ", shop_option.effect.get_path())
+	var price = shop_option.price
+	if RunData.gold >= price:
+		RunData.remove_gold(price)
+		game_controller.send_bought_item(shop_option)
+		
+		$"/root/Shop"._shop_items_container.update_buttons_color()

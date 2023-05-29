@@ -7,56 +7,58 @@
 [node name="MultiplayerMenu" type="VBoxContainer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
+margin_left = 47.0
 theme = ExtResource( 1 )
 alignment = 1
 script = ExtResource( 2 )
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
-margin_top = 242.0
-margin_right = 1920.0
-margin_bottom = 838.0
-alignment = 1
+margin_right = 1873.0
+margin_bottom = 1080.0
+size_flags_vertical = 3
 
 [node name="InfoBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_right = 958.0
-margin_bottom = 596.0
-size_flags_horizontal = 3
+margin_right = 578.0
+margin_bottom = 1080.0
+size_flags_horizontal = 2
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/InfoBox"]
-margin_top = 242.0
-margin_right = 958.0
-margin_bottom = 273.0
+margin_top = 474.0
+margin_right = 578.0
+margin_bottom = 505.0
 custom_fonts/font = ExtResource( 3 )
 text = "Connection Information will one day be here"
 
 [node name="ServerIp" type="TextEdit" parent="HBoxContainer/InfoBox"]
-margin_top = 323.0
-margin_right = 958.0
-margin_bottom = 353.0
+margin_top = 555.0
+margin_right = 578.0
+margin_bottom = 605.0
 grow_horizontal = 0
 grow_vertical = 0
+rect_min_size = Vector2( 0, 50 )
 text = "127.0.0.1"
 
 [node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_left = 1141.0
-margin_right = 1741.0
-margin_bottom = 596.0
+margin_left = 1105.0
+margin_right = 1705.0
+margin_bottom = 1080.0
 size_flags_horizontal = 6
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/ControlBox"]
+margin_top = 242.0
 margin_right = 600.0
-margin_bottom = 31.0
+margin_bottom = 273.0
 custom_fonts/font = ExtResource( 3 )
 text = "This is a label text for controls"
 
 [node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
-margin_top = 81.0
+margin_top = 323.0
 margin_right = 600.0
-margin_bottom = 596.0
+margin_bottom = 838.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25

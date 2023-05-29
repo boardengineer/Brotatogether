@@ -35,6 +35,7 @@ func _ready():
 
 	if not rooted_steam_connection:
 		rooted_steam_connection = SteamConnection.new()
+		rooted_steam_connection.set_name("SteamConnection")
 		$"/root".add_child(rooted_steam_connection)
 	if not rooted_game_controller:
 		rooted_game_controller = GameController.new()
@@ -42,6 +43,7 @@ func _ready():
 		$"/root".add_child(rooted_game_controller)
 	if not rooted_direct_connection:
 		rooted_direct_connection = DirectConnection.new()
+		rooted_direct_connection.set_name("DirectConnection")
 		$"/root".add_child(rooted_direct_connection)
 
 	game_controller = rooted_game_controller

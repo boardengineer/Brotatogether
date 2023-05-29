@@ -63,6 +63,7 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		
 		Steam.setLobbyData(lobby_id, "game", "Brotatogether")
 		Steam.allowP2PPacketRelay(false)
+		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 	pass
 
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
@@ -77,7 +78,7 @@ func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, re
 func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int, chat_state: int) -> void:
 	print_debug("someone joined?")
 	var username = Steam.getFriendPersonaName(change_id)
-	update_tracked_player()
+	update_tracked_players()
 	
 	if chat_state == 1:
 		print_debug(username, " joined the lobby")
@@ -96,7 +97,7 @@ func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int,
 		print_debug(username, " has been banned from the lobby.")
 
 # clears tracked_players and resets tracked players based  
-func update_tracked_player() -> void:
+func update_tracked_players() -> void:
 	print_debug("updating tracked players")
 	# Clear your previous lobby list
 	parent.tracked_players.clear()
