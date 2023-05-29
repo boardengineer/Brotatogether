@@ -45,6 +45,8 @@ func read_p2p_packet() -> bool:
 			parent.flash_enemy(data.neutral_id)
 		elif type == "client_position_update":
 			parent.update_client_position(data.client_position)
+		elif type == "send_bought_item":
+			parent.update_client_position(load(data.shop_item), sender)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -191,4 +193,10 @@ func send_client_position(client_position:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "client_position_update"
 	send_data["client_position"] = client_position
+	send_data_to_all(send_data)
+	
+func send_bought_item(shop_item:Resource) -> void:
+	var send_data = {}
+	send_data["type"] = "send_bought_item"
+	send_data["shop_item"] = shop_item.get_path()
 	send_data_to_all(send_data)
