@@ -18,7 +18,7 @@ margin_bottom = 1080.0
 size_flags_vertical = 3
 
 [node name="InfoBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_right = 578.0
+margin_right = 423.0
 margin_bottom = 1080.0
 size_flags_horizontal = 2
 custom_constants/separation = 50
@@ -26,14 +26,14 @@ alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/InfoBox"]
 margin_top = 474.0
-margin_right = 578.0
+margin_right = 423.0
 margin_bottom = 505.0
 custom_fonts/font = ExtResource( 3 )
-text = "Connection Information will one day be here"
+text = "[DEBUG] Connection information "
 
 [node name="ServerIp" type="TextEdit" parent="HBoxContainer/InfoBox"]
 margin_top = 555.0
-margin_right = 578.0
+margin_right = 423.0
 margin_bottom = 605.0
 grow_horizontal = 0
 grow_vertical = 0
@@ -42,11 +42,18 @@ text = "127.0.0.1"
 
 [node name="LobbiesBox" type="VBoxContainer" parent="HBoxContainer"]
 margin_left = 625.0
-margin_right = 625.0
+margin_right = 1118.0
 margin_bottom = 1080.0
 size_flags_horizontal = 2
 custom_constants/separation = 50
 alignment = 1
+
+[node name="Label" type="Label" parent="HBoxContainer/LobbiesBox"]
+margin_top = 524.0
+margin_right = 493.0
+margin_bottom = 555.0
+custom_fonts/font = ExtResource( 3 )
+text = "Lobbies Will Show up Here As Buttons"
 
 [node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
 margin_left = 1262.0
@@ -56,17 +63,10 @@ size_flags_horizontal = 6
 custom_constants/separation = 50
 alignment = 1
 
-[node name="Label" type="Label" parent="HBoxContainer/ControlBox"]
-margin_top = 242.0
-margin_right = 600.0
-margin_bottom = 273.0
-custom_fonts/font = ExtResource( 3 )
-text = "This is a label text for controls"
-
 [node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
-margin_top = 323.0
+margin_top = 282.0
 margin_right = 600.0
-margin_bottom = 838.0
+margin_bottom = 797.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
@@ -78,39 +78,39 @@ __meta__ = {
 [node name="ServerButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_right = 600.0
 margin_bottom = 65.0
-text = "START_SERVER"
+text = "[DEBUG] Start Server"
 
 [node name="ClientButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 90.0
 margin_right = 600.0
 margin_bottom = 155.0
-text = "CONNECT_CLIENT"
+text = "[DEBUG] Start Client"
 
 [node name="StartButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 180.0
 margin_right = 600.0
 margin_bottom = 245.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "START_GAME"
+text = "[DEBUG] Start Sync Game"
 
 [node name="StartButton2" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 270.0
 margin_right = 600.0
 margin_bottom = 335.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "START_OTHER_GAME"
+text = "[DEBUG] Start Async Game"
 
 [node name="SteamLobbies" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 360.0
 margin_right = 600.0
 margin_bottom = 425.0
-text = "STEAM_LOBBIES"
+text = "Show Steam Lobbies"
 
 [node name="CreateSteamLobby" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
 margin_top = 450.0
 margin_right = 600.0
 margin_bottom = 515.0
-text = "START_STEAM_LOBBY"
+text = "Start Steam Lobby"
 
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ServerButton" to="." method="_on_ServerButton_pressed"]
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ClientButton" to="." method="_on_ClientButton_pressed"]
