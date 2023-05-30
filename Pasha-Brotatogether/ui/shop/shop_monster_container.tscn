@@ -1,53 +1,55 @@
 [gd_scene load_steps=6 format=2]
 
-[ext_resource path="res://resources/fonts/actual/base/font_small_button.tres" type="DynamicFont" id=1]
-[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/shop/shop_monster_container.gd" type="Script" id=2]
+[ext_resource path="res://items/materials/material_ui.png" type="Texture" id=1]
+[ext_resource path="res://resources/fonts/actual/base/font_small_button.tres" type="DynamicFont" id=2]
 [ext_resource path="res://resources/fonts/actual/base/font_subtitle.tres" type="DynamicFont" id=3]
 [ext_resource path="res://entities/units/enemies/001/1.png" type="Texture" id=4]
-[ext_resource path="res://items/materials/material_ui.png" type="Texture" id=6]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/shop/shop_monster_container.gd" type="Script" id=5]
 
 [node name="ShopMonsterContainer" type="HBoxContainer"]
-margin_left = -148.0
-margin_right = 148.0
-margin_bottom = 70.0
+margin_left = -184.0
+margin_right = 184.0
+margin_bottom = 38.0
 grow_horizontal = 2
 size_flags_vertical = 0
 alignment = 2
-script = ExtResource( 2 )
+script = ExtResource( 5 )
 
 [node name="Icon" type="TextureRect" parent="."]
-margin_left = 23.0
-margin_right = 71.0
-margin_bottom = 70.0
+margin_left = 101.0
+margin_right = 149.0
+margin_bottom = 38.0
 rect_min_size = Vector2( 48, 0 )
 texture = ExtResource( 4 )
 expand = true
 stretch_mode = 6
 
 [node name="Title" type="Label" parent="."]
-margin_left = 75.0
-margin_top = 23.0
-margin_right = 187.0
-margin_bottom = 47.0
+margin_left = 153.0
+margin_top = 7.0
+margin_right = 265.0
+margin_bottom = 31.0
 custom_fonts/font = ExtResource( 3 )
 text = "Baby Alien"
 align = 2
 
 [node name="BuyButton" type="Button" parent="."]
-margin_left = 191.0
-margin_right = 296.0
-margin_bottom = 70.0
+margin_left = 269.0
+margin_right = 368.0
+margin_bottom = 37.0
 grow_horizontal = 0
 grow_vertical = 0
+rect_min_size = Vector2( 99, 0 )
 focus_neighbour_left = NodePath("../../../ShopItem/HBoxContainer/LockButton")
 focus_neighbour_right = NodePath("../../../ShopItem3/HBoxContainer/LockButton")
 size_flags_horizontal = 12
 size_flags_vertical = 0
-custom_fonts/font = ExtResource( 1 )
+custom_fonts/font = ExtResource( 2 )
 toggle_mode = true
-text = "15"
-icon = ExtResource( 6 )
+text = "1500"
+icon = ExtResource( 1 )
 icon_align = 2
+expand_icon = true
 __meta__ = {
 "_edit_use_anchors_": false
 }

@@ -1,0 +1,421 @@
+[gd_scene load_steps=26 format=2]
+
+[ext_resource path="res://ui/menus/shop/shop_background.png" type="Texture" id=1]
+[ext_resource path="res://ui/icons/elite_icon.png" type="Texture" id=2]
+[ext_resource path="res://ui/icons/horde_icon.png" type="Texture" id=3]
+[ext_resource path="res://ui/menus/run/gold_label.gd" type="Script" id=4]
+[ext_resource path="res://ui/menus/shop/shop_items_container.gd" type="Script" id=5]
+[ext_resource path="res://ui/menus/shop/reroll_button.gd" type="Script" id=6]
+[ext_resource path="res://resources/fonts/actual/base/font_floating_text.tres" type="DynamicFont" id=7]
+[ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=8]
+[ext_resource path="res://resources/fonts/actual/base/font_small_text.tres" type="DynamicFont" id=9]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_stats_container.tscn" type="PackedScene" id=10]
+[ext_resource path="res://ui/menus/shop/items_container.tscn" type="PackedScene" id=11]
+[ext_resource path="res://ui/menus/run/gold_icon.tscn" type="PackedScene" id=12]
+[ext_resource path="res://ui/menus/shop/weapons_container.tscn" type="PackedScene" id=13]
+[ext_resource path="res://items/global/inventory_element.tscn" type="PackedScene" id=14]
+[ext_resource path="res://ui/menus/shop/synergy_container.tscn" type="PackedScene" id=15]
+[ext_resource path="res://ui/menus/shop/item_popup.tscn" type="PackedScene" id=16]
+[ext_resource path="res://ui/menus/global/focus_manager.tscn" type="PackedScene" id=17]
+[ext_resource path="res://ui/menus/shop/stat_popup.tscn" type="PackedScene" id=18]
+[ext_resource path="res://ui/menus/shop/button_with_icon.tscn" type="PackedScene" id=19]
+[ext_resource path="res://ui/menus/ingame/challenge_completed_ui.tscn" type="PackedScene" id=20]
+[ext_resource path="res://ui/menus/ingame/pause_menu.tscn" type="PackedScene" id=21]
+[ext_resource path="res://ui/menus/shop/shop_item.tscn" type="PackedScene" id=22]
+[ext_resource path="res://ui/menus/global/my_menu_button.gd" type="Script" id=23]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.gd" type="Script" id=24]
+[ext_resource path="res://ui/menus/shop/elite_container.gd" type="Script" id=25]
+
+[node name="Shop" type="Control"]
+pause_mode = 2
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource( 8 )
+script = ExtResource( 24 )
+__meta__ = {
+"_edit_lock_": true,
+"_edit_use_anchors_": false
+}
+
+[node name="FocusManager" parent="." instance=ExtResource( 17 )]
+
+[node name="Background" type="TextureRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+texture = ExtResource( 1 )
+expand = true
+__meta__ = {
+"_edit_lock_": true
+}
+
+[node name="Content" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="MarginContainer" type="MarginContainer" parent="Content"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_constants/margin_right = 25
+custom_constants/margin_top = 25
+custom_constants/margin_left = 25
+custom_constants/margin_bottom = 25
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Content/MarginContainer"]
+margin_left = 25.0
+margin_top = 25.0
+margin_right = 1895.0
+margin_bottom = 1603.0
+custom_constants/separation = 25
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Content/MarginContainer/HBoxContainer"]
+margin_right = 1434.0
+margin_bottom = 1578.0
+custom_constants/separation = 50
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer"]
+margin_right = 1434.0
+margin_bottom = 82.0
+rect_min_size = Vector2( 0, 82 )
+alignment = 2
+
+[node name="Title" type="Label" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
+margin_top = 18.0
+margin_right = 338.0
+margin_bottom = 63.0
+custom_fonts/font = ExtResource( 7 )
+text = "Multiplayer Shop"
+
+[node name="EmptySpace" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
+modulate = Color( 1, 1, 1, 0 )
+margin_left = 342.0
+margin_right = 822.0
+margin_bottom = 82.0
+size_flags_horizontal = 3
+
+[node name="GoldUI" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
+margin_left = 826.0
+margin_right = 916.0
+margin_bottom = 82.0
+alignment = 1
+
+[node name="GoldIcon" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer/GoldUI" instance=ExtResource( 12 )]
+margin_bottom = 82.0
+
+[node name="GoldLabel" type="Label" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer/GoldUI"]
+margin_left = 68.0
+margin_top = 18.0
+margin_right = 90.0
+margin_bottom = 63.0
+custom_fonts/font = ExtResource( 7 )
+text = "0"
+script = ExtResource( 4 )
+
+[node name="EmptySpace2" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
+modulate = Color( 1, 1, 1, 0 )
+margin_left = 920.0
+margin_right = 1400.0
+margin_bottom = 82.0
+size_flags_horizontal = 3
+
+[node name="RerollButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer" instance=ExtResource( 19 )]
+margin_left = 1404.0
+margin_right = 1434.0
+focus_neighbour_bottom = NodePath("../../HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+script = ExtResource( 6 )
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer"]
+margin_top = 132.0
+margin_right = 1434.0
+margin_bottom = 668.0
+
+[node name="ShopItemsContainer" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2"]
+margin_right = 1434.0
+margin_bottom = 536.0
+custom_constants/separation = 5
+script = ExtResource( 5 )
+_shop_items_node_paths = [ NodePath("ShopItem"), NodePath("ShopItem2"), NodePath("ShopItem3"), NodePath("ShopItem4") ]
+
+[node name="ShopItem" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer" instance=ExtResource( 22 )]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 0.0
+margin_top = 0.0
+margin_right = 351.0
+margin_bottom = 536.0
+
+[node name="ItemDescription" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem/PanelContainer/MarginContainer/VBoxContainer" index="0"]
+expand_indefinitely = false
+
+[node name="BuyButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem/PanelContainer/MarginContainer/VBoxContainer" index="2"]
+focus_neighbour_right = NodePath("../../../../../ShopItem2/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+
+[node name="LockButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem/HBoxContainer" index="0"]
+focus_neighbour_right = NodePath("../../../ShopItem2/HBoxContainer/LockButton")
+
+[node name="EmptySpace" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer"]
+modulate = Color( 1, 1, 1, 0 )
+margin_left = 356.0
+margin_right = 356.0
+margin_bottom = 536.0
+size_flags_horizontal = 3
+
+[node name="ShopItem2" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer" instance=ExtResource( 22 )]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 361.0
+margin_top = 0.0
+margin_right = 712.0
+margin_bottom = 536.0
+
+[node name="ItemDescription" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem2/PanelContainer/MarginContainer/VBoxContainer" index="0"]
+expand_indefinitely = false
+
+[node name="BuyButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem2/PanelContainer/MarginContainer/VBoxContainer" index="2"]
+focus_neighbour_left = NodePath("../../../../../ShopItem/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+focus_neighbour_right = NodePath("../../../../../ShopItem3/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+
+[node name="LockButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem2/HBoxContainer" index="0"]
+focus_neighbour_left = NodePath("../../../ShopItem/HBoxContainer/LockButton")
+focus_neighbour_right = NodePath("../../../ShopItem3/HBoxContainer/LockButton")
+
+[node name="EmptySpace2" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer"]
+modulate = Color( 1, 1, 1, 0 )
+margin_left = 717.0
+margin_right = 717.0
+margin_bottom = 536.0
+size_flags_horizontal = 3
+
+[node name="ShopItem3" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer" instance=ExtResource( 22 )]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 722.0
+margin_top = 0.0
+margin_right = 1073.0
+margin_bottom = 536.0
+
+[node name="ItemDescription" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem3/PanelContainer/MarginContainer/VBoxContainer" index="0"]
+expand_indefinitely = false
+
+[node name="BuyButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem3/PanelContainer/MarginContainer/VBoxContainer" index="2"]
+focus_neighbour_left = NodePath("../../../../../ShopItem2/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+focus_neighbour_right = NodePath("../../../../../ShopItem4/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+
+[node name="LockButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem3/HBoxContainer" index="0"]
+focus_neighbour_left = NodePath("../../../ShopItem2/HBoxContainer/LockButton")
+focus_neighbour_right = NodePath("../../../ShopItem4/HBoxContainer/LockButton")
+
+[node name="EmptySpace3" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer"]
+modulate = Color( 1, 1, 1, 0 )
+margin_left = 1078.0
+margin_right = 1078.0
+margin_bottom = 536.0
+size_flags_horizontal = 3
+
+[node name="ShopItem4" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer" instance=ExtResource( 22 )]
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_left = 1083.0
+margin_top = 0.0
+margin_right = 1434.0
+margin_bottom = 536.0
+
+[node name="ItemDescription" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer" index="0"]
+expand_indefinitely = false
+
+[node name="BuyButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer" index="2"]
+focus_neighbour_left = NodePath("../../../../../ShopItem3/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+focus_neighbour_top = NodePath("../../../../../../../HBoxContainer/RerollButton")
+focus_neighbour_right = NodePath("../../../../../../../../VBoxContainer2/GoButton")
+
+[node name="LockButton" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/HBoxContainer" index="0"]
+focus_neighbour_left = NodePath("../../../ShopItem3/HBoxContainer/LockButton")
+focus_neighbour_right = NodePath("../../../../../../VBoxContainer2/GoButton")
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer"]
+margin_top = 718.0
+margin_right = 1434.0
+margin_bottom = 1578.0
+size_flags_vertical = 3
+custom_constants/separation = 25
+
+[node name="ItemsContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer3" instance=ExtResource( 11 )]
+margin_top = 584.0
+margin_right = 115.0
+margin_bottom = 860.0
+
+[node name="EmptySpace" type="ColorRect" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer3"]
+modulate = Color( 1, 1, 1, 0 )
+margin_left = 140.0
+margin_right = 1091.0
+margin_bottom = 860.0
+size_flags_horizontal = 3
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="WeaponsContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer3" instance=ExtResource( 13 )]
+margin_left = 1116.0
+margin_top = 584.0
+margin_right = 1434.0
+margin_bottom = 860.0
+nb_columns = 3
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="Content/MarginContainer/HBoxContainer"]
+margin_left = 1459.0
+margin_right = 1870.0
+margin_bottom = 1578.0
+size_flags_horizontal = 3
+custom_constants/separation = 9
+
+[node name="StatsContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2" instance=ExtResource( 10 )]
+margin_top = 0.0
+margin_right = 411.0
+margin_bottom = 1337.0
+
+[node name="EmptySpace" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+modulate = Color( 1, 1, 1, 0 )
+margin_top = 1346.0
+margin_right = 411.0
+margin_bottom = 1346.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EliteInfoPanel" type="PanelContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+unique_name_in_owner = true
+margin_top = 1355.0
+margin_right = 411.0
+margin_bottom = 1399.0
+theme = ExtResource( 8 )
+
+[node name="MarginContainer" type="MarginContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2/EliteInfoPanel"]
+margin_left = 5.0
+margin_top = 5.0
+margin_right = 406.0
+margin_bottom = 39.0
+custom_constants/margin_right = 5
+custom_constants/margin_top = 5
+custom_constants/margin_left = 5
+custom_constants/margin_bottom = 5
+
+[node name="EliteInfobox" type="Label" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2/EliteInfoPanel/MarginContainer"]
+unique_name_in_owner = true
+margin_left = 5.0
+margin_top = 5.0
+margin_right = 396.0
+margin_bottom = 29.0
+custom_fonts/font = ExtResource( 9 )
+text = "ELITE_APPEARING"
+valign = 1
+autowrap = true
+
+[node name="EliteContainer" type="GridContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+margin_left = 411.0
+margin_top = 1408.0
+margin_right = 411.0
+margin_bottom = 1504.0
+rect_min_size = Vector2( 0, 96 )
+size_flags_horizontal = 8
+columns = 4
+script = ExtResource( 25 )
+elite_icon = ExtResource( 2 )
+horde_icon = ExtResource( 3 )
+
+[node name="EliteElement" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2/EliteContainer" instance=ExtResource( 14 )]
+visible = false
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 96.0
+margin_bottom = 96.0
+icon = ExtResource( 2 )
+
+[node name="EliteElement2" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2/EliteContainer" instance=ExtResource( 14 )]
+visible = false
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 96.0
+margin_bottom = 96.0
+icon = ExtResource( 2 )
+
+[node name="EliteElement3" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2/EliteContainer" instance=ExtResource( 14 )]
+visible = false
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 96.0
+margin_bottom = 96.0
+icon = ExtResource( 2 )
+
+[node name="EliteElement4" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2/EliteContainer" instance=ExtResource( 14 )]
+visible = false
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 96.0
+margin_bottom = 96.0
+icon = ExtResource( 2 )
+
+[node name="GoButton" type="Button" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+margin_top = 1513.0
+margin_right = 411.0
+margin_bottom = 1578.0
+focus_neighbour_top = NodePath("../../VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+size_flags_horizontal = 3
+size_flags_vertical = 8
+text = "MENU_GO"
+script = ExtResource( 23 )
+
+[node name="StatPopup" parent="Content" instance=ExtResource( 18 )]
+visible = false
+margin_left = 1403.0
+margin_top = 50.0
+margin_right = 1403.0
+margin_bottom = 1030.0
+
+[node name="BlockBackground" type="ColorRect" parent="Content"]
+visible = false
+modulate = Color( 1, 1, 1, 0.686275 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ItemPopup" parent="Content" instance=ExtResource( 16 )]
+visible = false
+margin_left = -190.5
+margin_top = -134.5
+margin_right = 190.5
+margin_bottom = 134.5
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="SynergyPopup" parent="Content" instance=ExtResource( 15 )]
+visible = false
+
+[node name="ChallengeCompletedUI" parent="Content" instance=ExtResource( 20 )]
+visible = false
+
+[node name="PauseMenu" parent="." instance=ExtResource( 21 )]
+pause_mode = 2
+visible = false
+focus_mode = 2
+
+[connection signal="focus_entered" from="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer/RerollButton" to="." method="_on_RerollButton_focus_entered"]
+[connection signal="pressed" from="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer/RerollButton" to="." method="_on_RerollButton_pressed"]
+[connection signal="pressed" from="Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton" to="." method="_on_GoButton_pressed"]
+
+[editable path="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem"]
+[editable path="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem2"]
+[editable path="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem3"]
+[editable path="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4"]

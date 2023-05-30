@@ -40,9 +40,6 @@ const tree_scene = preload("res://entities/units/neutral/tree.tscn")
 const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/toggle.tscn")
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")
 
-const shop_monster_container_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/shop/shop_monster_container.tscn")
-const shop_options_resource = preload("res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/opponents_shop_options.tres")
-
 #TODO this is the sussiest of bakas
 var weapon_stats_resource = ResourceLoader.load("res://weapons/ranged/pistol/1/pistol_stats.tres")
 
@@ -73,41 +70,6 @@ func _process(delta):
 	current_scene_name = scene_name
 
 func enter_async_shop() -> void:
-	var stats_label = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/StatsLabel"
-	var primary_button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/HBoxContainer/Primary"
-	var stats_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer"
-	
-	var opponents_button = primary_button.duplicate()
-	opponents_button.disconnect("pressed", stats_container, "_on_Primary_pressed")
-	opponents_button.connect("pressed", self, "_on_opponents_pressed")
-	opponents_button.text = "Opponents Shop"
-	opponents_button.set_name("OpponentsButton")
-	opponents_button.flat = false
-	
-	var button_container =  $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2"
-	
-	button_container.add_child(opponents_button)
-	button_container.move_child(opponents_button, 0)
-	button_container.remove_child(stats_label)
-	
-	var primary_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/PrimaryStats"
-	var opponents_shop = primary_container.duplicate()
-	opponents_shop.set_name("OpponentsShop")
-	opponents_shop.hide()
-	
-	for node in opponents_shop.get_children():
-		opponents_shop.remove_child(node)
-		node.queue_free()
-	
-	for opponents_shop_option in shop_options_resource.shop_options:
-		var shop_option = shop_monster_container_scene.instance()
-		shop_option.init(opponents_shop_option, self)
-		opponents_shop.add_child(shop_option)
-		print_debug("opponents_shop_option ", opponents_shop_option.display_text)
-	
-	
-	button_container.add_child(opponents_shop)
-			
 	if is_host:
 		# TODO, this isn't a good place for this reset, might miss calls
 		reset_extra_creatures()
@@ -116,10 +78,6 @@ func enter_async_shop() -> void:
 	else:
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".disabled = true
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
-
-func _on_opponents_pressed() -> void:
-	var stats_container = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer"
-	stats_container.update_tab(3)
 
 func exit_async_shop() -> void:
 	if is_host:
