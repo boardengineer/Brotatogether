@@ -1,10 +1,14 @@
 extends VBoxContainer
 
 onready var player_list = $HBoxContainer/PlayerList
+onready var start_button = $HBoxContainer/ControlBox/Buttons/StartButton
 
 func _ready():
 	var steam_connection = $"/root/SteamConnection"
 	Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
+	
+	if not $"/root/GameController".is_host:
+		start_button.disabled = true
 	
 	update_player_list()
 	
@@ -28,9 +32,10 @@ func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int,
 
 func _on_StartButton_pressed():
 	var game_controller = $"/root/GameController"
-	if game_controller.is_host:
-		game_controller.is_source_of_truth = false
+	if not game_controller.is_host:
+		return
 		
+	game_controller.is_source_of_truth = false	
 	var game_mode = "async"
 		
 	game_controller.send_start_game({"current_wave":1, "mode":game_mode})

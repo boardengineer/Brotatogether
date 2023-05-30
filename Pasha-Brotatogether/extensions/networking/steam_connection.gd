@@ -49,6 +49,9 @@ func read_p2p_packet() -> bool:
 			parent.receive_bought_item(load(data.shop_item), sender)
 		elif type == "send_ready":
 			parent.update_ready_state(sender, data.is_ready)
+		elif type == "handshake":
+			# completes the handshake?
+			send_welcomes()
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -56,9 +59,14 @@ func read_p2p_packet() -> bool:
 
 func _on_Lobby_Match_List(lobbies: Array):
 	print_debug("lobbies ", lobbies)
-	if lobbies.size() == 1:
-		Steam.joinLobby(lobbies[0])
-	pass
+	var scene_name = get_tree().get_current_scene().get_name()
+	if scene_name == "MultiplayerMenu":
+		$"/root/MultiplayerMenu".update_lobbies(lobbies)
+		pass
+#
+#	if lobbies.size() == 1:
+#		Steam.joinLobby(lobbies[0])
+#	pass
 
 func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 	if connect == 1:
@@ -66,6 +74,8 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		lobby_id = connected_lobby_id
 		
 		Steam.setLobbyData(lobby_id, "game", "Brotatogether")
+		Steam.setLobbyData(lobby_id, "host", str(Steam.getSteamID()))
+		
 		Steam.allowP2PPacketRelay(false)
 	pass
 
@@ -74,6 +84,7 @@ func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, re
 		lobby_id = joined_lobby_id
 		parent.self_peer_id = Steam.getSteamID()
 		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
+		update_tracked_players()
 		send_handshakes()
 		print_debug("joined lobby ", lobby_id, " as ", parent.self_peer_id, " with permissions ", _permissions)
 	else:
@@ -181,6 +192,12 @@ func send_handshakes() -> void:
 	print_debug("shaking hands")
 	var send_data = {}
 	send_data["type"] = "handshake"
+	send_data_to_all(send_data)
+	
+func send_welcomes() -> void:
+	print_debug("Welcoming shaker")
+	var send_data = {}
+	send_data["type"] = "welcome"
 	send_data_to_all(send_data)
 
 func _on_P2P_Session_Request(remote_id: int) -> void:

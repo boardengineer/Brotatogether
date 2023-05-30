@@ -127,3 +127,14 @@ func _on_CreateSteamLobby_pressed():
 		steam_connection.parent = game_controller
 	else:
 		steam_connection.send_handshakes()
+		
+func update_lobbies(lobbies: Array) -> void:
+	for found_lobby_id in lobbies:
+		var join_button = Button.new()
+		join_button.text = str(found_lobby_id)
+		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".add_child(join_button)
+		join_button.connect("pressed", self, "join_button_pressed", [found_lobby_id])
+		# Steam.joinLobby(lobbies[0])
+		
+func join_button_pressed(lobby_id: int) :
+	Steam.joinLobby(lobby_id)

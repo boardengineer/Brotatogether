@@ -40,9 +40,17 @@ grow_vertical = 0
 rect_min_size = Vector2( 0, 50 )
 text = "127.0.0.1"
 
+[node name="LobbiesBox" type="VBoxContainer" parent="HBoxContainer"]
+margin_left = 625.0
+margin_right = 625.0
+margin_bottom = 1080.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
 [node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_left = 1105.0
-margin_right = 1705.0
+margin_left = 1262.0
+margin_right = 1862.0
 margin_bottom = 1080.0
 size_flags_horizontal = 6
 custom_constants/separation = 50

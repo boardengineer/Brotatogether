@@ -114,7 +114,7 @@ func enter_async_shop() -> void:
 		reset_ready_map()
 		init_shop_go_button()
 	else:
-		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".disabled = true
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
 
 func _on_opponents_pressed() -> void:
@@ -348,9 +348,9 @@ func update_go_button():
 			break
 	var shop_button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton"
 	if not should_enable:
-		shop_button.hide()
+		shop_button.disabled = true
 	else:
-		shop_button.show()
+		shop_button.disabled = false
 
 func get_enemies_state() -> Dictionary:
 	var main = $"/root/Main"
