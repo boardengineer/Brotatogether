@@ -3,17 +3,13 @@ extends "res://mods-unpacked/Pasha-Brotatogether/extensions/networking/connectio
 var parent
 	
 func _ready():
-	get_tree().connect("network_peer_connected", self, "_player_connected")
-	get_tree().connect("network_peer_disconnected", self, "_player_disconnected")
-	get_tree().connect("connected_to_server", self, "_connected_ok")
-	get_tree().connect("connection_failed", self, "_connected_fail")
-	get_tree().connect("server_disconnected", self, "_server_disconnected")
+	var _error = get_tree().connect("network_peer_connected", self, "_player_connected")
+	_error = get_tree().connect("connected_to_server", self, "_connected_ok")
+	_error = get_tree().connect("connection_failed", self, "_connected_fail")
+	_error = get_tree().connect("server_disconnected", self, "_server_disconnected")
 	
-func _player_connected(id):
+func _player_connected(_id):
 	rpc("register_player")
-	
-func _player_disconnected(id):
-	pass
 	
 func _connected_ok():
 	var current_scene_name = get_tree().get_current_scene().get_name()

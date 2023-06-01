@@ -9,9 +9,6 @@ func init(p_wave_timer:Timer, wave_data:Resource)->void :
 		var game_controller = $"/root/GameController"
 		var extra_enemies_next_wave = game_controller.extra_enemies_next_wave
 		
-		print_debug("tracked_players: ", game_controller.tracked_players)
-		print_debug("extra_creatures_map ", game_controller.extra_enemies_next_wave)
-			
 		if not extra_enemies_next_wave.has(game_controller.self_peer_id):
 			return
 			
@@ -31,8 +28,7 @@ func init(p_wave_timer:Timer, wave_data:Resource)->void :
 	
 			enemy.stats.can_drop_consumables = false
 			enemy.stats.value = 0
-		
-			altered_group.wave_units_data[0].unit_scene 
+		 
 			var altered_enemy_scene = PackedScene.new()
 			altered_enemy_scene.pack(enemy)
 		

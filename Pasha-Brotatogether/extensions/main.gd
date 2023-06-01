@@ -45,7 +45,7 @@ func _ready():
 			game_controller.tracked_players[player_id]["player"] = spawned_player
 			spawn_x_pos += 200
 	
-func _process(delta):
+func _process(_delta):
 	if  $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
 		if game_controller and game_controller.is_source_of_truth and game_controller.game_mode == "shared":

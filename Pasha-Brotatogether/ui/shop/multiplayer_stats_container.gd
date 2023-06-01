@@ -1,17 +1,16 @@
 extends StatsContainer
 
-onready var opponents_shop = $MarginContainer/VBoxContainer2/OpponentsShop
 onready var game_controller = $"/root/GameController"
 
 const shop_options_resource = preload("res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/opponents_shop_options.tres")
 const shop_monster_container_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/shop/shop_monster_container.tscn")
 
 func _ready():
+	var opponents_shop = $MarginContainer/VBoxContainer2/OpponentsShop
 	for opponents_shop_option in shop_options_resource.shop_options:
 		var shop_option = shop_monster_container_scene.instance()
 		shop_option.init(opponents_shop_option, game_controller)
 		opponents_shop.add_child(shop_option)
-		print_debug("opponents_shop_option ", opponents_shop_option.display_text)
 
 func update_tab(tab:int)->void :
 	var has_opponents_tab = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2".has_node("OpponentsButton")
@@ -41,6 +40,7 @@ func _on_OpponentsButton_pressed():
 	update_tab(3)
 
 func update_bought_items(tracked_players:Dictionary) -> void:
+	var opponents_shop = $MarginContainer/VBoxContainer2/OpponentsShop
 	for shop_item_container in opponents_shop.get_children():
 		shop_item_container.clear_player_counts()
 		for tracked_player_id in tracked_players:
@@ -52,4 +52,4 @@ func update_bought_items(tracked_players:Dictionary) -> void:
 					if tracked_player.has("username"):
 						display_name = tracked_player["username"]
 					
-					shop_item_container.add_player_count(str(tracked_player_id), count)
+					shop_item_container.add_player_count(display_name, count)

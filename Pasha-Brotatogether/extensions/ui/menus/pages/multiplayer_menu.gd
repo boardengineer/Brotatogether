@@ -70,7 +70,7 @@ func _on_ServerButton_pressed():
 
 func _on_ClientButton_pressed():
 	var peer = NetworkedMultiplayerENet.new()
-	var error = peer.create_client(ip_box.text, SERVER_PORT)
+	var _error = peer.create_client(ip_box.text, SERVER_PORT)
 	
 	game_controller.connection = direct_connection
 	direct_connection.parent = game_controller
@@ -85,23 +85,32 @@ func _on_StartButton_pressed():
 	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
 	game_controller.game_mode = game_mode
 	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
-	RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
-#	RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
-	get_tree().change_scene(MenuData.game_scene)
+	var _weapon_error = RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
+	
+	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_StartButton2_pressed():
+	var weapon_path = "res://weapons/ranged/minigun/3/minigun_3_data.tres"
+	var character_path = "res://items/characters/well_rounded/well_rounded_data.tres"
+	
+	RunData.add_character(load(character_path))
+	var _unused_weapon = RunData.add_weapon(load(weapon_path), true)
+	
 	if game_controller.is_host:
 		game_controller.is_source_of_truth = false
 		
 	var game_mode = "async"
+	
+	var lobby_info = {}
+	
+	lobby_info["character"] = character_path
+	lobby_info["weapon"] = weapon_path
+	lobby_info["danger"] = 5
 		
-	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
+	game_controller.send_start_game({"current_wave":1, "mode":game_mode, "lobby_info":lobby_info})
 	game_controller.game_mode = game_mode
-	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
-	RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
-#	RunData.add_weapon(preload("res://weapons/ranged/pistol/1/pistol_data.tres"), true)
-	get_tree().change_scene(MenuData.game_scene)
-
+	
+	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_SteamLobbies_pressed():
 	Steam.addRequestLobbyListDistanceFilter(3)
@@ -111,8 +120,6 @@ func _on_SteamLobbies_pressed():
 	#TODO move this elsewhere
 	game_controller.connection = steam_connection
 	steam_connection.parent = game_controller
-	
-	print_debug("pressed steam lobbies button")
 	
 func _on_CreateSteamLobby_pressed():
 	if lobby_id == 0:
@@ -136,5 +143,5 @@ func update_lobbies(lobbies: Array) -> void:
 		join_button.connect("pressed", self, "join_button_pressed", [found_lobby_id])
 		# Steam.joinLobby(lobbies[0])
 		
-func join_button_pressed(lobby_id: int) :
-	Steam.joinLobby(lobby_id)
+func join_button_pressed(joining_lobby_id: int) :
+	Steam.joinLobby(joining_lobby_id)

@@ -17,7 +17,7 @@ func on_element_pressed(element:InventoryElement)->void :
 	
 	if $"/root/GameController":
 		if $"/root/GameController".back_to_lobby:
-			get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 			return
 	
 	var _error = get_tree().change_scene(MenuData.difficulty_selection_scene)

@@ -15,4 +15,4 @@ func _ready():
 	buttons_node.move_child(multiplayer_button, 0)
 
 func _on_MultiplayerButton_pressed():
-	get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/multiplayer_menu.tscn")
+	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/multiplayer_menu.tscn")

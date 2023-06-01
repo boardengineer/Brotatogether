@@ -74,8 +74,6 @@ func _on_StartButton_pressed():
 	
 	game_info ["lobby_info"] = get_lobby_info_dictionary()
 	
-	print_debug("should send ", game_info)
-	
 	game_controller.send_start_game(game_info)
 	game_controller.game_mode = game_mode
 
@@ -129,6 +127,10 @@ func clear_selections() -> void:
 	RunData.init_appearances_displayed()
 	
 func remote_update_lobby(lobby_info:Dictionary) -> void:
+	# Remote only
+	if $"/root/GameController".is_host:
+		return
+	
 	RunData.weapons = []
 	RunData.items = []
 	RunData.effects = RunData.init_effects()

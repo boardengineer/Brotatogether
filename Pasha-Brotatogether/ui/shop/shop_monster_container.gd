@@ -13,16 +13,14 @@ func init(shop_option: Resource, parent_game_controller) -> void:
 	var display_text: String = shop_option.display_text
 	
 	get_node("ShopItem/Title").text = display_text
-	get_node("ShopItem/VBoxContainer/BuyButton") .connect("pressed", self, "_on_buyButton_pressed", [shop_option])
-	
-	print_debug("we set the text ", display_text)
+	var _connection_error = get_node("ShopItem/VBoxContainer/BuyButton").connect("pressed", self, "_on_buyButton_pressed", [shop_option])
 	
 	if effect is WaveGroupData:
 		for wave_unit_data in effect.wave_units_data:
 			var enemy = wave_unit_data.unit_scene.instance()
 			get_node("ShopItem/Icon").texture = enemy.get_node("Animation/Sprite").texture
 			
-	get_node("ShopItem/VBoxContainer/BuyButton").text = str(shop_option.price)
+	get_node("ShopItem/VBoxContainer/BuyButton").text = str(price)
 	
 func _on_buyButton_pressed(shop_option: Resource) -> void:
 	var price = shop_option.price

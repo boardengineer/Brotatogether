@@ -50,7 +50,7 @@ var back_to_lobby = false
 var ready_toggle
 var extra_enemies_next_wave = {}
 
-func _process(delta):
+func _process(_delta):
 	var scene_name = get_tree().get_current_scene().get_name()
 	if game_mode == "shared" and is_source_of_truth:
 		# TODO i can't seem to override Shop.gd because it errors trying to get
@@ -65,7 +65,6 @@ func _process(delta):
 			if scene_name == "Shop":
 				enter_async_shop()		
 			elif current_scene_name == "Shop":
-				print_debug("exit shop async")
 				exit_async_shop()
 				
 	current_scene_name = scene_name
@@ -87,8 +86,6 @@ func exit_async_shop() -> void:
 		var extra_creatures_map = create_extra_creatures_map()
 		
 		wave_data["extra_enemies_next_wave"] = extra_creatures_map
-		
-		print_debug("sending start game ", wave_data)
 		
 		send_start_game(wave_data)
 		reset_extra_creatures()
@@ -132,11 +129,17 @@ func start_game(game_info: Dictionary):
 		# TODO, I think i only need to do this in the first frame but i need to do the testing to 
 		# make sure
 		RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
-		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
+		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
 		reset_client_items()
 		run_updates = true
 	elif game_mode == "async":
 		if game_info.current_wave == 1:
+			RunData.weapons = []
+			RunData.items = []
+			RunData.effects = RunData.init_effects()
+			RunData.current_character = null
+			RunData.starting_weapon = null
+			
 			var lobby_info = game_info.lobby_info
 			
 			var character_data = load(lobby_info.character)
@@ -144,8 +147,7 @@ func start_game(game_info: Dictionary):
 			var danger = lobby_info.danger
 			
 			RunData.add_character(character_data)
-			RunData.add_weapon(weapon_data)
-			
+			var _unused = RunData.add_weapon(weapon_data, true)
 			RunData.add_starting_items_and_weapons()
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
@@ -155,7 +157,7 @@ func start_game(game_info: Dictionary):
 		RunData.current_wave = game_info.current_wave
 		if game_info.has("extra_enemies_next_wave"):
 			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
-		get_tree().change_scene(MenuData.game_scene)
+		var _change_error = get_tree().change_scene(MenuData.game_scene)
 
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:
@@ -171,7 +173,6 @@ func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
 				if not tracked_players[player_id]["extra_enemies_next_wave"].has(effect_path):
 					tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = 0
 				tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = tracked_players[player_id]["extra_enemies_next_wave"][effect_path] + 1
-	print_debug("updating bought items...")
 	if is_host:
 		connection.send_tracked_players(tracked_players)
 	$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
@@ -187,7 +188,6 @@ func create_ready_toggle() -> Node:
 	return ready_toggle
 
 func _on_ready_toggle() -> void:
-	print_debug("toggled")
 	connection.send_ready(ready_toggle.pressed)
 
 func display_floating_text(text_info:Dictionary):
@@ -208,7 +208,7 @@ func enemy_death(enemy_id):
 func end_wave():
 	run_updates = false
 	reset_client_items()
-	get_tree().change_scene("res://mods-unpacked/pasha-Brotatogether/extensions/waiting.tscn")
+	var _change_error = get_tree().change_scene("res://mods-unpacked/pasha-Brotatogether/extensions/waiting.tscn")
 
 func flash_enemy(enemy_id):
 	if client_enemies.has(enemy_id):
@@ -266,10 +266,7 @@ func receive_lobby_update(lobby_info:Dictionary) -> void:
 		$"/root/MultiplayerLobby".remote_update_lobby(lobby_info)
 
 func get_game_state() -> Dictionary:
-	var main = $"/root/Main"
 	var data = {}
-	var position = main._player.position
-	var entity_spawner = main._entity_spawner
 
 	data["enemies"] = get_enemies_state()
 	data["births"] = get_births_state()
@@ -282,7 +279,6 @@ func get_game_state() -> Dictionary:
 	return data
 	
 func send_client_position() -> void:
-	print_debug("self id ", self_peer_id)
 	if not tracked_players.has(self_peer_id):
 		return
 	var my_player = tracked_players[self_peer_id]["player"]
@@ -312,7 +308,6 @@ func update_client_position(client_position:Dictionary) -> void:
 				player.maybe_update_animation(client_position.movement, true)
 
 func update_ready_state(sender_id, is_ready):
-	print_debug("received ", sender_id, " ", is_ready)
 	if is_host:
 		tracked_players[sender_id]["is_ready"] = is_ready
 	if current_scene_name == "Shop":
@@ -444,6 +439,7 @@ func update_items(items:Array) -> void:
 				continue 
 			if not item:
 				continue
+				
 			# This sometimes throws a C++ error
 			$"/root/ClientMain/Items".remove_child(item)
 
@@ -474,7 +470,6 @@ func get_players_state() -> Dictionary:
 			if weapon.has_node("data_node"):
 				var weapon_data_path = RunData.weapon_paths[weapon.get_node("data_node").weapon_data.my_id]
 				weapon_data["data_path"] = weapon_data_path
-#				print_debug("data_node ", data_resource_path)
 
 			weapons.push_back(weapon_data)
 
@@ -486,7 +481,6 @@ func update_players(players:Array) -> void:
 	for player_data in players:
 		var player_id = player_data.id
 		if not player_id in tracked_players:
-			print_debug("spawned player ", player_id)
 			tracked_players[player_id] = {}
 			tracked_players[player_id]["player"] = spawn_player(player_data)
 
@@ -497,7 +491,6 @@ func update_players(players:Array) -> void:
 				main._life_bar.update_value(player_data.current_health, player_data.max_health)
 				main.set_life_label(player_data.current_health, player_data.max_health)
 				main._damage_vignette.update_from_hp(player_data.current_health, player_data.max_health)
-				print_debug("received gold ", player_data.gold)
 				RunData.gold = player_data.gold
 				$"/root/ClientMain"._ui_gold.on_gold_changed(player_data.gold)
 		else:
@@ -623,7 +616,6 @@ func spawn_player(player_data:Dictionary):
 	for weapon in player_data.weapons:
 		spawned_player.call_deferred("add_weapon", load(weapon.data_path), spawned_player.current_weapons.size())
 
-	print_debug("current scene ", get_tree().get_current_scene().get_name())
 	$"/root/ClientMain/Entities".add_child(spawned_player)
 
 	if player_data.id == self_peer_id:

@@ -4,13 +4,13 @@ var lobby_id = 0
 var parent
 
 func _ready():
-	Steam.connect("lobby_created", self, "_on_Lobby_Created")
-	Steam.connect("lobby_match_list", self, "_on_Lobby_Match_List")
-	Steam.connect("lobby_joined", self, "_on_Lobby_Joined")
-	Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
-	Steam.connect("p2p_session_request", self, "_on_P2P_Session_Request")
+	var _connect_error = Steam.connect("lobby_created", self, "_on_Lobby_Created")
+	_connect_error = Steam.connect("lobby_match_list", self, "_on_Lobby_Match_List")
+	_connect_error = Steam.connect("lobby_joined", self, "_on_Lobby_Joined")
+	_connect_error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
+	_connect_error = Steam.connect("p2p_session_request", self, "_on_P2P_Session_Request")
 
-func _process(delta):
+func _process(_delta):
 	if lobby_id > 0:
 		while read_p2p_packet():
 			pass
@@ -19,7 +19,6 @@ func read_p2p_packet() -> bool:
 	var packet_size = Steam.getAvailableP2PPacketSize(0)
 	
 	if packet_size > 0:
-		print_debug("reading packet")
 		var packet = Steam.readP2PPacket(packet_size, 0)
 		
 		var sender = packet["steam_id_remote"]
@@ -61,40 +60,34 @@ func read_p2p_packet() -> bool:
 	return false
 
 func _on_Lobby_Match_List(lobbies: Array):
-	print_debug("lobbies ", lobbies)
 	var scene_name = get_tree().get_current_scene().get_name()
 	if scene_name == "MultiplayerMenu":
 		$"/root/MultiplayerMenu".update_lobbies(lobbies)
 		pass
-#
+
+
 #	if lobbies.size() == 1:
 #		Steam.joinLobby(lobbies[0])
 #	pass
 
 func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 	if connect == 1:
-		print_debug("Lobby Created: ", connected_lobby_id)
 		lobby_id = connected_lobby_id
 		
-		Steam.setLobbyData(lobby_id, "game", "Brotatogether")
-		Steam.setLobbyData(lobby_id, "host", str(Steam.getSteamID()))
+		var _set_error = Steam.setLobbyData(lobby_id, "game", "Brotatogether")
+		_set_error = Steam.setLobbyData(lobby_id, "host", str(Steam.getSteamID()))
 		
-		Steam.allowP2PPacketRelay(false)
-	pass
+		var _error = Steam.allowP2PPacketRelay(false)
 
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == 1:
 		lobby_id = joined_lobby_id
 		parent.self_peer_id = Steam.getSteamID()
-		get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
+		var _scene_error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 		update_tracked_players()
 		send_handshakes()
-		print_debug("joined lobby ", lobby_id, " as ", parent.self_peer_id, " with permissions ", _permissions)
-	else:
-		print_debug("Lobby Join Failed with code ", response)
 	
-func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int, chat_state: int) -> void:
-	print_debug("someone joined?")
+func _on_Lobby_Chat_Update(_update_lobby_id: int, change_id: int, _making_change_id: int, chat_state: int) -> void:
 	var username = Steam.getFriendPersonaName(change_id)
 	update_tracked_players()
 	
@@ -128,7 +121,6 @@ func update_tracked_players() -> void:
 		var member_username: String = Steam.getFriendPersonaName(member_steam_id)
 		
 		parent.tracked_players[member_steam_id] = {"username": member_username}
-		print_debug(parent.tracked_players)
 
 func send_state(game_state:Dictionary) -> void:
 	var send_data = {}
@@ -184,33 +176,30 @@ func send_data_to_all(packet_data: Dictionary):
 		send_data(packet_data, player_id)
 
 func send_data(packet_data: Dictionary, target: int):
+	# TODO actually compress
 	var compressed_data = var2bytes(packet_data)
 	
 	# Just use channel 0 for everything for now
-	Steam.sendP2PPacket(target, compressed_data, Steam.P2P_SEND_RELIABLE, 0)
+	var _error = Steam.sendP2PPacket(target, compressed_data, Steam.P2P_SEND_RELIABLE, 0)
 	
 # Done to trigger p2p session requests
 func send_handshakes() -> void:
-	print_debug("shaking hands")
 	var send_data = {}
 	send_data["type"] = "handshake"
 	send_data_to_all(send_data)
 	
 func send_welcomes() -> void:
-	print_debug("Welcoming shaker")
 	var send_data = {}
 	send_data["type"] = "welcome"
 	send_data_to_all(send_data)
 
 func _on_P2P_Session_Request(remote_id: int) -> void:
-	print("_on_P2P_Session_Request")
-	Steam.acceptP2PSessionWithUser(remote_id)
+	var _error = Steam.acceptP2PSessionWithUser(remote_id)
 
 	# Make the initial handshake
 	send_handshakes()
 
 func send_client_position(client_position:Dictionary) -> void:
-	print_debug("shaking hands")
 	var send_data = {}
 	send_data["type"] = "client_position_update"
 	send_data["client_position"] = client_position
