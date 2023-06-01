@@ -258,6 +258,13 @@ func update_game_state(data):
 	update_neutrals(data.neutrals)
 	update_players(data.players)
 
+func send_lobby_update(lobby_info:Dictionary) -> void:
+	connection.send_lobby_update(lobby_info)
+
+func receive_lobby_update(lobby_info:Dictionary) -> void:
+	if current_scene_name == "MultiplayerLobby":
+		$"/root/MultiplayerLobby".remote_update_lobby(lobby_info)
+
 func get_game_state() -> Dictionary:
 	var main = $"/root/Main"
 	var data = {}

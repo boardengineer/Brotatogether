@@ -41,6 +41,7 @@ func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int,
 func update_selections() -> void:
 	if RunData.current_character:
 		weapon_select_button.disabled = false
+		danger_select_button.disabled = false
 		character_info.set_data(RunData.current_character)
 		
 		if RunData.starting_weapon:
@@ -49,16 +50,17 @@ func update_selections() -> void:
 			
 			var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
-		else:
-			danger_select_button.disabled = true
+		
 		
 	else:
 		# reset weapon selection
-#		RunData.apply_weapon_selection_back()
-		
 		weapon_select_button.disabled = true
 		danger_select_button.disabled = true
-		
+	var game_controller = $"/root/GameController"
+	
+	if game_controller.is_host:
+		game_controller.send_lobby_update(get_lobby_info_dictionary())
+	
 
 func _on_StartButton_pressed():
 	var game_controller = $"/root/GameController"
@@ -72,6 +74,8 @@ func _on_StartButton_pressed():
 	
 	game_info ["lobby_info"] = get_lobby_info_dictionary()
 	
+	print_debug("should send ", game_info)
+	
 	game_controller.send_start_game(game_info)
 	game_controller.game_mode = game_mode
 
@@ -80,9 +84,22 @@ func _on_StartButton_pressed():
 
 func _on_CharacterButton_pressed():
 	$"/root/GameController".back_to_lobby = true
+	
+	RunData.weapons = []
+	RunData.items = []
+	RunData.effects = RunData.init_effects()
+	RunData.current_character = null
+	RunData.starting_weapon = null
+	
 	var _error = get_tree().change_scene(MenuData.character_selection_scene)
 
 func _on_WeaponButton_pressed():
+	RunData.weapons = []
+	RunData.items = []
+	RunData.add_character(RunData.current_character)
+	RunData.effects = RunData.init_effects()
+	RunData.starting_weapon = null
+	
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.weapon_selection_scene)
 
@@ -93,11 +110,41 @@ func _on_DangerButton_pressed():
 func get_lobby_info_dictionary() -> Dictionary:
 	var result = {}
 	
-	result["character"] = RunData.current_character.get_path()
-	result["weapon"] = RunData.current_character.get_path()
+	if RunData.current_character:
+		result["character"] = ItemService.get_element(ItemService.characters, RunData.current_character.my_id).get_path()
+		var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
+		danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
+		result["danger"] = difficulty.difficulty_selected_value
 		
-	var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-	danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
-	result["danger"] = difficulty.difficulty_selected_value
-	
+	if RunData.starting_weapon:
+		result["weapon"] = ItemService.get_element(ItemService.weapons, RunData.starting_weapon.my_id).get_path()
+		
 	return result
+	
+func clear_selections() -> void:
+	RunData.weapons = []
+	RunData.items = []
+	RunData.effects = RunData.init_effects()
+	RunData.current_character = null
+	RunData.init_appearances_displayed()
+	
+func remote_update_lobby(lobby_info:Dictionary) -> void:
+	RunData.weapons = []
+	RunData.items = []
+	RunData.effects = RunData.init_effects()
+	RunData.current_character = null
+	RunData.starting_weapon = null
+	
+	if lobby_info.has("character"):
+		RunData.add_character(load(lobby_info.character))
+		
+	if lobby_info.has("weapon"):
+		RunData.add_weapon(load(lobby_info.weapon), true)
+		
+	if lobby_info.has("danger"):
+		var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
+		character_difficulty.difficulty_selected_value = lobby_info.danger
+		
+	print("sent ", lobby_info)
+	
+	update_selections()

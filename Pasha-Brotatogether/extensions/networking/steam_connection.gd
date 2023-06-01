@@ -53,6 +53,8 @@ func read_p2p_packet() -> bool:
 			send_welcomes()
 		elif type == "update_tracked_players":
 			parent.update_tracked_players(data.tracked_players)
+		elif type == "lobby_update":
+			parent.receive_lobby_update(data.lobby_info)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -114,7 +116,6 @@ func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int,
 
 # clears tracked_players and resets tracked players based  
 func update_tracked_players() -> void:
-	print_debug("updating tracked players")
 	# Clear your previous lobby list
 	parent.tracked_players.clear()
 
@@ -231,4 +232,10 @@ func send_tracked_players(tracked_players:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "update_tracked_players"
 	send_data["tracked_players"] = tracked_players
+	send_data_to_all(send_data)
+	
+func send_lobby_update(lobby_info:Dictionary) -> void:
+	var send_data = {}
+	send_data["type"] = "lobby_update"
+	send_data["lobby_info"] = lobby_info
 	send_data_to_all(send_data)
