@@ -27,7 +27,6 @@ func read_p2p_packet() -> bool:
 		
 		var type = data.type
 		if type == "game_state":
-			print_debug("game state received", data.game_state)
 			parent.update_game_state(data.game_state)
 		elif type == "start_game":
 			parent.start_game(data.game_info)
@@ -52,6 +51,8 @@ func read_p2p_packet() -> bool:
 		elif type == "handshake":
 			# completes the handshake?
 			send_welcomes()
+		elif type == "update_tracked_players":
+			parent.update_tracked_players(data.tracked_players)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -224,4 +225,10 @@ func send_ready(is_ready:bool) -> void:
 	var send_data = {}
 	send_data["type"] = "send_ready"
 	send_data["is_ready"] = is_ready
+	send_data_to_all(send_data)
+
+func send_tracked_players(tracked_players:Dictionary) -> void:
+	var send_data = {}
+	send_data["type"] = "update_tracked_players"
+	send_data["tracked_players"] = tracked_players
 	send_data_to_all(send_data)

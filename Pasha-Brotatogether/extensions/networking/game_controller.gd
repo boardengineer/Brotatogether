@@ -45,6 +45,7 @@ var weapon_stats_resource = ResourceLoader.load("res://weapons/ranged/pistol/1/p
 
 var current_scene_name = ""
 var run_updates = false
+var back_to_lobby = false
 
 var ready_toggle
 var extra_enemies_next_wave = {}
@@ -123,7 +124,6 @@ func _on_GoButton_pressed()-> void:
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
 func start_game(game_info: Dictionary):
-	print_debug("starting game ", game_info)
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		tracked_players = {}
@@ -137,8 +137,21 @@ func start_game(game_info: Dictionary):
 		run_updates = true
 	elif game_mode == "async":
 		if game_info.current_wave == 1:
-			RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
-			RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
+			var lobby_info = game_info.lobby_info
+			
+			var character_data = load(lobby_info.character)
+			var weapon_data = load(lobby_info.weapon)
+			var danger = lobby_info.danger
+			
+			RunData.add_character(character_data)
+			RunData.add_weapon(weapon_data)
+			
+			RunData.add_starting_items_and_weapons()
+			
+			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
+			character_difficulty.difficulty_selected_value = danger
+			RunData.init_elites_spawn()
+			
 		RunData.current_wave = game_info.current_wave
 		if game_info.has("extra_enemies_next_wave"):
 			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
@@ -158,6 +171,15 @@ func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
 				if not tracked_players[player_id]["extra_enemies_next_wave"].has(effect_path):
 					tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = 0
 				tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = tracked_players[player_id]["extra_enemies_next_wave"][effect_path] + 1
+	print_debug("updating bought items...")
+	if is_host:
+		connection.send_tracked_players(tracked_players)
+	$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
+
+func update_tracked_players(updated_tracked_players: Dictionary) -> void:
+	tracked_players = updated_tracked_players
+	if current_scene_name == "Shop":
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
 
 func create_ready_toggle() -> Node:
 	ready_toggle = toggle_scene.instance()
@@ -205,7 +227,6 @@ func send_game_state() -> void:
 	connection.send_state(get_game_state())
 
 func send_start_game(game_info:Dictionary) -> void:
-	print_debug("send start game 11 ", game_info)
 	connection.send_start_game(game_info)
 
 func send_display_floating_text(text_info:Dictionary) -> void:

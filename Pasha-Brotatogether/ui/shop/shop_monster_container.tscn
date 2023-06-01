@@ -6,40 +6,53 @@
 [ext_resource path="res://entities/units/enemies/001/1.png" type="Texture" id=4]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/shop/shop_monster_container.gd" type="Script" id=5]
 
-[node name="ShopMonsterContainer" type="HBoxContainer"]
-margin_left = -184.0
-margin_right = 184.0
-margin_bottom = 38.0
+[node name="ShopMonsterContainer" type="VBoxContainer"]
+margin_left = -212.5
+margin_right = 114.5
+margin_bottom = 116.0
 grow_horizontal = 2
 size_flags_vertical = 0
-alignment = 2
+alignment = 1
 script = ExtResource( 5 )
 
-[node name="Icon" type="TextureRect" parent="."]
-margin_left = 101.0
-margin_right = 149.0
-margin_bottom = 38.0
-rect_min_size = Vector2( 48, 0 )
+[node name="ShopItem" type="HBoxContainer" parent="."]
+margin_top = 18.0
+margin_right = 327.0
+margin_bottom = 93.0
+custom_constants/separation = 5
+alignment = 2
+
+[node name="Icon" type="TextureRect" parent="ShopItem"]
+margin_left = 30.0
+margin_right = 105.0
+margin_bottom = 75.0
+rect_min_size = Vector2( 75, 75 )
 texture = ExtResource( 4 )
 expand = true
 stretch_mode = 6
 
-[node name="Title" type="Label" parent="."]
-margin_left = 153.0
-margin_top = 7.0
-margin_right = 265.0
-margin_bottom = 31.0
+[node name="Title" type="Label" parent="ShopItem"]
+margin_left = 110.0
+margin_top = 25.0
+margin_right = 222.0
+margin_bottom = 49.0
 custom_fonts/font = ExtResource( 3 )
 text = "Baby Alien"
 align = 2
 
-[node name="BuyButton" type="Button" parent="."]
-margin_left = 269.0
-margin_right = 368.0
-margin_bottom = 37.0
+[node name="VBoxContainer" type="VBoxContainer" parent="ShopItem"]
+margin_left = 227.0
+margin_right = 327.0
+margin_bottom = 75.0
+alignment = 1
+
+[node name="BuyButton" type="Button" parent="ShopItem/VBoxContainer"]
+margin_top = 19.0
+margin_right = 100.0
+margin_bottom = 56.0
 grow_horizontal = 0
 grow_vertical = 0
-rect_min_size = Vector2( 99, 0 )
+rect_min_size = Vector2( 100, 0 )
 focus_neighbour_left = NodePath("../../../ShopItem/HBoxContainer/LockButton")
 focus_neighbour_right = NodePath("../../../ShopItem3/HBoxContainer/LockButton")
 size_flags_horizontal = 12
@@ -53,3 +66,10 @@ expand_icon = true
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="PurchaseTracker" type="HBoxContainer" parent="."]
+margin_top = 97.0
+margin_right = 327.0
+margin_bottom = 97.0
+custom_constants/separation = 10
+alignment = 1

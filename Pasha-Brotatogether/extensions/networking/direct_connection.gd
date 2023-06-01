@@ -39,11 +39,9 @@ remote func update_game_state(game_state:Dictionary) -> void:
 	parent.update_game_state(game_state)
 
 func send_start_game(game_info:Dictionary) -> void:
-	print_debug("send start game 22 ", game_info)
 	rpc("start_game", game_info)
 
 remote func start_game(game_info: Dictionary) -> void:
-	print_debug("game 22 ", game_info)
 	parent.start_game(game_info)
 
 func send_display_floating_text(text_info:Dictionary) -> void:
@@ -103,11 +101,14 @@ remote func update_client_position(client_position:Dictionary) -> void:
 	parent.update_client_position(client_position)
 	
 func send_ready(is_ready:bool) -> void:
-	print_debug("sent")
 	rpc("ready", is_ready)
 	
 remote func ready(is_ready:bool) -> void:
-	print_debug("received")
 	var sender_id = get_tree().get_rpc_sender_id()
 	parent.update_ready_state(sender_id, is_ready)
 	
+func send_tracked_players(tracked_players:Dictionary) -> void:
+	rpc("update_tracked_players", tracked_players)
+
+remote func update_tracked_players(tracked_players:Dictionary) -> void:
+	parent.update_tracked_players(tracked_players)

@@ -38,5 +38,18 @@ func update_tab(tab:int)->void :
 
 
 func _on_OpponentsButton_pressed():
-	print_debug("here 1")
 	update_tab(3)
+
+func update_bought_items(tracked_players:Dictionary) -> void:
+	for shop_item_container in opponents_shop.get_children():
+		shop_item_container.clear_player_counts()
+		for tracked_player_id in tracked_players:
+			for effect_path in tracked_players[tracked_player_id]["extra_enemies_next_wave"]:
+				if effect_path == shop_item_container._shop_option.effect.get_path():
+					var tracked_player = tracked_players[tracked_player_id]
+					var count = tracked_player["extra_enemies_next_wave"][effect_path]
+					var display_name = str(tracked_player_id)
+					if tracked_player.has("username"):
+						display_name = tracked_player["username"]
+					
+					shop_item_container.add_player_count(str(tracked_player_id), count)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://resources/fonts/raw/NotoSansKR-Medium.otf" type="DynamicFontData" id=1]
 [ext_resource path="res://resources/fonts/raw/Anybody-Medium.ttf" type="DynamicFontData" id=2]
@@ -6,6 +6,7 @@
 [ext_resource path="res://resources/fonts/raw/NotoSansTC-Medium.otf" type="DynamicFontData" id=4]
 [ext_resource path="res://resources/fonts/raw/NotoSansSC-Medium.otf" type="DynamicFontData" id=5]
 [ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=6]
+[ext_resource path="res://ui/menus/ingame/item_panel_ui.tscn" type="PackedScene" id=7]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.gd" type="Script" id=8]
 
 [sub_resource type="DynamicFont" id=1]
@@ -23,41 +24,141 @@ fallback/3 = ExtResource( 4 )
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_left = 47.0
+size_flags_vertical = 0
 theme = ExtResource( 6 )
 alignment = 1
 script = ExtResource( 8 )
 
 [node name="Label" type="Label" parent="."]
+margin_top = 90.0
 margin_right = 1873.0
-margin_bottom = 45.0
+margin_bottom = 135.0
 custom_fonts/font = SubResource( 1 )
 text = "Multiplayer Lobby"
 align = 1
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
-margin_top = 49.0
+margin_top = 139.0
 margin_right = 1873.0
-margin_bottom = 1080.0
-size_flags_vertical = 3
+margin_bottom = 989.0
+size_flags_vertical = 0
+custom_constants/separation = 21
 
 [node name="PlayerList" type="VBoxContainer" parent="HBoxContainer"]
-margin_bottom = 1031.0
+margin_bottom = 850.0
 size_flags_horizontal = 2
 custom_constants/separation = 50
 alignment = 1
 
+[node name="GameSettings" type="VBoxContainer" parent="HBoxContainer"]
+margin_left = 437.0
+margin_right = 1252.0
+margin_bottom = 850.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+custom_constants/separation = 50
+alignment = 1
+
+[node name="CharacterBox" type="HBoxContainer" parent="HBoxContainer/GameSettings"]
+margin_right = 815.0
+margin_bottom = 250.0
+rect_clip_content = true
+size_flags_horizontal = 2
+size_flags_vertical = 0
+custom_constants/separation = 50
+alignment = 1
+
+[node name="CharacterInfo" parent="HBoxContainer/GameSettings/CharacterBox" instance=ExtResource( 7 )]
+margin_left = 0.0
+margin_right = 359.0
+margin_bottom = 250.0
+size_flags_vertical = 0
+
+[node name="ButtonContainer" type="VBoxContainer" parent="HBoxContainer/GameSettings/CharacterBox"]
+margin_left = 409.0
+margin_right = 815.0
+margin_bottom = 250.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
+[node name="CharacterButton" type="Button" parent="HBoxContainer/GameSettings/CharacterBox/ButtonContainer"]
+margin_top = 92.0
+margin_right = 406.0
+margin_bottom = 157.0
+rect_pivot_offset = Vector2( 13, 259 )
+text = "Change Character"
+
+[node name="WeaponBox" type="HBoxContainer" parent="HBoxContainer/GameSettings"]
+margin_top = 300.0
+margin_right = 760.0
+margin_bottom = 550.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
+[node name="WeaponInfo" parent="HBoxContainer/GameSettings/WeaponBox" instance=ExtResource( 7 )]
+margin_left = 0.0
+margin_right = 359.0
+margin_bottom = 250.0
+
+[node name="ButtonContainer" type="VBoxContainer" parent="HBoxContainer/GameSettings/WeaponBox"]
+margin_left = 409.0
+margin_right = 760.0
+margin_bottom = 250.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
+[node name="WeaponButton" type="Button" parent="HBoxContainer/GameSettings/WeaponBox/ButtonContainer"]
+margin_top = 92.0
+margin_right = 351.0
+margin_bottom = 157.0
+rect_pivot_offset = Vector2( 13, 259 )
+disabled = true
+text = "Change Weapon"
+
+[node name="DangerBox" type="HBoxContainer" parent="HBoxContainer/GameSettings"]
+margin_top = 600.0
+margin_right = 746.0
+margin_bottom = 850.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
+[node name="DangerInfo" parent="HBoxContainer/GameSettings/DangerBox" instance=ExtResource( 7 )]
+margin_left = 0.0
+margin_right = 359.0
+margin_bottom = 250.0
+
+[node name="ButtonContainer" type="VBoxContainer" parent="HBoxContainer/GameSettings/DangerBox"]
+margin_left = 409.0
+margin_right = 746.0
+margin_bottom = 250.0
+size_flags_horizontal = 2
+custom_constants/separation = 50
+alignment = 1
+
+[node name="DangerButton" type="Button" parent="HBoxContainer/GameSettings/DangerBox/ButtonContainer"]
+margin_top = 92.0
+margin_right = 337.0
+margin_bottom = 157.0
+rect_pivot_offset = Vector2( 13, 259 )
+disabled = true
+text = "Change Danger"
+
 [node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_left = 1105.0
-margin_right = 1705.0
-margin_bottom = 1031.0
+margin_left = 1273.0
+margin_right = 1873.0
+margin_bottom = 850.0
 size_flags_horizontal = 6
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
-margin_top = 483.0
+margin_top = 392.0
 margin_right = 600.0
-margin_bottom = 548.0
+margin_bottom = 457.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
@@ -72,4 +173,7 @@ margin_bottom = 65.0
 rect_pivot_offset = Vector2( 13, 259 )
 text = "START_GAME"
 
+[connection signal="pressed" from="HBoxContainer/GameSettings/CharacterBox/ButtonContainer/CharacterButton" to="." method="_on_CharacterButton_pressed"]
+[connection signal="pressed" from="HBoxContainer/GameSettings/WeaponBox/ButtonContainer/WeaponButton" to="." method="_on_WeaponButton_pressed"]
+[connection signal="pressed" from="HBoxContainer/GameSettings/DangerBox/ButtonContainer/DangerButton" to="." method="_on_DangerButton_pressed"]
 [connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
