@@ -81,6 +81,9 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		
 		var _error = Steam.allowP2PPacketRelay(false)
 
+func close_lobby() -> void:
+	var _set_error = Steam.setLobbyData(lobby_id, "game", "Not At All Brotatogether, Go Away")
+
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == 1:
 		lobby_id = joined_lobby_id

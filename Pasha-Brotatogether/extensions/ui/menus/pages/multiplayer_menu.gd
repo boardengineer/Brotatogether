@@ -19,8 +19,23 @@ var steam_connection
 var direct_connection
 var game_controller
 
+var DEBUG = false
+
+onready var debug_server_button = $HBoxContainer/ControlBox/Buttons/ServerButton
+onready var debug_client_button = $HBoxContainer/ControlBox/Buttons/ClientButton
+onready var debug_start_button = $HBoxContainer/ControlBox/Buttons/StartButton
+onready var debug_start2_button = $HBoxContainer/ControlBox/Buttons/StartButton2
+onready var debug_info_box = $HBoxContainer/InfoBox
+
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	if not DEBUG:
+		debug_info_box.hide()
+		debug_server_button.hide()
+		debug_client_button.hide()
+		debug_start_button.hide()
+		debug_start2_button.hide()
+	
 	var rooted_steam_connection = null
 	var rooted_direct_connection = null
 	var rooted_game_controller = null
@@ -138,10 +153,20 @@ func _on_CreateSteamLobby_pressed():
 func update_lobbies(lobbies: Array) -> void:
 	for found_lobby_id in lobbies:
 		var join_button = Button.new()
-		join_button.text = str(found_lobby_id)
+		var host_name = Steam.getLobbyData(found_lobby_id, "host")
+		join_button.text = str(host_name)
 		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".add_child(join_button)
 		join_button.connect("pressed", self, "join_button_pressed", [found_lobby_id])
 		# Steam.joinLobby(lobbies[0])
 		
 func join_button_pressed(joining_lobby_id: int) :
 	Steam.joinLobby(joining_lobby_id)
+
+func _input(event:InputEvent)->void :
+	manage_back(event)
+
+func manage_back(event:InputEvent)->void :
+	if event.is_action_pressed("ui_cancel"):
+		RunData.current_zone = 0
+		RunData.reload_music = false
+		var _error = get_tree().change_scene(MenuData.title_screen_scene)

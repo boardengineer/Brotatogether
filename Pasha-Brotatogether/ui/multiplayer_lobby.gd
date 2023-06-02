@@ -77,7 +77,10 @@ func _on_StartButton_pressed():
 	game_controller.send_start_game(game_info)
 	game_controller.game_mode = game_mode
 
-	get_tree().change_scene(MenuData.game_scene)
+	game_controller.start_game(game_info)
+	
+	var steam_connection = $"/root/SteamConnection"
+	steam_connection.close_lobby()
 
 
 func _on_CharacterButton_pressed():
@@ -146,7 +149,14 @@ func remote_update_lobby(lobby_info:Dictionary) -> void:
 	if lobby_info.has("danger"):
 		var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 		character_difficulty.difficulty_selected_value = lobby_info.danger
-		
-	print("sent ", lobby_info)
 	
 	update_selections()
+
+func _input(event:InputEvent)->void :
+	manage_back(event)
+
+func manage_back(event:InputEvent)->void :
+	if event.is_action_pressed("ui_cancel"):
+		RunData.current_zone = 0
+		RunData.reload_music = false
+		var _error = get_tree().change_scene(MenuData.title_screen_scene)
