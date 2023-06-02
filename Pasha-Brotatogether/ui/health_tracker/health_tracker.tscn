@@ -1,0 +1,43 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://ui/hud/ui_progress_bar.tscn" type="PackedScene" id=1]
+[ext_resource path="res://resources/fonts/actual/base/font_small_title.tres" type="DynamicFont" id=2]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/health_tracker/health_tracker.gd" type="Script" id=3]
+
+[node name="HealthTracker" type="VBoxContainer"]
+margin_left = 30.0
+margin_top = 300.0
+margin_right = 350.0
+margin_bottom = 452.0
+script = ExtResource( 3 )
+
+[node name="TemplateLifeBar" parent="." instance=ExtResource( 1 )]
+margin_bottom = 48.0
+size_flags_horizontal = 0
+tint_progress = Color( 0.721569, 0, 0, 1 )
+progress_color = Color( 0.721569, 0, 0, 1 )
+
+[node name="MarginContainer" type="MarginContainer" parent="TemplateLifeBar"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_constants/margin_right = 12
+custom_constants/margin_top = 7
+custom_constants/margin_left = 12
+custom_constants/margin_bottom = 7
+
+[node name="LifeLabel" type="Label" parent="TemplateLifeBar/MarginContainer"]
+margin_left = 12.0
+margin_top = 8.0
+margin_right = 308.0
+margin_bottom = 39.0
+grow_horizontal = 0
+custom_fonts/font = ExtResource( 2 )
+text = "8 / 8"
+align = 1
+valign = 1
+uppercase = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[editable path="TemplateLifeBar"]

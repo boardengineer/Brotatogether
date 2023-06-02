@@ -90,7 +90,7 @@ func _on_StartButton_pressed():
 	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_StartButton2_pressed():
-	var weapon_path = "res://weapons/ranged/minigun/3/minigun_3_data.tres"
+	var weapon_path = "res://weapons/melee/hatchet/1/hatchet_data.tres"
 	var character_path = "res://items/characters/well_rounded/well_rounded_data.tres"
 	
 	RunData.add_character(load(character_path))

@@ -108,3 +108,10 @@ func send_tracked_players(tracked_players:Dictionary) -> void:
 
 remote func update_tracked_players(tracked_players:Dictionary) -> void:
 	parent.update_tracked_players(tracked_players)
+	
+func send_health_update(current_health:int, max_health:int) -> void:
+	rpc("health_update", current_health, max_health)
+	
+remote func health_update(current_health:int, max_health:int) -> void:
+	var sender_id = get_tree().get_rpc_sender_id()
+	parent.receive_health_update(current_health, max_health, sender_id)

@@ -54,6 +54,8 @@ func read_p2p_packet() -> bool:
 			parent.update_tracked_players(data.tracked_players)
 		elif type == "lobby_update":
 			parent.receive_lobby_update(data.lobby_info)
+		elif type == "health_update":
+			parent.receive_health_update(data.current_health, data.max_health, sender)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -227,4 +229,11 @@ func send_lobby_update(lobby_info:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "lobby_update"
 	send_data["lobby_info"] = lobby_info
+	send_data_to_all(send_data)
+
+func send_health_update(current_health:int, max_health:int) -> void:
+	var send_data = {}
+	send_data["type"] = "health_update"
+	send_data["current_health"] = current_health
+	send_data["max_health"] = max_health
 	send_data_to_all(send_data)

@@ -16,16 +16,41 @@ var player_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/e
 #onready var game_controller = $"/root/GameController"
 
 const NetworkedEnemy = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/enemy.gd")
+const HealthTracker = preload("res://mods-unpacked/Pasha-Brotatogether/ui/health_tracker/health_tracker.tscn")
 
+var game_controller
 
 func _ready():
 	if not $"/root".has_node("GameController"):
 		return
-	var game_controller = $"/root/GameController"
-	if not game_controller or game_controller.game_mode != "shared":
-		return
-		
-	#	spawn additional players in increading x coordinates
+	game_controller = $"/root/GameController"
+	var health_tracker = HealthTracker.instance()
+	health_tracker.set_name("HealthTracker")
+	$UI.add_child(health_tracker)
+	health_tracker.init(game_controller.tracked_players)
+	
+	print_debug("added health tracker")
+	
+	if game_controller and game_controller.game_mode == "shared":
+		spawn_additional_players()
+
+func _on_EntitySpawner_player_spawned(player:Player)->void :
+	._on_EntitySpawner_player_spawned(player)
+	
+	# This happens before ready()
+	if not game_controller:
+		if $"/root".has_node("GameController"):
+			game_controller = $"/root/GameController"
+			
+	if game_controller:	
+		game_controller.update_health(player.current_stats.health, player.max_stats.health)
+		var _error = player.connect("health_updated", self, "on_health_update")
+
+func on_health_update(current_health:int, max_health:int) -> void:
+	game_controller.update_health(current_health, max_health)
+
+func spawn_additional_players() -> void:
+	game_controller = $"/root/GameController"
 	var spawn_x_pos = _entity_spawner._zone_max_pos.x / 2 + 200
 	
 	# The first player was created on at startup, create the rest manually
@@ -47,20 +72,20 @@ func _ready():
 	
 func _process(_delta):
 	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
+		game_controller = $"/root/GameController"
 		if game_controller and game_controller.is_source_of_truth and game_controller.game_mode == "shared":
 			game_controller.send_game_state()
 
 func send_player_position():
 	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
+		game_controller = $"/root/GameController"
 		if get_tree().is_network_server():
 			if not _end_wave_timer_timedout:
 				game_controller.send_state()
 
 func _on_WaveTimer_timeout()->void :
 	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
+		game_controller = $"/root/GameController"
 		if game_controller and game_controller.is_source_of_truth:
 			game_controller.send_end_wave()
 	._on_WaveTimer_timeout()

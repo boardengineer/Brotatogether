@@ -181,6 +181,8 @@ func update_tracked_players(updated_tracked_players: Dictionary) -> void:
 	tracked_players = updated_tracked_players
 	if current_scene_name == "Shop":
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
+	elif current_scene_name == "Main":
+		update_health_ui()
 
 func create_ready_toggle() -> Node:
 	ready_toggle = toggle_scene.instance()
@@ -717,3 +719,22 @@ func reset_client_items():
 	client_neutrals = {}
 	
 	tracked_players = {}
+
+func receive_health_update(current_health:int, max_health:int, source_player_id:int) -> void:
+	tracked_players[source_player_id]["max_health"] = max_health
+	tracked_players[source_player_id]["current_health"] = current_health
+	
+	if is_host:
+		connection.send_tracked_players(tracked_players)
+	update_health_ui()
+
+func update_health_ui() -> void:
+	if current_scene_name == "Main":
+		if $"/root/Main/UI/HealthTracker":
+			$"/root/Main/UI/HealthTracker".update_health_bars(tracked_players)
+	
+func update_health(current_health:int, max_health:int) -> void:
+	if is_host:
+		receive_health_update(current_health, max_health, self_peer_id)
+	else:
+		connection.send_health_update(current_health, max_health)
