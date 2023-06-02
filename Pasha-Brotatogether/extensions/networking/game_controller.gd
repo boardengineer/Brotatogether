@@ -159,6 +159,30 @@ func start_game(game_info: Dictionary):
 			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
 		var _change_error = get_tree().change_scene(MenuData.game_scene)
 
+func send_death() -> void:
+	if is_host:
+		receive_death(self_peer_id)
+	else:
+		connection.send_death()
+
+func receive_death(source_player_id:int) -> void:
+	tracked_players[source_player_id]["is_dead"] 
+	if is_host:
+		connection.send_tracked_players(tracked_players)
+	if source_player_id != self_peer_id:
+		var all_others_dead = true
+		for tracked_player_id in tracked_players:
+			var tracked_player = tracked_players[tracked_player_id]
+			if not tracked_player.has("is_dead") or not tracked_player.is_dead:
+				all_others_dead = false
+		
+		if all_others_dead:
+			var main = $"/root/Main"
+			main._is_run_won = true
+			main.clean_up_room(false, main._is_run_lost, main._is_run_won)
+			main._end_wave_timer.start()
+			ProgressData.reset_run_state()
+
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:
 		receive_bought_item(shop_item, self_peer_id)

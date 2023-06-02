@@ -128,6 +128,9 @@ func _on_StartButton2_pressed():
 	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_SteamLobbies_pressed():
+	for old_child in $"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".get_children():
+		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".remove_child(old_child)
+	
 	Steam.addRequestLobbyListDistanceFilter(3)
 	Steam.addRequestLobbyListStringFilter("game", "Brotatogether", 0)
 	Steam.requestLobbyList()

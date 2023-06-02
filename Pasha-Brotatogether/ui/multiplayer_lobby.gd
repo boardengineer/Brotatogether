@@ -7,8 +7,10 @@ onready var character_info = $"HBoxContainer/GameSettings/CharacterBox/Character
 onready var weapon_select_info = $"HBoxContainer/GameSettings/WeaponBox/WeaponInfo"
 onready var danger_select_info = $"HBoxContainer/GameSettings/DangerBox/DangerInfo"
 
+onready var character_select_button = $"HBoxContainer/GameSettings/CharacterBox/ButtonContainer/CharacterButton"
 onready var weapon_select_button = $"HBoxContainer/GameSettings/WeaponBox/ButtonContainer/WeaponButton"
 onready var danger_select_button = $"HBoxContainer/GameSettings/DangerBox/ButtonContainer/DangerButton"
+
 
 func _ready():
 	var steam_connection = $"/root/SteamConnection"
@@ -16,6 +18,11 @@ func _ready():
 	
 	if not $"/root/GameController".is_host:
 		start_button.disabled = true
+		
+		character_select_button.hide()
+		weapon_select_button.hide()
+		danger_select_button.hide()
+		
 	
 	update_player_list()
 	update_selections()

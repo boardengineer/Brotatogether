@@ -56,6 +56,8 @@ func read_p2p_packet() -> bool:
 			parent.receive_lobby_update(data.lobby_info)
 		elif type == "health_update":
 			parent.receive_health_update(data.current_health, data.max_health, sender)
+		elif type == "death":
+			parent.receive_death(sender)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -77,11 +79,13 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		lobby_id = connected_lobby_id
 		
 		var _set_error = Steam.setLobbyData(lobby_id, "game", "Brotatogether")
-		_set_error = Steam.setLobbyData(lobby_id, "host", str(Steam.getSteamID()))
+		_set_error = Steam.setLobbyData(lobby_id, "host", Steam.getPersonaName())
 		
 		var _error = Steam.allowP2PPacketRelay(false)
 
 func close_lobby() -> void:
+	# TODO this probably isn't the correct way to close a lobby but at least no one will find it
+	# for now.
 	var _set_error = Steam.setLobbyData(lobby_id, "game", "Not At All Brotatogether, Go Away")
 
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
@@ -239,4 +243,9 @@ func send_health_update(current_health:int, max_health:int) -> void:
 	send_data["type"] = "health_update"
 	send_data["current_health"] = current_health
 	send_data["max_health"] = max_health
+	send_data_to_all(send_data)
+
+func send_death() -> void:
+	var send_data = {}
+	send_data["type"] = "death"
 	send_data_to_all(send_data)

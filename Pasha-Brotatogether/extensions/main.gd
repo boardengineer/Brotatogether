@@ -46,6 +46,12 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 		game_controller.update_health(player.current_stats.health, player.max_stats.health)
 		var _error = player.connect("health_updated", self, "on_health_update")
 
+func _on_player_died(_p_player:Player)->void :
+	if game_controller:
+		# send death
+		pass
+	._on_player_died(_p_player)
+
 func on_health_update(current_health:int, max_health:int) -> void:
 	game_controller.update_health(current_health, max_health)
 
