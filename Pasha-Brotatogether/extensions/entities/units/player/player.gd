@@ -1,9 +1,5 @@
 extends "res://entities/units/player/player.gd"
 
-# Called when the node enters the scene tree for the first time.
-func _ready():
-	pass # Replace with function body.
-
 func add_weapon(weapon_data:WeaponData, pos:int)->void :
 	.add_weapon(weapon_data, pos)
 	var weapon = current_weapons[current_weapons.size() - 1]
