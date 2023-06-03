@@ -76,7 +76,7 @@ func enter_async_shop() -> void:
 		reset_ready_map()
 		init_shop_go_button()
 	else:
-		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".disabled = true
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
 
 func exit_async_shop() -> void:
@@ -153,6 +153,7 @@ func start_game(game_info: Dictionary):
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
 			RunData.init_elites_spawn()
+			back_to_lobby = false
 			
 		RunData.current_wave = game_info.current_wave
 		if game_info.has("extra_enemies_next_wave"):

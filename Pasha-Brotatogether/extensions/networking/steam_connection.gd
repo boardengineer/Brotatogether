@@ -4,6 +4,7 @@ var lobby_id = 0
 var parent
 
 func _ready():
+	lobby_id = 0
 	var _connect_error = Steam.connect("lobby_created", self, "_on_Lobby_Created")
 	_connect_error = Steam.connect("lobby_match_list", self, "_on_Lobby_Match_List")
 	_connect_error = Steam.connect("lobby_joined", self, "_on_Lobby_Joined")
@@ -59,6 +60,7 @@ func read_p2p_packet() -> bool:
 		elif type == "death":
 			parent.receive_death(sender)
 		elif type == "request_lobby_update":
+			print_debug("received updated request")
 			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
 				var lobby_info = $"/root/MultiplayerLobby".get_lobby_info_dictionary()
 				send_lobby_update(lobby_info)
@@ -100,7 +102,8 @@ func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, re
 		update_tracked_players()
 		send_handshakes()
 		
-#		if not
+		if not parent.is_host:
+			request_lobby_update()
 	
 func _on_Lobby_Chat_Update(_update_lobby_id: int, change_id: int, _making_change_id: int, chat_state: int) -> void:
 	var username = Steam.getFriendPersonaName(change_id)

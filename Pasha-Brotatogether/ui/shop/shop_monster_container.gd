@@ -4,6 +4,8 @@ class_name ShopMonsterContainer
 var _shop_option
 var game_controller
 
+const count_label_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/shop/count_label.tscn")
+
 # TODO rename to work for all types
 func init(shop_option: Resource, parent_game_controller) -> void:
 	game_controller = parent_game_controller
@@ -31,7 +33,7 @@ func _on_buyButton_pressed(shop_option: Resource) -> void:
 		$"/root/Shop"._shop_items_container.update_buttons_color()
 		
 func add_player_count(username:String, count: int) -> void:
-	var label = Label.new()
+	var label = count_label_scene.instance()
 	label.text = str(username, "-", count)
 	
 	get_node("PurchaseTracker").add_child(label)
