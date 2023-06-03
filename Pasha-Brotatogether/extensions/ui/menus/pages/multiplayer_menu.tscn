@@ -104,6 +104,7 @@ text = "[DEBUG] Start Async Game"
 margin_top = 360.0
 margin_right = 600.0
 margin_bottom = 425.0
+custom_colors/font_color_disabled = Color( 0, 0, 0, 1 )
 text = "Show Steam Lobbies"
 
 [node name="CreateSteamLobby" type="Button" parent="HBoxContainer/ControlBox/Buttons"]

@@ -24,7 +24,6 @@ func read_p2p_packet() -> bool:
 		
 		var sender = packet["steam_id_remote"]
 		var data = bytes2var(packet["data"])
-		
 		var type = data.type
 		if type == "game_state":
 			parent.update_game_state(data.game_state)
@@ -263,3 +262,6 @@ func send_death() -> void:
 	var send_data = {}
 	send_data["type"] = "death"
 	send_data_to_all(send_data)
+
+func get_lobby_host() -> String:
+	return Steam.getLobbyData(lobby_id,"host")

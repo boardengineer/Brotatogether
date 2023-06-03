@@ -20,6 +20,10 @@ func update_health_bars(tracked_players:Dictionary) -> void:
 		var player = tracked_players[tracked_player_id]
 		var health_bar = health_bar_map[tracked_player_id]
 		
+		if player.has("username"):
+			var name_label = health_bar.get_node("NameLabel")
+			name_label.text = str(player.username)
+		
 		if player.has("current_health") and player.has("max_health"):
 			health_bar.update_value(player.current_health, player.max_health)
 		

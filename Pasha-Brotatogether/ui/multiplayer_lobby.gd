@@ -1,16 +1,17 @@
-extends VBoxContainer
+extends Control
 
-onready var player_list = $HBoxContainer/PlayerList
-onready var start_button = $HBoxContainer/ControlBox/Buttons/StartButton
+onready var player_list = $PlayerList
+onready var start_button = $ControlBox/Buttons/StartButton
 
-onready var character_info = $"HBoxContainer/GameSettings/CharacterBox/CharacterInfo"
-onready var weapon_select_info = $"HBoxContainer/GameSettings/WeaponBox/WeaponInfo"
-onready var danger_select_info = $"HBoxContainer/GameSettings/DangerBox/DangerInfo"
+onready var character_info = $"GameSettings/CharacterBox/CharacterInfo"
+onready var weapon_select_info = $"GameSettings/WeaponBox/WeaponInfo"
+onready var danger_select_info = $"GameSettings/DangerBox/DangerInfo"
 
-onready var character_select_button = $"HBoxContainer/GameSettings/CharacterBox/ButtonContainer/CharacterButton"
-onready var weapon_select_button = $"HBoxContainer/GameSettings/WeaponBox/ButtonContainer/WeaponButton"
-onready var danger_select_button = $"HBoxContainer/GameSettings/DangerBox/ButtonContainer/DangerButton"
+onready var character_select_button = $"GameSettings/CharacterBox/CharacterButton"
+onready var weapon_select_button = $"GameSettings/WeaponBox/WeaponButton"
+onready var danger_select_button = $"GameSettings/DangerBox/DangerButton"
 
+const player_label_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/player_label.tscn")
 
 func _ready():
 	var _error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
@@ -36,9 +37,17 @@ func update_player_list() -> void:
 		node.queue_free()
 		
 	var game_controller = $"/root/GameController"
+	var host = steam_connection.get_lobby_host()
+	
 	for player_id in game_controller.tracked_players:
-		var label = Label.new()
-		label.text = game_controller.tracked_players[player_id].username
+		var username = game_controller.tracked_players[player_id].username
+		var label = player_label_scene.instance()
+		if username == host:
+			label.text = username + " (HOST)"
+			label.set("custom_colors/font_color","#FF0000")
+		else:
+			label.text = username
+		label.show()
 		player_list.add_child(label)
 
 func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: int, _chat_state: int) -> void:
