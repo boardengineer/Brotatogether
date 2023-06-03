@@ -48,8 +48,7 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 
 func _on_player_died(_p_player:Player)->void :
 	if game_controller:
-		# send death
-		pass
+		game_controller.send_death()
 	._on_player_died(_p_player)
 
 func on_health_update(current_health:int, max_health:int) -> void:
