@@ -58,6 +58,10 @@ func read_p2p_packet() -> bool:
 			parent.receive_health_update(data.current_health, data.max_health, sender)
 		elif type == "death":
 			parent.receive_death(sender)
+		elif type == "request_lobby_update":
+			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
+				var lobby_info = $"/root/MultiplayerLobby".get_lobby_info_dictionary()
+				send_lobby_update(lobby_info)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -95,6 +99,8 @@ func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, re
 		var _scene_error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 		update_tracked_players()
 		send_handshakes()
+		
+#		if not
 	
 func _on_Lobby_Chat_Update(_update_lobby_id: int, change_id: int, _making_change_id: int, chat_state: int) -> void:
 	var username = Steam.getFriendPersonaName(change_id)
@@ -236,6 +242,11 @@ func send_lobby_update(lobby_info:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "lobby_update"
 	send_data["lobby_info"] = lobby_info
+	send_data_to_all(send_data)
+
+func request_lobby_update() -> void:
+	var send_data = {}
+	send_data["type"] = "request_lobby_update"
 	send_data_to_all(send_data)
 
 func send_health_update(current_health:int, max_health:int) -> void:
