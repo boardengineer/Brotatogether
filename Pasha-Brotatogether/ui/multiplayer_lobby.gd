@@ -13,8 +13,7 @@ onready var danger_select_button = $"HBoxContainer/GameSettings/DangerBox/Button
 
 
 func _ready():
-	var steam_connection = $"/root/SteamConnection"
-	Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
+	var _error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
 	
 	if not $"/root/GameController".is_host:
 		start_button.disabled = true
@@ -42,7 +41,7 @@ func update_player_list() -> void:
 		label.text = game_controller.tracked_players[player_id].username
 		player_list.add_child(label)
 
-func _on_Lobby_Chat_Update(lobby_id: int, change_id: int, making_change_id: int, chat_state: int) -> void:
+func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: int, _chat_state: int) -> void:
 	update_player_list()
 
 func update_selections() -> void:
@@ -151,7 +150,7 @@ func remote_update_lobby(lobby_info:Dictionary) -> void:
 		RunData.add_character(load(lobby_info.character))
 		
 	if lobby_info.has("weapon"):
-		RunData.add_weapon(load(lobby_info.weapon), true)
+		var _unused_weapon = RunData.add_weapon(load(lobby_info.weapon), true)
 		
 	if lobby_info.has("danger"):
 		var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)

@@ -8,7 +8,6 @@ func init(tracked_players:Dictionary) -> void:
 	var life_bar = $TemplateLifeBar
 	
 	for tracked_player_id in tracked_players:
-		print_debug("adding health bar")
 		var health_bar = life_bar.duplicate()
 		add_child(health_bar)
 		health_bar_map[tracked_player_id] = health_bar
