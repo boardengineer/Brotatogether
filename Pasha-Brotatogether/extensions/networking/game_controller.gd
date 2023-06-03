@@ -167,6 +167,7 @@ func send_death() -> void:
 		connection.send_death()
 
 func receive_death(source_player_id:int) -> void:
+	tracked_players[source_player_id]["dead"] = true
 	if is_host:
 		connection.send_tracked_players(tracked_players)
 	if source_player_id != self_peer_id:
@@ -175,8 +176,10 @@ func receive_death(source_player_id:int) -> void:
 func check_win() -> void:
 	var all_others_dead = true
 	for tracked_player_id in tracked_players:
+		if tracked_player_id == self_peer_id:
+			continue
 		var tracked_player = tracked_players[tracked_player_id]
-		if not tracked_player.has("is_dead") or not tracked_player.is_dead:
+		if not tracked_player.has("dead") or not tracked_player.dead:
 			all_others_dead = false
 	
 	if all_others_dead:
