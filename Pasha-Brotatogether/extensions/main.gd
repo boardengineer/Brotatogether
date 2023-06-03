@@ -17,6 +17,7 @@ var player_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/e
 
 const NetworkedEnemy = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/enemy.gd")
 const HealthTracker = preload("res://mods-unpacked/Pasha-Brotatogether/ui/health_tracker/health_tracker.tscn")
+const ClientMovementBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/client_movement_behavior.gd")
 
 var game_controller
 

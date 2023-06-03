@@ -1,5 +1,7 @@
 extends "res://entities/units/player/player.gd"
 
+const WeaponDataNode = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/player/weapon_data_node.gd")
+
 func add_weapon(weapon_data:WeaponData, pos:int)->void :
 	.add_weapon(weapon_data, pos)
 	var weapon = current_weapons[current_weapons.size() - 1]

@@ -1,6 +1,5 @@
 extends VBoxContainer
 
-
 # must be greater than 1024
 var SERVER_PORT = 11111
 var MAX_PLAYERS = 5
@@ -13,7 +12,7 @@ var lobby_id = 0
 const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/steam_connection.gd")
 const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/direct_connection.gd")
 
-const GameController = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/game_controller.gd")
+var GameController = load("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/game_controller.gd")
 
 var steam_connection
 var direct_connection
