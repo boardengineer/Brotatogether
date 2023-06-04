@@ -65,9 +65,7 @@ func _process(_delta):
 	elif game_mode == "async":
 		if scene_name != current_scene_name:
 			if scene_name == "Shop":
-				enter_async_shop()		
-			elif current_scene_name == "Shop":
-				exit_async_shop()
+				enter_async_shop()
 				
 	current_scene_name = scene_name
 
@@ -80,17 +78,6 @@ func enter_async_shop() -> void:
 	else:
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
-
-func exit_async_shop() -> void:
-	if is_host:
-		var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
-	
-		var extra_creatures_map = create_extra_creatures_map()
-		
-		wave_data["extra_enemies_next_wave"] = extra_creatures_map
-		
-		send_start_game(wave_data)
-		reset_extra_creatures()
 
 func create_extra_creatures_map() -> Dictionary:
 	var extra_creatures_map = {}
@@ -117,6 +104,14 @@ func _on_GoButton_pressed()-> void:
 	extra_enemies_next_wave = create_extra_creatures_map()
 	RunData.current_wave += 1
 	MusicManager.tween(0)
+	
+	var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}	
+	var extra_creatures_map = create_extra_creatures_map()
+	
+	wave_data["extra_enemies_next_wave"] = extra_creatures_map
+	
+	send_start_game(wave_data)
+	reset_extra_creatures()
 	
 #	RunData.effects["extra_enemies_next_wave"] = tracked_players[self_peer_id]["extra_enemies_next_wave"]
 	
