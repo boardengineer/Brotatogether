@@ -44,10 +44,15 @@ func update_bought_items(tracked_players:Dictionary) -> void:
 	for shop_item_container in opponents_shop.get_children():
 		shop_item_container.clear_player_counts()
 		for tracked_player_id in tracked_players:
-			for effect_path in tracked_players[tracked_player_id]["extra_enemies_next_wave"]:
+			var all_effects = {}
+			if tracked_players[tracked_player_id].has("extra_enemies_next_wave"):
+				all_effects.merge(tracked_players[tracked_player_id]["extra_enemies_next_wave"].duplicate())
+			if tracked_players[tracked_player_id].has("effects"):
+				all_effects.merge(tracked_players[tracked_player_id]["effects"])
+			for effect_path in all_effects:
 				if effect_path == shop_item_container._shop_option.effect.get_path():
 					var tracked_player = tracked_players[tracked_player_id]
-					var count = tracked_player["extra_enemies_next_wave"][effect_path]
+					var count = all_effects[effect_path]
 					var display_name = str(tracked_player_id)
 					if tracked_player.has("username"):
 						display_name = tracked_player["username"]

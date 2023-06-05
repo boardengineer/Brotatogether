@@ -50,7 +50,9 @@ var run_updates = false
 var back_to_lobby = false
 
 var ready_toggle
+
 var extra_enemies_next_wave = {}
+var effects_next_wave = {}
 
 func _process(_delta):
 	var scene_name = get_tree().get_current_scene().get_name()
@@ -85,6 +87,14 @@ func create_extra_creatures_map() -> Dictionary:
 	for player_id in tracked_players:
 		extra_creatures_map[player_id] = tracked_players[player_id]["extra_enemies_next_wave"]
 	return extra_creatures_map
+	
+func create_effects_map() -> Dictionary:
+	var effects_map = {}
+	
+	for player_id in tracked_players:
+		effects_map[player_id] = tracked_players[player_id]["effects"]
+	
+	return effects_map
 
 func init_shop_go_button() -> void:
 	var shop = get_tree().get_current_scene()
@@ -101,14 +111,18 @@ func _on_GoButton_pressed()-> void:
 		return 
 	
 	shop._go_button_pressed = true
+	
 	extra_enemies_next_wave = create_extra_creatures_map()
+	effects_next_wave = create_effects_map()
+	
 	RunData.current_wave += 1
 	MusicManager.tween(0)
 	
 	var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}	
-	var extra_creatures_map = create_extra_creatures_map()
+	var extra_creatures_map = extra_enemies_next_wave
 	
 	wave_data["extra_enemies_next_wave"] = extra_creatures_map
+	wave_data["effects"] = effects_next_wave
 	
 	send_start_game(wave_data)
 	reset_extra_creatures()
@@ -155,6 +169,8 @@ func start_game(game_info: Dictionary):
 		RunData.current_wave = game_info.current_wave
 		if game_info.has("extra_enemies_next_wave"):
 			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
+		if game_info.has("effects"):
+			effects_next_wave = game_info.effects
 		var _change_error = get_tree().change_scene(MenuData.game_scene)
 
 func send_death() -> void:
@@ -194,13 +210,19 @@ func send_bought_item(shop_item:Resource) -> void:
 		connection.send_bought_item(shop_item)
 	
 func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
-	if shop_item.effect is WaveGroupData:
-		var effect_path = shop_item.effect.get_path()
-		for player_id in tracked_players:
-			if player_id != source_player_id:
+	var effect_path = shop_item.effect.get_path()
+	for player_id in tracked_players:
+		if player_id != source_player_id:
+			var effect = shop_item.effect
+			if effect is WaveGroupData:
 				if not tracked_players[player_id]["extra_enemies_next_wave"].has(effect_path):
 					tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = 0
 				tracked_players[player_id]["extra_enemies_next_wave"][effect_path] = tracked_players[player_id]["extra_enemies_next_wave"][effect_path] + 1
+			elif effect is Effect:
+				if not tracked_players[player_id]["effects"].has(effect_path):
+					tracked_players[player_id]["effects"][effect_path] = 0
+				tracked_players[player_id]["effects"][effect_path] = tracked_players[player_id]["effects"][effect_path] + 1
+	
 	if is_host:
 		connection.send_tracked_players(tracked_players)
 	$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)

@@ -21,6 +21,9 @@ func init(shop_option: Resource, parent_game_controller) -> void:
 		for wave_unit_data in effect.wave_units_data:
 			var enemy = wave_unit_data.unit_scene.instance()
 			get_node("ShopItem/Icon").texture = enemy.get_node("Animation/Sprite").texture
+	elif effect is Effect:
+		if effect.key.begins_with("stat_"):
+			get_node("ShopItem/Icon").texture = ItemService.get_stat_icon(effect.key)
 			
 	get_node("ShopItem/VBoxContainer/BuyButton").text = str(price)
 	
