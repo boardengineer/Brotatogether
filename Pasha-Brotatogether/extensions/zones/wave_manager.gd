@@ -13,9 +13,11 @@ func init(p_wave_timer:Timer, wave_data:Resource)->void :
 			add_extra_enemies(extra_enemies_next_wave[game_controller.self_peer_id])
 			
 		var effects = game_controller.effects_next_wave
-		for effect_path in effects:
-			for i in effects[effect_path]:
-				load(effect_path).apply()
+		if effects.has(game_controller.self_peer_id):
+			var my_effects = effects[game_controller.self_peer_id]
+			for effect_path in my_effects:
+				for i in my_effects[effect_path]:
+					load(effect_path).apply()
 				
 func add_extra_enemies(extra_enemies:Dictionary) -> void:
 	for resource_path in extra_enemies:

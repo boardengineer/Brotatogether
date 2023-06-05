@@ -373,6 +373,7 @@ func reset_ready_map():
 func reset_extra_creatures():
 	for player_id in tracked_players:
 		tracked_players[player_id]["extra_enemies_next_wave"] = {}
+		tracked_players[player_id]["effects"] = {}
 
 func update_go_button():
 	var should_enable = true
