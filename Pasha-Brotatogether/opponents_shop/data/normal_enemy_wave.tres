@@ -7,6 +7,6 @@
 script = ExtResource( 2 )
 type = 1
 unit_scene = ExtResource( 1 )
-min_number = 4
-max_number = 4
+min_number = 10
+max_number = 10
 spawn_chance = 1.0

@@ -24,13 +24,14 @@ func init(shop_option: Resource, parent_game_controller) -> void:
 	elif effect is Effect:
 		if effect.key.begins_with("stat_"):
 			get_node("ShopItem/Icon").texture = ItemService.get_stat_icon(effect.key)
-			
-	get_node("ShopItem/VBoxContainer/BuyButton").text = str(price)
+		
+	var adjusted_price = ItemService.get_value(RunData.current_wave, price, true, true)
+	get_node("ShopItem/VBoxContainer/BuyButton").text = str(adjusted_price)
 	
 func _on_buyButton_pressed(shop_option: Resource) -> void:
-	var price = shop_option.price
-	if RunData.gold >= price:
-		RunData.remove_gold(price)
+	var adjusted_price = ItemService.get_value(RunData.current_wave, shop_option.price, true, true)
+	if RunData.gold >= adjusted_price:
+		RunData.remove_gold(adjusted_price)
 		game_controller.send_bought_item(shop_option)
 		
 		$"/root/Shop"._shop_items_container.update_buttons_color()

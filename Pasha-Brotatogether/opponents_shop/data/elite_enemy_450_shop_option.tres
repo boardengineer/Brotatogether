@@ -1,10 +1,10 @@
 [gd_resource type="Resource" load_steps=3 format=2]
 
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/shop_option.gd" type="Script" id=1]
-[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/dodge.tres" type="Resource" id=2]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/elite_enemy_spawn.tres" type="Resource" id=2]
 
 [resource]
 script = ExtResource( 1 )
-price = 50
+price = 450
 effect = ExtResource( 2 )
-display_text = "Enemy Dodge"
+display_text = "Single Monk Elite"

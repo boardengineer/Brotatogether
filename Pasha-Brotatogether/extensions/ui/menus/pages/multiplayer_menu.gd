@@ -63,6 +63,8 @@ func _ready():
 	game_controller = rooted_game_controller
 	steam_connection = rooted_steam_connection
 	direct_connection = rooted_direct_connection
+	
+	game_controller.is_host = false
 
 
 func _on_ServerButton_pressed():
