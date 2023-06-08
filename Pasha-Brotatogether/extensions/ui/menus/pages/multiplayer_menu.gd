@@ -65,6 +65,7 @@ func _ready():
 	direct_connection = rooted_direct_connection
 	
 	game_controller.is_host = false
+	game_controller.is_source_of_truth = false
 
 
 func _on_ServerButton_pressed():

@@ -1,6 +1,6 @@
 [gd_resource type="Resource" load_steps=7 format=2]
 
-[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/minus_4_dodge.tres" type="Resource" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/dodge.tres" type="Resource" id=1]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/opponents_shop_options.gd" type="Script" id=2]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/normal_enemy_30_shop_option.tres" type="Resource" id=3]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/elite_enemy_450_shop_option.tres" type="Resource" id=4]

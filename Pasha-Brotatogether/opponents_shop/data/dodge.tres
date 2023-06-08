@@ -1,13 +1,10 @@
-[gd_resource type="Resource" load_steps=2 format=2]
+[gd_resource type="Resource" load_steps=3 format=2]
 
-[ext_resource path="res://items/global/effect.gd" type="Script" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/shop_option.gd" type="Script" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/5_dodge.tres" type="Resource" id=2]
 
 [resource]
 script = ExtResource( 1 )
-key = "stat_dodge"
-text_key = ""
-value = -4
-custom_key = ""
-storage_method = 0
-effect_sign = 3
-custom_args = [  ]
+price = 50
+effect = ExtResource( 2 )
+display_text = "5 Dodge"

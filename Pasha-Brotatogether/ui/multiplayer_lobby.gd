@@ -172,6 +172,12 @@ func _input(event:InputEvent)->void :
 
 func manage_back(event:InputEvent)->void :
 	if event.is_action_pressed("ui_cancel"):
+		var game_controller = $"/root/GameController"
+	
+		if game_controller.is_host:
+			var steam_connection = $"/root/SteamConnection"
+			steam_connection.close_lobby()
+		
 		RunData.current_zone = 0
 		RunData.reload_music = false
 		var _error = get_tree().change_scene(MenuData.title_screen_scene)

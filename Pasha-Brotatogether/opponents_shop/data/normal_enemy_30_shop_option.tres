@@ -7,4 +7,4 @@
 script = ExtResource( 1 )
 price = 30
 effect = ExtResource( 2 )
-display_text = "10 Baby Aliens"
+display_text = "Many Baby Aliens"

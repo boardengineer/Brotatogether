@@ -72,10 +72,9 @@ func _process(_delta):
 	current_scene_name = scene_name
 
 func enter_async_shop() -> void:
+	if $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer":
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
 	if is_host:
-		# TODO, this isn't a good place for this reset, might miss calls
-		reset_extra_creatures()
-		reset_ready_map()
 		init_shop_go_button()
 	else:
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
@@ -103,6 +102,8 @@ func init_shop_go_button() -> void:
 	button.disconnect("pressed", shop, "_on_GoButton_pressed")
 	button.connect("pressed", self, "_on_GoButton_pressed")
 	
+	print_debug("updating go button")
+	
 	update_go_button()
 
 func _on_GoButton_pressed()-> void:
@@ -126,12 +127,16 @@ func _on_GoButton_pressed()-> void:
 	
 	send_start_game(wave_data)
 	reset_extra_creatures()
+	reset_ready_map()
 	
 #	RunData.effects["extra_enemies_next_wave"] = tracked_players[self_peer_id]["extra_enemies_next_wave"]
 	
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
 func start_game(game_info: Dictionary):
+	reset_extra_creatures()
+	reset_ready_map()
+		
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		tracked_players = {}
@@ -225,7 +230,8 @@ func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
 	
 	if is_host:
 		connection.send_tracked_players(tracked_players)
-	$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
+	if $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer":
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
 
 func update_tracked_players(updated_tracked_players: Dictionary) -> void:
 	tracked_players = updated_tracked_players
@@ -377,6 +383,7 @@ func reset_extra_creatures():
 
 func update_go_button():
 	var should_enable = true
+	print_debug("tracked players: ", tracked_players)
 	for player_id in tracked_players:
 		if player_id != self_peer_id and not tracked_players[player_id]["is_ready"]:
 			should_enable = false
