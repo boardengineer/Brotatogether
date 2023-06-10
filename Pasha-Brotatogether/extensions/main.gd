@@ -25,6 +25,7 @@ func _ready():
 	if not $"/root".has_node("GameController"):
 		return
 	game_controller = $"/root/GameController"
+	
 	var health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)

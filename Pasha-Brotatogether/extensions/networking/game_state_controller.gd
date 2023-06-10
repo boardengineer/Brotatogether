@@ -356,12 +356,9 @@ func spawn_player(player_data:Dictionary):
 
 func get_game_state() -> Dictionary:
 	var data = {}
-	
-	print_debug("tree" , get_tree().get_current_scene())
-	
+		
 	if "/root/Main":
 		var main = $"/root/Main"
-		print_debug("here ", get_tree().get_current_scene().get_name())
 		if main:
 			data["enemies"] = get_enemies_state()
 			data["births"] = get_births_state()

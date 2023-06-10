@@ -123,15 +123,38 @@ func start_game(game_info: Dictionary):
 		
 	game_mode = game_info.mode
 	if game_mode == "shared":
-		tracked_players = {}
-		RunData.current_wave = game_info.current_wave
+		if game_info.current_wave == 1:
+			RunData.weapons = []
+			RunData.items = []
+			RunData.effects = RunData.init_effects()
+			RunData.current_character = null
+			RunData.starting_weapon = null
+			
+			var lobby_info = game_info.lobby_info
+			
+			var character_data = load(lobby_info.character)
+			var weapon_data = load(lobby_info.weapon)
+			var danger = lobby_info.danger
+			
+			RunData.add_character(character_data)
+			var _unused = RunData.add_weapon(weapon_data, true)
+			RunData.add_starting_items_and_weapons()
+			
+			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
+			character_difficulty.difficulty_selected_value = danger
+			RunData.init_elites_spawn()
+			back_to_lobby = false
+#		tracked_players = {}
+#		RunData.current_wave = game_info.current_wave
 		
 		# TODO, I think i only need to do this in the first frame but i need to do the testing to 
 		# make sure
-		RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
-		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
+#		RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
+#		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
 		# MIGRATE reset_client_items()
 		run_updates = true
+		RunData.current_wave = game_info.current_wave
+		var _change_error = get_tree().change_scene(MenuData.game_scene)
 	elif game_mode == "async":
 		if game_info.current_wave == 1:
 			RunData.weapons = []
@@ -338,10 +361,6 @@ func update_go_button():
 		shop_button.disabled = true
 	else:
 		shop_button.disabled = false
-
-
-
-
 
 func get_items_state() -> Dictionary:
 	var main = $"/root/Main"
