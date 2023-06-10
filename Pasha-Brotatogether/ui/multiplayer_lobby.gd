@@ -181,3 +181,23 @@ func manage_back(event:InputEvent)->void :
 		RunData.current_zone = 0
 		RunData.reload_music = false
 		var _error = get_tree().change_scene(MenuData.title_screen_scene)
+
+func _on_StartButton2_pressed():
+	var game_controller = $"/root/GameController"
+	if not game_controller.is_host:
+		return
+		
+	game_controller.is_source_of_truth = false
+	var game_mode = "shared"
+	
+	var game_info = {"current_wave":1, "mode":game_mode}
+	
+	game_info["lobby_info"] = get_lobby_info_dictionary()
+	
+	game_controller.send_start_game(game_info)
+	game_controller.game_mode = game_mode
+
+	game_controller.start_game(game_info)
+	
+	var steam_connection = $"/root/SteamConnection"
+	steam_connection.close_lobby()

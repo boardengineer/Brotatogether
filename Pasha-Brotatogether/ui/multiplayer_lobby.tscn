@@ -122,19 +122,18 @@ margin_right = 491.0
 margin_bottom = 365.0
 
 [node name="ControlBox" type="VBoxContainer" parent="."]
-margin_left = 5.0
-margin_top = 1000.0
-margin_right = 1920.0
-margin_bottom = 1085.0
+margin_left = -3.0
+margin_top = 915.0
+margin_right = 1912.0
+margin_bottom = 1070.0
 size_flags_horizontal = 6
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Buttons" type="VBoxContainer" parent="ControlBox"]
 margin_left = 657.0
-margin_top = 10.0
 margin_right = 1257.0
-margin_bottom = 75.0
+margin_bottom = 155.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
@@ -147,9 +146,17 @@ __meta__ = {
 margin_right = 600.0
 margin_bottom = 65.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "START_GAME"
+text = "Start Game"
+
+[node name="StartButton2" type="Button" parent="ControlBox/Buttons"]
+margin_top = 90.0
+margin_right = 600.0
+margin_bottom = 155.0
+rect_pivot_offset = Vector2( 13, 259 )
+text = "Start Other Game"
 
 [connection signal="pressed" from="GameSettings/CharacterBox/CharacterButton" to="." method="_on_CharacterButton_pressed"]
 [connection signal="pressed" from="GameSettings/WeaponBox/WeaponButton" to="." method="_on_WeaponButton_pressed"]
 [connection signal="pressed" from="GameSettings/DangerBox/DangerButton" to="." method="_on_DangerButton_pressed"]
 [connection signal="pressed" from="ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
+[connection signal="pressed" from="ControlBox/Buttons/StartButton2" to="." method="_on_StartButton2_pressed"]

@@ -32,7 +32,7 @@ func _ready():
 	
 	print_debug("added health tracker")
 	
-	if game_controller and game_controller.game_mode == "shared":
+	if game_controller and game_controller.is_source_of_truth:
 		spawn_additional_players()
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
@@ -79,7 +79,7 @@ func spawn_additional_players() -> void:
 func _process(_delta):
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth and game_controller.game_mode == "shared":
+		if game_controller and game_controller.is_source_of_truth:
 			game_controller.send_game_state()
 
 func send_player_position():
