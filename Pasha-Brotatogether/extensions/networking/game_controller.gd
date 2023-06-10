@@ -124,6 +124,9 @@ func start_game(game_info: Dictionary):
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		if game_info.current_wave == 1:
+			if not is_host:
+				is_source_of_truth = false
+			
 			RunData.weapons = []
 			RunData.items = []
 			RunData.effects = RunData.init_effects()
@@ -154,7 +157,11 @@ func start_game(game_info: Dictionary):
 		# MIGRATE reset_client_items()
 		run_updates = true
 		RunData.current_wave = game_info.current_wave
-		var _change_error = get_tree().change_scene(MenuData.game_scene)
+		if is_host:
+			var _change_error = get_tree().change_scene(MenuData.game_scene)
+		else:
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
+		
 	elif game_mode == "async":
 		if game_info.current_wave == 1:
 			RunData.weapons = []
@@ -241,6 +248,13 @@ func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
 
 func update_tracked_players(updated_tracked_players: Dictionary) -> void:
+	# Actual Player state is updated elsewhere
+	for player_id in updated_tracked_players:
+		if tracked_players.has(player_id) and tracked_players[player_id].has("player"):
+			updated_tracked_players[player_id]["player"] = tracked_players[player_id]["player"]
+		else:
+			updated_tracked_players[player_id].erase("player")
+		
 	tracked_players = updated_tracked_players
 	if current_scene_name == "Shop":
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
@@ -269,6 +283,12 @@ func display_hit_effect(effect_info: Dictionary):
 func end_wave():
 	run_updates = false
 	game_state_controller.reset_client_items()
+	
+	print_debug("erasing keys??")
+	for player_id in tracked_players:
+		print_debug("erasing key: ", player_id)
+		tracked_players[player_id].erase("player")
+	
 	var _change_error = get_tree().change_scene("res://mods-unpacked/pasha-Brotatogether/extensions/waiting.tscn")
 
 func send_ready(is_ready:bool) -> void:
@@ -306,7 +326,7 @@ func receive_lobby_update(lobby_info:Dictionary) -> void:
 		$"/root/MultiplayerLobby".remote_update_lobby(lobby_info)
 	
 func send_client_position() -> void:
-	if not tracked_players.has(self_peer_id):
+	if not tracked_players.has(self_peer_id) or not tracked_players[self_peer_id].has("player"):
 		return
 	var my_player = tracked_players[self_peer_id]["player"]
 	var client_position = {}
@@ -416,3 +436,16 @@ func update_health(current_health:int, max_health:int) -> void:
 		receive_health_update(current_health, max_health, self_peer_id)
 	else:
 		connection.send_health_update(current_health, max_health)
+
+func update_game_state(data: Dictionary) -> void:
+	if run_updates:
+		game_state_controller.update_game_state(data)
+
+func enemy_death(enemy_id):
+	game_state_controller.enemy_death(enemy_id)
+
+func flash_enemy(enemy_id):
+	game_state_controller.flash_enemy(enemy_id)
+
+func flash_neutral(neutral_id):
+	game_state_controller.flash_neutral(neutral_id)

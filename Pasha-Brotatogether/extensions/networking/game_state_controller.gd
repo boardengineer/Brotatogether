@@ -207,8 +207,8 @@ func _clear_movement_behavior(entity:Entity, is_player:bool = false) -> void:
 	if is_player:
 		entity.call_deferred("remove_weapon_behaviors")
 
-func update_game_state(data):
-	if not run_updates or get_tree().get_current_scene().get_name() != "ClientMain":
+func update_game_state(data: Dictionary) -> void:
+	if get_tree().get_current_scene().get_name() != "ClientMain":
 		return
 	update_enemies(data.enemies)
 	update_births(data.births)
@@ -315,6 +315,9 @@ func update_players(players:Array) -> void:
 		var player_id = player_data.id
 		if not player_id in tracked_players:
 			tracked_players[player_id] = {}
+		
+		if not tracked_players[player_id].has("player"):
+			print_debug("spawning player for ", player_id)
 			tracked_players[player_id]["player"] = spawn_player(player_data)
 
 		var player = tracked_players[player_id]["player"]
