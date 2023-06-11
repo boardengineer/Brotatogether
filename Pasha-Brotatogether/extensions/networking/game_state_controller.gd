@@ -314,8 +314,7 @@ func update_players(players:Array) -> void:
 		if not player_id in tracked_players:
 			tracked_players[player_id] = {}
 		
-		if not tracked_players[player_id].has("player"):
-			print_debug("spawning player for ", player_id)
+		if not tracked_players[player_id].has("player") or not is_instance_valid(tracked_players[player_id].player):
 			tracked_players[player_id]["player"] = spawn_player(player_data)
 
 		var player = tracked_players[player_id]["player"]
@@ -332,12 +331,13 @@ func update_players(players:Array) -> void:
 				player.position = player_data.position
 				player.call_deferred("maybe_update_animation", player_data.movement, true)
 
-		for weapon_data_index in player.current_weapons.size():
-			var weapon_data = player_data.weapons[weapon_data_index]
-			var weapon = player.current_weapons[weapon_data_index]
-			weapon.sprite.position = weapon_data.position
-			weapon.sprite.rotation = weapon_data.rotation
-			weapon._is_shooting = weapon_data.shooting
+		if is_instance_valid(player):
+			for weapon_data_index in player.current_weapons.size():
+				var weapon_data = player_data.weapons[weapon_data_index]
+				var weapon = player.current_weapons[weapon_data_index]
+				weapon.sprite.position = weapon_data.position
+				weapon.sprite.rotation = weapon_data.rotation
+				weapon._is_shooting = weapon_data.shooting
 
 func spawn_player(player_data:Dictionary):
 	var spawned_player = player_scene.instance()

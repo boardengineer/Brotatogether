@@ -188,7 +188,6 @@ func send_flash_neutral(neutral_id):
 
 func send_data_to_all(packet_data: Dictionary):
 	for player_id in parent.tracked_players:
-		print_debug("sending to player: ", player_id)
 		if player_id == parent.self_peer_id:
 			continue
 		send_data(packet_data, player_id)

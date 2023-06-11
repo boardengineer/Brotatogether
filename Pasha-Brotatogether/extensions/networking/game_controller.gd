@@ -326,6 +326,8 @@ func send_client_position() -> void:
 	if not tracked_players.has(self_peer_id) or not tracked_players[self_peer_id].has("player"):
 		return
 	var my_player = tracked_players[self_peer_id]["player"]
+	if not is_instance_valid(my_player):
+		return
 	var client_position = {}
 	client_position["player"] = my_player.position
 	client_position["id"] = self_peer_id
