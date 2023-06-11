@@ -28,7 +28,7 @@ func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false)->v
 func flash()->void :
 	if  $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
-		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+		if game_controller and game_controller.game_mode == "shared" and game_controller.is_source_of_truth:
 			game_controller.send_flash_enemy(id)
 	.flash()
 

@@ -73,7 +73,8 @@ func spawn_additional_players() -> void:
 			connect_visual_effects(spawned_player)
 			_clear_movement_behavior(spawned_player)
 			
-			game_controller.tracked_players[player_id] = {}
+			if not game_controller.tracked_players.has(player_id):
+				game_controller.tracked_players[player_id] = {}
 			game_controller.tracked_players[player_id]["player"] = spawned_player
 			spawn_x_pos += 200
 	

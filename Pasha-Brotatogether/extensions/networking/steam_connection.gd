@@ -182,12 +182,13 @@ func send_flash_enemy(enemy_id):
 			
 func send_flash_neutral(neutral_id):
 	var send_data = {}
-	send_data["type"] = "flash_enemy"
+	send_data["type"] = "flash_neutral"
 	send_data["neutral_id"] = neutral_id
 	send_data_to_all(send_data)
 
 func send_data_to_all(packet_data: Dictionary):
 	for player_id in parent.tracked_players:
+		print_debug("sending to player: ", player_id)
 		if player_id == parent.self_peer_id:
 			continue
 		send_data(packet_data, player_id)
@@ -229,6 +230,7 @@ func send_bought_item(shop_item:Resource) -> void:
 	send_data_to_all(send_data)
 
 func send_ready(is_ready:bool) -> void:
+	print_debug("sending ready")
 	var send_data = {}
 	send_data["type"] = "send_ready"
 	send_data["is_ready"] = is_ready

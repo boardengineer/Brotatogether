@@ -37,7 +37,7 @@ func update_animation(movement:Vector2)->void :
 func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 	if  $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
-		if (not game_controller) or force_animation or game_controller.game_mode != "shared" or (game_controller.tracked_players[game_controller.self_peer_id].has("player") and game_controller.tracked_players[game_controller.self_peer_id]["player"] == self):
+		if (not game_controller) or force_animation or game_controller.game_mode != "shared" or (game_controller.tracked_players.has(game_controller.self_peer_id) and game_controller.tracked_players[game_controller.self_peer_id].has("player") and game_controller.tracked_players[game_controller.self_peer_id]["player"] == self) or not game_controller.run_updates:
 			pass
 		else:
 			return

@@ -306,8 +306,6 @@ func reset_client_items():
 	client_player_projectiles = {}
 	client_consumables = {}
 	client_neutrals = {}
-	
-	parent.tracked_players = {}
 
 func update_players(players:Array) -> void:
 	var tracked_players = parent.tracked_players

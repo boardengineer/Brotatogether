@@ -82,7 +82,7 @@ func _on_StartButton_pressed():
 	if not game_controller.is_host:
 		return
 		
-	game_controller.is_source_of_truth = false	
+	game_controller.is_source_of_truth = false
 	var game_mode = "async"
 	
 	var game_info = {"current_wave":1, "mode":game_mode}

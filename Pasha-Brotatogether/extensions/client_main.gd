@@ -134,7 +134,7 @@ func _ready()->void :
 		
 	_current_wave_label.text = Text.text("WAVE", [str(RunData.current_wave)]).to_upper()
 	
-	_wave_timer.wait_time = 1 if RunData.instant_waves else current_wave_data.wave_duration
+	_wave_timer.wait_time = 15
 	_wave_timer.start()
 	_wave_timer_label.wave_timer = _wave_timer
 	var _error_wave_timer = _wave_timer.connect("tick_started", self, "on_tick_started")
@@ -407,8 +407,9 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 	
 	if not RunData.is_testing:
 		ProgressData.save()
-	
-	SoundManager.play(Utils.get_rand_element(end_wave_sounds))
+		
+	# TODO maybe replace
+#	SoundManager.play(Utils.get_rand_element(end_wave_sounds))
 	_cleaning_up = true
 	_effects_manager.clean_up_room()
 	_floating_text_manager.clean_up_room()
@@ -615,3 +616,52 @@ func on_gold_changed(gold:int)->void :
 		if (gold / 30.0) as int != _last_gold_amount_used_to_reload_stats:
 			reload_stats()
 			_last_gold_amount_used_to_reload_stats = (gold / 30.0) as int
+
+
+func _on_WaveTimer_timeout()->void :
+	
+	DebugService.log_run_info(_upgrades_to_process, _consumables_to_process)
+	
+	var is_last_wave = is_last_wave()
+	
+	ProgressData.update_mouse_cursor(true)
+	
+	if not _is_run_lost and is_last_wave:
+		_is_run_won = true
+	
+	ChallengeService.check_counted_challenges()
+	
+	if RunData.effects["stats_end_of_wave"].size() > 0:
+		for stat_end_of_wave in RunData.effects["stats_end_of_wave"]:
+			RunData.add_stat(stat_end_of_wave[0], stat_end_of_wave[1])
+			
+			if stat_end_of_wave[0] == "stat_percent_damage":
+				RunData.tracked_item_effects["item_vigilante_ring"] += stat_end_of_wave[1]
+			elif stat_end_of_wave[0] == "stat_max_hp":
+				
+				var leaf_value = 0
+				
+				for item in RunData.items:
+					if item.my_id == "item_grinds_magical_leaf":
+						leaf_value = item.effects[0].value + 2
+				
+				RunData.tracked_item_effects["item_grinds_magical_leaf"] += leaf_value
+	
+	if RunData.effects["convert_stats_end_of_wave"].size() > 0:
+		Utils.convert_stats(RunData.effects["convert_stats_end_of_wave"])
+	
+	manage_harvesting()
+	DebugService.log_data("start clean_up_room...")
+	clean_up_room(is_last_wave, false, _is_run_won)
+	
+	if _is_run_won:
+		apply_run_won()
+	
+	_end_wave_timer.start()
+	TempStats.reset()
+	InputService.hide_mouse = true
+	
+	if $"/root/GameController":
+		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
+	else:
+		var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")

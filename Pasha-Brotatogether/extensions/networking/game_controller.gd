@@ -48,11 +48,10 @@ func _process(_delta):
 				# First frame where we left the shop
 				var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
 				send_start_game(wave_data)
-	elif game_mode == "async":
-		if scene_name != current_scene_name:
-			if scene_name == "Shop":
-				enter_async_shop()
-				
+	if scene_name != current_scene_name:
+		if scene_name == "Shop":
+			enter_async_shop()
+			
 	current_scene_name = scene_name
 
 func enter_async_shop() -> void:
@@ -120,13 +119,13 @@ func _on_GoButton_pressed()-> void:
 func start_game(game_info: Dictionary):
 	reset_extra_creatures()
 	reset_ready_map()
-		
+	
+	if not is_host:
+		is_source_of_truth = false
+	
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		if game_info.current_wave == 1:
-			if not is_host:
-				is_source_of_truth = false
-			
 			RunData.weapons = []
 			RunData.items = []
 			RunData.effects = RunData.init_effects()
@@ -288,8 +287,6 @@ func end_wave():
 	for player_id in tracked_players:
 		print_debug("erasing key: ", player_id)
 		tracked_players[player_id].erase("player")
-	
-	var _change_error = get_tree().change_scene("res://mods-unpacked/pasha-Brotatogether/extensions/waiting.tscn")
 
 func send_ready(is_ready:bool) -> void:
 	connection.send_ready(is_ready)
