@@ -26,6 +26,9 @@ func _ready():
 		return
 	game_controller = $"/root/GameController"
 	
+	if game_controller and game_controller.is_source_of_truth:
+		spawn_additional_players()
+	
 	var health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)
@@ -33,8 +36,7 @@ func _ready():
 	
 	print_debug("added health tracker")
 	
-	if game_controller and game_controller.is_source_of_truth:
-		spawn_additional_players()
+	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
 	._on_EntitySpawner_player_spawned(player)

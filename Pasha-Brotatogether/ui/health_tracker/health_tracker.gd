@@ -24,8 +24,17 @@ func update_health_bars(tracked_players:Dictionary) -> void:
 			var name_label = health_bar.get_node("NameLabel")
 			name_label.text = str(player.username)
 		
-		if player.has("current_health") and player.has("max_health"):
-			health_bar.update_value(player.current_health, player.max_health)
+		var current_health = 15
+		var max_health = 15
 		
-			var life_label = health_bar.get_node("MarginContainer/LifeLabel")
-			life_label.text = str(max(player.current_health, 0.0)) + " / " + str(player.max_health)
+		if player.has("current_health") and player.has("max_health"):
+			current_health = player.current_health
+			max_health = player.max_health
+		elif player.has("player") and is_instance_valid(player.player):
+			current_health = player.player.current_stats.health
+			max_health = player.player.max_stats.health
+			
+		health_bar.update_value(current_health, max_health)
+		
+		var life_label = health_bar.get_node("MarginContainer/LifeLabel")
+		life_label.text = str(max(current_health, 0.0)) + " / " + str(max_health)
