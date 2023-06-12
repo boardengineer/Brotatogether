@@ -1,8 +1,6 @@
 extends Node
 
 # Connection interface
-func send_state(_game_state:Dictionary) -> void:
-	pass
 
 func send_start_game(_game_info:Dictionary) -> void:
 	pass

@@ -452,7 +452,7 @@ func update_health(current_health:int, max_health:int) -> void:
 		else:
 			connection.send_health_update(current_health, max_health)
 
-func update_game_state(data: Dictionary) -> void:
+func update_game_state(data: PoolByteArray) -> void:
 	if run_updates:
 		game_state_controller.update_game_state(data)
 

@@ -139,7 +139,7 @@ func update_tracked_players() -> void:
 		
 		parent.tracked_players[member_steam_id] = {"username": member_username}
 
-func send_state(game_state:Dictionary) -> void:
+func send_state(game_state:PoolByteArray) -> void:
 	var send_data = {}
 	send_data["game_state"] = game_state
 	send_data["type"] = "game_state"
