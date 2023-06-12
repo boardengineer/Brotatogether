@@ -187,34 +187,65 @@ func spawn_gold(position:Vector2, scale:Vector2, rotation:float, push_back_desti
 	
 	return gold
 
-func get_projectiles_state() -> Dictionary:
+func get_projectiles_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
+	
 	var main = $"/root/Main"
-	var projectiles = []
+	
+	var num_projectiles = 0 
 	for child in main.get_children():
 		if child is PlayerProjectile:
-			var projectile_data = {}
-			projectile_data["id"] = child.id
-			projectile_data["filename"] = child.filename
-			projectile_data["position"] = child.position
-			projectile_data["global_position"] = child.global_position
-			projectile_data["rotation"] = child.rotation
+			num_projectiles += 1
+			
+	buffer.put_u16(num_projectiles)
+	
+	for child in main.get_children():
+		if child is PlayerProjectile:
+			buffer.put_32(child.id)
+			
+			buffer.put_float(child.position.x)
+			buffer.put_float(child.position.y)
+			
+			buffer.put_float(child.global_position.x)
+			buffer.put_float(child.global_position.y)
+			
+			buffer.put_float(child.rotation)
+			
+			# TODO send conditionally 
+			buffer.put_string(child.filename)
+	return buffer.data_array
 
-			projectiles.push_back(projectile_data)
-	return projectiles
-
-func update_player_projectiles(projectiles:Array) -> void:
+func update_player_projectiles(projectiles:PoolByteArray) -> void:
+	var buffer = StreamPeerBuffer.new()
+	buffer.data_array = projectiles
+	
 	var server_player_projectiles = {}
-	for player_projectile_data in projectiles:
-		var projectile_id = player_projectile_data.id
+	var num_projectiles = buffer.get_u16()
+	
+	for _projectile_index in num_projectiles:
+		var projectile_id = buffer.get_32()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		var position = Vector2(pos_x, pos_y)
+		
+		var global_pos_x = buffer.get_float()
+		var global_pos_y = buffer.get_float()
+		var global_position = Vector2(global_pos_x, global_pos_y)
+		
+		var rotation = buffer.get_float()
+		
+		var filename = buffer.get_string()
+		
 		if not client_player_projectiles.has(projectile_id):
-			client_player_projectiles[projectile_id] = spawn_player_projectile(player_projectile_data)
-
+			client_player_projectiles[projectile_id] = spawn_player_projectile(position, global_position, rotation, filename)
+		
 		var player_projectile = client_player_projectiles[projectile_id]
 		if is_instance_valid(player_projectile):
-			player_projectile.position = player_projectile_data.position
-			player_projectile.rotation = player_projectile_data.rotation
+			player_projectile.position = position
+			player_projectile.rotation = rotation
 		server_player_projectiles[projectile_id] = true
-
+		
 	for projectile_id in client_player_projectiles:
 		if not server_player_projectiles.has(projectile_id):
 			var player_projectile = client_player_projectiles[projectile_id]
@@ -222,14 +253,14 @@ func update_player_projectiles(projectiles:Array) -> void:
 			if is_instance_valid(player_projectile):
 				get_tree().current_scene.remove_child(player_projectile)
 
-func spawn_player_projectile(projectile_data:Dictionary):
+func spawn_player_projectile(position:Vector2, global_position:Vector2, rotation:float, filename:String):
 	var main = $"/root/ClientMain"
-	var projectile = load(projectile_data.filename).instance()
+	var projectile = load(filename).instance()
 	
-	projectile.position = projectile_data.position
-	projectile.spawn_position = projectile_data.global_position
-	projectile.global_position = projectile_data.global_position
-	projectile.rotation = projectile_data.rotation
+	projectile.position = position
+	projectile.spawn_position = global_position
+	projectile.global_position = global_position
+	projectile.rotation = rotation
 	# TODO this is probably wrong?
 	projectile.weapon_stats = weapon_stats_resource.duplicate()
 	projectile.set_physics_process(false)
