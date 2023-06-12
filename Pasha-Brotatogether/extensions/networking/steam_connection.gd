@@ -23,7 +23,7 @@ func read_p2p_packet() -> bool:
 		var packet = Steam.readP2PPacket(packet_size, 0)
 		
 		var sender = packet["steam_id_remote"]
-		var data = bytes2var(packet["data"])
+		var data = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
 		var type = data.type
 		if type == "game_state":
 			parent.update_game_state(data.game_state)
@@ -194,7 +194,7 @@ func send_data_to_all(packet_data: Dictionary):
 
 func send_data(packet_data: Dictionary, target: int):
 	# TODO actually compress
-	var compressed_data = var2bytes(packet_data)
+	var compressed_data = var2bytes(packet_data).compress(File.COMPRESSION_GZIP)
 	
 	# Just use channel 0 for everything for now
 	var _error = Steam.sendP2PPacket(target, compressed_data, Steam.P2P_SEND_RELIABLE, 0)

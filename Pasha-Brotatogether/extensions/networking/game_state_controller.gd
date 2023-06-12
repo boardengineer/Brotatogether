@@ -26,6 +26,9 @@ const tree_scene = preload("res://entities/units/neutral/tree.tscn")
 const ClientMovementBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/client_movement_behavior.gd")
 const ClientAttackBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/client_attack_behavior.gd")
 
+# TODO sometimes clear these
+var sent_detail_ids = {}
+
 func get_items_state() -> Dictionary:
 	var main = $"/root/Main"
 	var items = []
@@ -333,6 +336,8 @@ func update_players(players:Array) -> void:
 
 		if is_instance_valid(player):
 			for weapon_data_index in player.current_weapons.size():
+				if not player_data.weapons.has(weapon_data_index):
+					continue
 				var weapon_data = player_data.weapons[weapon_data_index]
 				var weapon = player.current_weapons[weapon_data_index]
 				weapon.sprite.position = weapon_data.position
@@ -368,6 +373,9 @@ func get_game_state() -> Dictionary:
 			data["projectiles"] = get_projectiles_state()
 			data["consumables"] = get_consumables_state()
 			data["neutrals"] = get_neutrals_state()
+			
+	print_debug("size: ", str(data).length(), " ", str(data.enemies).length(), " ", str(data.births).length(), " ", str(data.items).length(), " ", str(data.players).length(), " ", str(data.projectiles).length(), " ", str(data.consumables).length(), " ", str(data.neutrals).length())
+	print_debug(data)
 
 	return data
 
@@ -381,9 +389,10 @@ func get_enemies_state() -> Dictionary:
 				var enemy_data = {}
 				enemy_data["id"] = network_id
 
-				# TODO Details only needed on spawn, send sparingly
-				enemy_data["resource"] = enemy.stats.resource_path
-				enemy_data["filename"] = enemy.filename
+				if not sent_detail_ids.has(network_id):
+					enemy_data["resource"] = enemy.stats.resource_path
+					enemy_data["filename"] = enemy.filename
+					sent_detail_ids[network_id] = true
 
 				enemy_data["position"] = enemy.position
 				enemy_data["movement"] = enemy._current_movement
@@ -422,6 +431,8 @@ func get_players_state() -> Dictionary:
 
 		var weapons = []
 		for weapon in tracked_player.current_weapons:
+			if not is_instance_valid(weapon):
+				continue
 			var weapon_data = {}
 			weapon_data["weapon_id"] = weapon.weapon_id
 			weapon_data["position"] = weapon.sprite.position

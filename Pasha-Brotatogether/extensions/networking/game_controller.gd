@@ -352,6 +352,8 @@ func update_client_position(client_position:Dictionary) -> void:
 		if tracked_players.has(id):
 			if tracked_players[id].has("player"):
 				var player = tracked_players[id]["player"]
+				if not is_instance_valid(player):
+					return
 				player.position = client_position.player
 				player.maybe_update_animation(client_position.movement, true)
 
