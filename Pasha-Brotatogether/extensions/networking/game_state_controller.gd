@@ -362,27 +362,6 @@ func _clear_movement_behavior(entity:Entity, is_player:bool = false) -> void:
 	if is_player:
 		entity.call_deferred("remove_weapon_behaviors")
 
-
-				
-func update_consumables(consumables:Array) -> void:
-	var server_consumables = {}
-	for server_consumable_data in consumables:
-		var consumable_id = server_consumable_data.id
-		if not client_consumables.has(consumable_id):
-			client_consumables[consumable_id] = spawn_consumable(server_consumable_data)
-
-		var consumable = client_consumables[consumable_id]
-		if is_instance_valid(consumable):
-			consumable.global_position = server_consumable_data.position
-		server_consumables[consumable_id] = true
-	for consumable_id in client_consumables:
-		if not server_consumables.has(consumable_id):
-			var consumable = client_consumables[consumable_id]
-			client_consumables.erase(consumable_id)
-			if is_instance_valid(consumable):
-				$"/root/ClientMain/Consumables".remove_child(consumable)
-
-
 func update_neutrals(neutrals:Array) -> void:
 	var server_neutrals = {}
 	for server_neutral_data in neutrals:
@@ -410,16 +389,7 @@ func spawn_entity_birth(color:Color, position:Vector2):
 	
 	return entity_birth
 
-func spawn_consumable(consumable_data:Dictionary):
-	var consumable = consumable_scene.instance()
-	
-	consumable.global_position = consumable_data.position
-	consumable.call_deferred("set_texture", consumable_texture)
-	consumable.call_deferred("set_physics_process", false)
-	
-	$"/root/ClientMain/Consumables".add_child(consumable)
-	
-	return consumable
+
 
 func spawn_neutral(neutral_data:Dictionary):
 	var neutral = tree_scene.instance()
@@ -660,15 +630,60 @@ func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array):
 
 	return spawned_player
 
-func get_consumables_state() -> Dictionary:
+func get_consumables_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
+	
 	var main = $"/root/Main"
-	var consumables = []
+	
+	var num_consumables = main._consumables_container.get_children().size()
+	buffer.put_u16(num_consumables)
+	
 	for consumable in main._consumables_container.get_children():
-		var consumable_data = {}
-		consumable_data["position"] = consumable.global_position
-		consumable_data["id"] = consumable.id
-		consumables.push_back(consumable_data)
-	return consumables
+		buffer.put_32(consumable.id)
+		
+		buffer.put_float(consumable.global_position.x)
+		buffer.put_float(consumable.global_position.y)
+	return buffer.data_array
+
+func update_consumables(consumables:PoolByteArray) -> void:
+	var buffer = StreamPeerBuffer.new()
+	
+	buffer.data_array = consumables
+	
+	var num_consumables = buffer.get_u16()
+	
+	var server_consumables = {}
+	
+	for _consumable_index in num_consumables:
+		var consumable_id = buffer.get_32()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		var position = Vector2(pos_x, pos_y)
+		if not client_consumables.has(consumable_id):
+			client_consumables[consumable_id] = spawn_consumable(position)
+			
+		var consumable = client_consumables[consumable_id]
+		if is_instance_valid(consumable):
+			consumable.global_position = position
+		server_consumables[consumable_id] = true
+	for consumable_id in client_consumables:
+		if not server_consumables.has(consumable_id):
+			var consumable = client_consumables[consumable_id]
+			client_consumables.erase(consumable_id)
+			if is_instance_valid(consumable):
+				$"/root/ClientMain/Consumables".remove_child(consumable)
+
+func spawn_consumable(position:Vector2):
+	var consumable = consumable_scene.instance()
+	
+	consumable.global_position = position
+	consumable.call_deferred("set_texture", consumable_texture)
+	consumable.call_deferred("set_physics_process", false)
+	
+	$"/root/ClientMain/Consumables".add_child(consumable)
+	
+	return consumable
 
 func get_neutrals_state() -> Dictionary:
 	var main = $"/root/Main"
