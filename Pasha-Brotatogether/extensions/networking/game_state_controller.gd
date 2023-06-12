@@ -362,22 +362,7 @@ func _clear_movement_behavior(entity:Entity, is_player:bool = false) -> void:
 	if is_player:
 		entity.call_deferred("remove_weapon_behaviors")
 
-func update_neutrals(neutrals:Array) -> void:
-	var server_neutrals = {}
-	for server_neutral_data in neutrals:
-		var neutral_id = server_neutral_data.id
-		if not client_neutrals.has(neutral_id):
-			client_neutrals[neutral_id] = spawn_neutral(server_neutral_data)
-		var neutral = client_neutrals[neutral_id]
-		if is_instance_valid(neutral):
-			neutral.global_position = server_neutral_data.position
-		server_neutrals[neutral_id] = true
-	for neutral_id in client_neutrals:
-		if not server_neutrals.has(neutral_id):
-			var neutral = client_neutrals[neutral_id]
-			client_neutrals.erase(neutral_id)
-			if is_instance_valid(neutral):
-				$"/root/ClientMain/Entities".remove_child(neutral)
+
 
 func spawn_entity_birth(color:Color, position:Vector2):
 	var entity_birth = entity_birth_scene.instance()
@@ -388,16 +373,6 @@ func spawn_entity_birth(color:Color, position:Vector2):
 	$"/root/ClientMain/Entities".add_child(entity_birth)
 	
 	return entity_birth
-
-
-
-func spawn_neutral(neutral_data:Dictionary):
-	var neutral = tree_scene.instance()
-	neutral.global_position = neutral_data.position
-	
-	$"/root/ClientMain/Entities".add_child(neutral)
-	
-	return neutral
 
 func reset_client_items():
 	client_enemies = {}
@@ -685,13 +660,58 @@ func spawn_consumable(position:Vector2):
 	
 	return consumable
 
-func get_neutrals_state() -> Dictionary:
+func get_neutrals_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
+	
 	var main = $"/root/Main"
-	var neutrals = []
+	
+	var num_neutrals = 0
+	for neutral in main._entity_spawner.neutrals:
+		if is_instance_valid(neutral):
+			num_neutrals += 1
+			
+	buffer.put_u32(num_neutrals)
+	
 	for neutral in main._entity_spawner.neutrals:
 		if is_instance_valid(neutral):
 			var neutral_data = {}
-			neutral_data["id"] = neutral.id
-			neutral_data["position"] = neutral.global_position
-			neutrals.push_back(neutral_data)
-	return neutrals
+			
+			buffer.put_32(neutral.id)
+			
+			buffer.put_float(neutral.global_position.x)
+			buffer.put_float(neutral.global_position.y)
+	return buffer.data_array
+
+func update_neutrals(neutrals:PoolByteArray) -> void:
+	var buffer = StreamPeerBuffer.new()
+	buffer.data_array = neutrals
+	
+	var server_neutrals = {}
+	var num_neutrals = buffer.get_u32()
+	for _neutral_index in num_neutrals:
+		var neutral_id = buffer.get_32()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		var position = Vector2(pos_x, pos_y)
+		
+		if not client_neutrals.has(neutral_id):
+			client_neutrals[neutral_id] = spawn_neutral(position)
+		var neutral = client_neutrals[neutral_id]
+		if is_instance_valid(neutral):
+			neutral.global_position = position
+		server_neutrals[neutral_id] = true
+	for neutral_id in client_neutrals:
+		if not server_neutrals.has(neutral_id):
+			var neutral = client_neutrals[neutral_id]
+			client_neutrals.erase(neutral_id)
+			if is_instance_valid(neutral):
+				$"/root/ClientMain/Entities".remove_child(neutral)
+
+func spawn_neutral(position:Vector2):
+	var neutral = tree_scene.instance()
+	neutral.global_position = position
+	
+	$"/root/ClientMain/Entities".add_child(neutral)
+	
+	return neutral
