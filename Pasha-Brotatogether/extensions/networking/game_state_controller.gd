@@ -28,10 +28,12 @@ const ClientAttackBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/ex
 
 const ID_INDEX = 0
 
-const ENEMY_POSITION_INDEX = 1
-const ENEMY_MOVEMENT_INDEX = 2
-const ENEMY_RESOURCE_INDEX = 3
-const ENEMY_FILENAME_INDEX = 4
+const ENEMY_POSITION_X_INDEX = 1
+const ENEMY_POSITION_Y_INDEX = 2
+const ENEMY_MOVEMENT_X_INDEX = 3
+const ENEMY_MOVEMENT_Y_INDEX = 4
+const ENEMY_RESOURCE_INDEX = 5
+const ENEMY_FILENAME_INDEX = 6
 
 const ITEM_SCALE_X_INDEX = 1
 const ITEM_SCALE_Y_INDEX = 2
@@ -55,37 +57,73 @@ const WEAPON_DATA_PATH_INDEX = 4
 # TODO sometimes clear these
 var sent_detail_ids = {}
 
-func get_items_state() -> Dictionary:
+func get_items_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
 	var main = $"/root/Main"
-	var items = []
+	
+	var num_items = main._items_container.get_children().size()
+	buffer.put_u16(num_items)
+	
 	for item in main._items_container.get_children():
-		var item_data = {}
-
-		item_data[ID_INDEX]  = item.id
-		item_data[ITEM_POSITION_INDEX] = item.global_position
-		
+		buffer.put_32(item.id)
+		buffer.put_float(item.global_position.x)
+		buffer.put_float(item.global_position.y)
+				
 		if not sent_detail_ids.has(item.id):
-			item_data[ITEM_SCALE_X_INDEX] = item.scale.x
-			item_data[ITEM_SCALE_Y_INDEX] = item.scale.y
-			item_data[ITEM_ROTATION_INDEX] = item.rotation
-			item_data[ITEM_PUSH_BACK_DESTINATION_INDEX]  = item.push_back_destination
+			buffer.put_8(1)
+			
+			buffer.put_float(item.scale.x)
+			buffer.put_float(item.scale.y)
+			
+			buffer.put_float(item.rotation)
+			
+			buffer.put_float(item.push_back_destination.x)
+			buffer.put_float(item.push_back_destination.y)
+			
 			sent_detail_ids[item.id] = true
+		else:
+			buffer.put_8(0)
 
 		# TODO we may want textures propagated
-		items.push_back(item_data)
-	return items
+	return buffer.data_array
 
-func update_items(items:Array) -> void:
+func update_items(items:PoolByteArray) -> void:
 	var server_items = {}
-	for item_data in items:
-		if not client_items.has(item_data[ID_INDEX]):
-			client_items[item_data[ID_INDEX]] = spawn_gold(item_data)
-		if is_instance_valid(client_items[item_data[ID_INDEX]]):
-			client_items[item_data[ID_INDEX]].global_position = item_data[ITEM_POSITION_INDEX]
-			# The item will try to float around on its own
-			client_items[item_data[ID_INDEX]].push_back_destination = item_data[ITEM_POSITION_INDEX]
+	
+	var buffer = StreamPeerBuffer.new()
+	buffer.data_array = items
+	
+	var num_items = buffer.get_u16()
+	
+	for _item_index in num_items:
+		var item_id = buffer.get_32()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		
+		var has_detail = buffer.get_8() == 1
+		
+		var scale_x = 0.0
+		var scale_y = 0.0
+		
+		var rotation = 0.0
+		
+		var push_back_x = 0.0
+		var push_back_y = 0.0
+		
+		if has_detail:
+			scale_x = buffer.get_float()
+			scale_y = buffer.get_float()
+			rotation = buffer.get_float()
+			push_back_x = buffer.get_float()
+			push_back_y = buffer.get_float()
+			
+		if not client_items.has(item_id):
+			client_items[item_id] = spawn_gold(Vector2(pos_x, pos_y), Vector2(scale_x, scale_y), rotation, Vector2(push_back_x, push_back_y))
+		if is_instance_valid(client_items[item_id]):
+			client_items[item_id].global_position = Vector2(pos_x, pos_y)
+			client_items[item_id].push_back_destination = Vector2(pos_x, pos_y)
 
-		server_items[item_data[ID_INDEX]] = true
 	for item_id in client_items:
 		if not server_items.has(item_id):
 			var item = client_items[item_id]
@@ -101,14 +139,13 @@ func update_items(items:Array) -> void:
 			# This sometimes throws a C++ error
 			$"/root/ClientMain/Items".remove_child(item)
 
-func spawn_gold(item_data:Dictionary):
+func spawn_gold(position:Vector2, scale:Vector2, rotation:float, push_back_destination: Vector2):
 	var gold = gold_scene.instance()
 	
-	gold.global_position = item_data[ITEM_POSITION_INDEX]
-	gold.scale.x = item_data[ITEM_SCALE_X_INDEX]
-	gold.scale.y = item_data[ITEM_SCALE_Y_INDEX]
-	gold.rotation = item_data[ITEM_ROTATION_INDEX]
-	gold.push_back_destination = item_data[ITEM_PUSH_BACK_DESTINATION_INDEX]
+	gold.global_position = position
+	gold.scale = scale
+	gold.rotation = rotation
+	gold.push_back_destination = push_back_destination
 	
 	$"/root/ClientMain/Items".add_child(gold)
 	
@@ -182,31 +219,50 @@ func flash_neutral(neutral_id):
 		if is_instance_valid(client_neutrals[neutral_id]):
 			client_neutrals[neutral_id].flash()
 			
-func update_enemies(enemies:Array) -> void:
+func update_enemies(enemies:PoolByteArray) -> void:
 	var server_enemies = {}
-	for enemy_data in enemies:
-		if not client_enemies.has(enemy_data[ID_INDEX]):
-			if not enemy_data.has(ENEMY_FILENAME_INDEX):
+	var buffer = StreamPeerBuffer.new()
+	buffer.data_array = enemies
+	
+	var num_enemies = buffer.get_u16()
+	
+	for _enemy_index in num_enemies:
+		var enemy_id = buffer.get_32()
+		var has_filenames = buffer.get_8() == 1
+		var filename = ""
+		var resource_path = ""
+		
+		if has_filenames:
+			resource_path = buffer.get_string()
+			
+			filename = buffer.get_string()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		var mov_x = buffer.get_float()
+		var mov_y = buffer.get_float()
+		
+		var position = Vector2(pos_x, pos_y)
+		var movement = Vector2(mov_x, mov_y)
+		
+		if not client_enemies.has(enemy_id):
+			if not has_filenames:
 				continue
-			var enemy = spawn_enemy(enemy_data)
-			client_enemies[enemy_data[ID_INDEX]] = enemy
-
-		var stored_enemy = client_enemies[enemy_data[ID_INDEX]]
+			var enemy = spawn_enemy(position, filename, resource_path)
+			client_enemies[enemy_id] = enemy
+			
+		var stored_enemy = client_enemies[enemy_id]
 		if is_instance_valid(stored_enemy):
-			server_enemies[enemy_data[ID_INDEX]] = true
-			stored_enemy.position = enemy_data[ENEMY_POSITION_INDEX]
-			stored_enemy.call_deferred("update_animation", enemy_data[ENEMY_MOVEMENT_INDEX])
-	for enemy_id in client_enemies:
-		if not server_enemies.has(enemy_id):
-			# TODO clean this up when the animation finishes
-#			$"/root/ClientMain/Entities".remove_child(client_enemies[enemy_id])
-			client_enemies.erase(enemy_id)
+			server_enemies[enemy_id] = true
+			stored_enemy.position = position
+			stored_enemy.call_deferred("update_animation", movement)
 
-func spawn_enemy(enemy_data: Dictionary):
-	var entity = load(enemy_data[ENEMY_FILENAME_INDEX]).instance()
 
-	entity.position = enemy_data[ENEMY_POSITION_INDEX]
-	entity.stats = load(enemy_data[ENEMY_RESOURCE_INDEX])
+func spawn_enemy(position:Vector2, filename:String, resource_path:String):
+	var entity = load(filename).instance()
+
+	entity.position = position
+	entity.stats = load(resource_path)
 
 	_clear_movement_behavior(entity)
 
@@ -365,8 +421,6 @@ func update_players(players:Array) -> void:
 
 		if is_instance_valid(player):
 			for weapon_data_index in player.current_weapons.size():
-				if not player_data[PLAYER_WEAPONS_INDEX].has(weapon_data_index):
-					continue
 				var weapon_data = player_data[PLAYER_WEAPONS_INDEX][weapon_data_index]
 				var weapon = player.current_weapons[weapon_data_index]
 				weapon.sprite.position = weapon_data[WEAPON_POSITION_INDEX]
@@ -403,37 +457,46 @@ func get_game_state() -> Dictionary:
 			data["consumables"] = get_consumables_state()
 			data["neutrals"] = get_neutrals_state()
 			
-	print_debug("size: ", str(data).length(), " ", str(data.enemies).length(), " ", str(data.births).length(), " ", str(data.items).length(), " ", str(data.players).length(), " ", str(data.projectiles).length(), " ", str(data.consumables).length(), " ", str(data.neutrals).length())
-	print_debug("size 2: ", data.enemies.size())
-	print_debug("size 2.5: ", (str(data.enemies)).length())
-	print_debug("size 3: ", var2bytes(data.enemies).size())
-	print_debug("size 4: ", var2bytes(data.enemies).compress(File.COMPRESSION_GZIP).size())
+#	print_debug("size: ", var2bytes(data).size(), " ", str(data.enemies).length(), " ", str(data.births).length(), " ", str(data.items).length(), " ", str(data.players).length(), " ", str(data.projectiles).length(), " ", str(data.consumables).length(), " ", str(data.neutrals).length())
+#	print_debug("size 2: ", data.enemies.size())
+#	print_debug("size 2.5: ", (str(data.enemies)).length())
+#	print_debug("size 3: ", var2bytes(data.enemies).size())
+#	print_debug("size 4: ", data.enemies.compress(File.COMPRESSION_GZIP).size())
 	
-	print_debug(data)
+	print_debug(data.players)
 
 
 	return data
 
-func get_enemies_state() -> Dictionary:
+func get_enemies_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
 	var main = $"/root/Main"
 	var enemies = []
 	var entity_spawner = main._entity_spawner
+	
+	var num_enemies = entity_spawner.enemies.size()
+	buffer.put_u16(num_enemies)
+	
 	for enemy in entity_spawner.enemies:
 		if is_instance_valid(enemy):
 				var network_id = enemy.id
-				var enemy_data = {}
-				enemy_data[ID_INDEX] = network_id
+				buffer.put_32(network_id)
 
 				if not sent_detail_ids.has(network_id):
-					enemy_data[ENEMY_RESOURCE_INDEX] = enemy.stats.resource_path
-					enemy_data[ENEMY_FILENAME_INDEX] = enemy.filename
+					buffer.put_8(1)
+					
+					buffer.put_string(enemy.stats.resource_path)
+					buffer.put_string(enemy.filename)
+					
 					sent_detail_ids[network_id] = true
-
-				enemy_data[ENEMY_POSITION_INDEX] = enemy.position
-				enemy_data[ENEMY_MOVEMENT_INDEX] = enemy._current_movement
-
-				enemies.push_back(enemy_data)
-	return enemies
+				else:
+					buffer.put_8(0)
+				
+				buffer.put_float(enemy.position.x)
+				buffer.put_float(enemy.position.y)
+				buffer.put_float(enemy._current_movement.x)
+				buffer.put_float(enemy._current_movement.y)
+	return buffer.data_array
 
 func get_births_state() -> Dictionary:
 	var main = $"/root/Main"
