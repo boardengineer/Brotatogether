@@ -57,6 +57,42 @@ const WEAPON_DATA_PATH_INDEX = 4
 # TODO sometimes clear these
 var sent_detail_ids = {}
 
+func get_game_state() -> Dictionary:
+	var data = {}
+		
+	if "/root/Main":
+		var main = $"/root/Main"
+		if main:
+			data["enemies"] = get_enemies_state()
+			data["births"] = get_births_state()
+			data["items"] = get_items_state()
+			data["players"] = get_players_state()
+			data["projectiles"] = get_projectiles_state()
+			data["consumables"] = get_consumables_state()
+			data["neutrals"] = get_neutrals_state()
+		
+#	print_debug("enemies type ", typeof(get_enemies_state()))
+#	print_debug("births type ", typeof(get_births_state()))
+#	print_debug("items type ", typeof(get_items_state()))
+#	print_debug("players type ", typeof(get_players_state()))
+#	print_debug("projectiles type ", typeof(get_projectiles_state()))
+#	print_debug("consumables type ", typeof(get_consumables_state()))
+#	print_debug("neutrals type ", typeof(get_neutrals_state()))
+	
+	print_debug(data.players)
+	return data
+
+func update_game_state(data: Dictionary) -> void:
+	if get_tree().get_current_scene().get_name() != "ClientMain":
+		return
+	update_enemies(data.enemies)
+	update_births(data.births)
+	update_items(data.items)
+	update_player_projectiles(data.projectiles)
+	update_consumables(data.consumables)
+	update_neutrals(data.neutrals)
+	update_players(data.players)
+
 func get_items_state() -> PoolByteArray:
 	var buffer = StreamPeerBuffer.new()
 	var main = $"/root/Main"
@@ -295,31 +331,7 @@ func _clear_movement_behavior(entity:Entity, is_player:bool = false) -> void:
 	if is_player:
 		entity.call_deferred("remove_weapon_behaviors")
 
-func update_game_state(data: Dictionary) -> void:
-	if get_tree().get_current_scene().get_name() != "ClientMain":
-		return
-	update_enemies(data.enemies)
-	update_births(data.births)
-	update_items(data.items)
-	update_player_projectiles(data.projectiles)
-	update_consumables(data.consumables)
-	update_neutrals(data.neutrals)
-	update_players(data.players)
 
-func update_births(births:Array) -> void:
-	var server_births = {}
-	for birth_data in births:
-		if not client_births.has(birth_data.id):
-			var birth = spawn_entity_birth(birth_data)
-			client_births[birth_data.id] = birth
-		server_births[birth_data.id] = true
-	for birth_id in client_births:
-		if not server_births.has(birth_id):
-			var birth_to_delete = client_births[birth_id]
-			if birth_to_delete:
-#				Children go away on their own when they time out?
-#				$"/root/ClientMain/Births".remove_child(birth_to_delete)
-				client_births.erase(birth_id)
 				
 func update_consumables(consumables:Array) -> void:
 	var server_consumables = {}
@@ -357,11 +369,11 @@ func update_neutrals(neutrals:Array) -> void:
 			if is_instance_valid(neutral):
 				$"/root/ClientMain/Entities".remove_child(neutral)
 
-func spawn_entity_birth(entity_birth_data:Dictionary):
+func spawn_entity_birth(color:Color, position:Vector2):
 	var entity_birth = entity_birth_scene.instance()
 	
-	entity_birth.color = entity_birth_data.color
-	entity_birth.global_position = entity_birth_data.position
+	entity_birth.color = color
+	entity_birth.global_position = position
 	
 	$"/root/ClientMain/Entities".add_child(entity_birth)
 	
@@ -395,79 +407,6 @@ func reset_client_items():
 	client_consumables = {}
 	client_neutrals = {}
 
-func update_players(players:Array) -> void:
-	var tracked_players = parent.tracked_players
-	for player_data in players:
-		var player_id = player_data[ID_INDEX]
-		if not player_id in tracked_players:
-			tracked_players[player_id] = {}
-		
-		if not tracked_players[player_id].has("player") or not is_instance_valid(tracked_players[player_id].player):
-			tracked_players[player_id]["player"] = spawn_player(player_data)
-
-		var player = tracked_players[player_id]["player"]
-		if player_id == parent.self_peer_id:
-			if $"/root/ClientMain":
-				var main = $"/root/ClientMain"
-				main._life_bar.update_value(player_data[PLAYER_CURRENT_HEALTH_INDEX], player_data[PLAYER_MAX_HEALTH_INDEX])
-				main.set_life_label(player_data[PLAYER_CURRENT_HEALTH_INDEX], player_data[PLAYER_MAX_HEALTH_INDEX])
-				main._damage_vignette.update_from_hp(player_data[PLAYER_CURRENT_HEALTH_INDEX], player_data[PLAYER_MAX_HEALTH_INDEX])
-				RunData.gold = player_data[PLAYER_GOLD_INDEX]
-				$"/root/ClientMain"._ui_gold.on_gold_changed(player_data[PLAYER_GOLD_INDEX])
-		else:
-			if is_instance_valid(player):
-				player.position = player_data[PLAYER_POSITION_INDEX]
-				player.call_deferred("maybe_update_animation", player_data[PLAYER_MOVEMENT_INDEX], true)
-
-		if is_instance_valid(player):
-			for weapon_data_index in player.current_weapons.size():
-				var weapon_data = player_data[PLAYER_WEAPONS_INDEX][weapon_data_index]
-				var weapon = player.current_weapons[weapon_data_index]
-				weapon.sprite.position = weapon_data[WEAPON_POSITION_INDEX]
-				weapon.sprite.rotation = weapon_data[WEAPON_ROTATION_INDEX]
-				weapon._is_shooting = weapon_data[WEAPON_SHOOTING_INDEX]
-
-func spawn_player(player_data:Dictionary):
-	var spawned_player = player_scene.instance()
-	spawned_player.position = player_data[PLAYER_POSITION_INDEX]
-	spawned_player.current_stats.speed = player_data[PLAYER_SPEED_INDEX]
-
-	for weapon in player_data[PLAYER_WEAPONS_INDEX]:
-		spawned_player.call_deferred("add_weapon", load(weapon[WEAPON_DATA_PATH_INDEX]), spawned_player.current_weapons.size())
-
-	$"/root/ClientMain/Entities".add_child(spawned_player)
-
-	if player_data[ID_INDEX] == parent.self_peer_id:
-		spawned_player.get_remote_transform().remote_path = $"/root/ClientMain/Camera".get_path()
-	spawned_player.call_deferred("remove_weapon_behaviors")
-
-	return spawned_player
-
-func get_game_state() -> Dictionary:
-	var data = {}
-		
-	if "/root/Main":
-		var main = $"/root/Main"
-		if main:
-			data["enemies"] = get_enemies_state()
-			data["births"] = get_births_state()
-			data["items"] = get_items_state()
-			data["players"] = get_players_state()
-			data["projectiles"] = get_projectiles_state()
-			data["consumables"] = get_consumables_state()
-			data["neutrals"] = get_neutrals_state()
-			
-#	print_debug("size: ", var2bytes(data).size(), " ", str(data.enemies).length(), " ", str(data.births).length(), " ", str(data.items).length(), " ", str(data.players).length(), " ", str(data.projectiles).length(), " ", str(data.consumables).length(), " ", str(data.neutrals).length())
-#	print_debug("size 2: ", data.enemies.size())
-#	print_debug("size 2.5: ", (str(data.enemies)).length())
-#	print_debug("size 3: ", var2bytes(data.enemies).size())
-#	print_debug("size 4: ", data.enemies.compress(File.COMPRESSION_GZIP).size())
-	
-	print_debug(data.players)
-
-
-	return data
-
 func get_enemies_state() -> PoolByteArray:
 	var buffer = StreamPeerBuffer.new()
 	var main = $"/root/Main"
@@ -498,56 +437,197 @@ func get_enemies_state() -> PoolByteArray:
 				buffer.put_float(enemy._current_movement.y)
 	return buffer.data_array
 
-func get_births_state() -> Dictionary:
+func get_births_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
 	var main = $"/root/Main"
-	var births = []
+	
+	var num_births = main._entity_spawner.births.size()
+	buffer.put_u16(num_births)
+	
 	for birth in main._entity_spawner.births:
-		if is_instance_valid(birth):
-			var birth_data = {}
-			birth_data["position"] = birth.global_position
-			birth_data["color"] = birth.color
-			birth_data["id"] = birth.id
-			births.push_back(birth_data)
-	return births
+		buffer.put_32(birth.id)
+		
+		buffer.put_float(birth.global_position.x)
+		buffer.put_float(birth.global_position.y)
+		
+		buffer.put_float(birth.color.r)
+		buffer.put_float(birth.color.g)
+		buffer.put_float(birth.color.b)
+		buffer.put_float(birth.color.a)
+		
+	return buffer.data_array
 
-func get_players_state() -> Dictionary:
+func update_births(births:PoolByteArray) -> void:
+	var buffer = StreamPeerBuffer.new()
+	buffer.data_array = births
+	
+	var server_births = {}
+	var num_births = buffer.get_u16()
+	
+	for _birth_index in num_births:
+		var birth_id = buffer.get_32()
+		
+		var x = buffer.get_float()
+		var y = buffer.get_float()
+		var r = buffer.get_float()
+		var g = buffer.get_float()
+		var b = buffer.get_float()
+		var a = buffer.get_float()
+		
+		if not client_births.has(birth_id):
+			client_births[birth_id] = spawn_entity_birth(Color(r,g,b,a), Vector2(x,y))
+		server_births[birth_id] = true
+		
+	for birth_id in client_births:
+		if not server_births.has(birth_id):
+			var birth_to_delete = client_births[birth_id]
+			if birth_to_delete:
+#				Children go away on their own when they time out?
+#				$"/root/ClientMain/Births".remove_child(birth_to_delete)
+				client_births.erase(birth_id)
+
+
+func get_players_state() -> PoolByteArray:
+	var buffer = StreamPeerBuffer.new()
+	
 	var tracked_players = parent.tracked_players
-	var players = []
+	
+	var num_players = tracked_players.size()
+	buffer.put_u16(num_players)
+	
 	for player_id in tracked_players:
-		var player_data = {}
 		var tracked_player = tracked_players[player_id]["player"]
-		player_data[ID_INDEX] = player_id
-		player_data[PLAYER_POSITION_INDEX] = tracked_player.position
-		player_data[PLAYER_SPEED_INDEX] = tracked_player.current_stats.speed
-		player_data[PLAYER_MOVEMENT_INDEX] = tracked_player._current_movement
-		player_data[PLAYER_CURRENT_HEALTH_INDEX] = tracked_player.current_stats.health
-		player_data[PLAYER_MAX_HEALTH_INDEX] = tracked_player.max_stats.health
+		buffer.put_64(player_id)
+		
+		buffer.put_float(tracked_player.position.x)
+		buffer.put_float(tracked_player.position.y)
+		
+		buffer.put_float(tracked_player.current_stats.speed)
+		
+		buffer.put_float(tracked_player._current_movement.x)
+		buffer.put_float(tracked_player._current_movement.y)
+		
+		buffer.put_u16(tracked_player.current_stats.health)
+		buffer.put_u16(tracked_player.max_stats.health)
 
 		# This would be where individual inventories are sent out instead of
 		# RunData.gold
-		player_data[PLAYER_GOLD_INDEX] = RunData.gold
+		buffer.put_u16(RunData.gold)
 
-		var weapons = []
+		var num_weapons = tracked_player.current_weapons.size()
+		buffer.put_u16(num_weapons)
+		
 		for weapon in tracked_player.current_weapons:
 			if not is_instance_valid(weapon):
 				continue
 			var weapon_data = {}
-			weapon_data[WEAPON_POSITION_INDEX] = weapon.sprite.position
-			weapon_data[WEAPON_ROTATION_INDEX] = weapon.sprite.rotation
-			weapon_data[WEAPON_SHOOTING_INDEX] = weapon._is_shooting
+			
+			buffer.put_float(weapon.sprite.position.x)
+			buffer.put_float(weapon.sprite.position.y)
+			
+			buffer.put_float(weapon.sprite.rotation)
+			
+			buffer.put_8(weapon._is_shooting)
 
 			if not sent_detail_ids.has(player_id):
+				buffer.put_8(1)
 				if weapon.has_node("data_node"):
 					var weapon_data_path = RunData.weapon_paths[weapon.get_node("data_node").weapon_data.my_id]
-					weapon_data[WEAPON_DATA_PATH_INDEX] = weapon_data_path
+					buffer.put_string(weapon_data_path)
 #				TODO: uncomment this to stop writes, it'll cause problems later though
 #				sent_detail_ids[player_id] = true
+			else:
+				buffer.put_8(0)
 
-			weapons.push_back(weapon_data)
+	return buffer.data_array
 
-		player_data[PLAYER_WEAPONS_INDEX] = weapons
-		players.push_back(player_data)
-	return players
+func update_players(players:PoolByteArray) -> void:
+	var buffer = StreamPeerBuffer.new()
+	buffer.data_array = players
+	
+	var tracked_players = parent.tracked_players
+	
+	var num_players = buffer.get_u16()
+	
+	for _player_index in num_players:
+		var player_id = buffer.get_64()
+		if not player_id in tracked_players:
+			tracked_players[player_id] = {}
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		
+		var speed = buffer.get_float()
+		
+		var mov_x = buffer.get_float()
+		var mov_y = buffer.get_float()
+		
+		var current_health = buffer.get_u16()
+		var max_health = buffer.get_u16()
+		
+		var gold = buffer.get_u16()
+		
+		var num_weapons = buffer.get_u16()
+		
+		var weapons = []
+		for _weapon_index in num_weapons:
+			var weapon = {}
+			
+			var weapon_pos_x = buffer.get_float()
+			var weapon_pos_y = buffer.get_float()
+			weapon["position"] = Vector2(weapon_pos_x, weapon_pos_y)
+			
+			var weapon_rotation = buffer.get_float()
+			weapon["rotation"] = weapon_rotation
+			
+			var weapon_is_shooting = buffer.get_8()
+			weapon["is_shooting"] = weapon_is_shooting
+			
+			var has_detail = buffer.get_8() == 1
+			if has_detail:
+				var weapon_path = buffer.get_string()
+				weapon["path"] = weapon_path
+			weapons.push_back(weapon)
+				
+		if not tracked_players[player_id].has("player") or not is_instance_valid(tracked_players[player_id].player):
+			tracked_players[player_id]["player"] = spawn_player(player_id, Vector2(pos_x, pos_y), speed, weapons)
+			
+		var player = tracked_players[player_id]["player"]
+		if player_id == parent.self_peer_id:
+			if $"/root/ClientMain":
+				var main = $"/root/ClientMain"
+				main._life_bar.update_value(current_health, max_health)
+				main.set_life_label(current_health, max_health)
+				main._damage_vignette.update_from_hp(current_health, max_health)
+				RunData.gold = gold
+				$"/root/ClientMain"._ui_gold.on_gold_changed(gold)
+		else:
+			if is_instance_valid(player):
+				player.position = Vector2(pos_x, pos_y)
+				player.call_deferred("maybe_update_animation", Vector2(mov_x, mov_y), true)
+		if is_instance_valid(player):
+			for weapon_data_index in player.current_weapons.size():
+				var weapon_data = weapons[weapon_data_index]
+				var weapon = player.current_weapons[weapon_data_index]
+				weapon.sprite.position = weapon_data.position
+				weapon.sprite.rotation = weapon_data.rotation
+				weapon._is_shooting = weapon_data.is_shooting
+
+func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array):
+	var spawned_player = player_scene.instance()
+	spawned_player.position = position
+	spawned_player.current_stats.speed = speed
+
+	for weapon in weapons:
+		spawned_player.call_deferred("add_weapon", load(weapon["path"]), spawned_player.current_weapons.size())
+
+	$"/root/ClientMain/Entities".add_child(spawned_player)
+
+	if player_id == parent.self_peer_id:
+		spawned_player.get_remote_transform().remote_path = $"/root/ClientMain/Camera".get_path()
+	spawned_player.call_deferred("remove_weapon_behaviors")
+
+	return spawned_player
 
 func get_consumables_state() -> Dictionary:
 	var main = $"/root/Main"
