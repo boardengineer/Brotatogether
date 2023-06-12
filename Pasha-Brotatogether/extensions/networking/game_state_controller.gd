@@ -39,6 +39,19 @@ const ITEM_POSITION_INDEX = 3
 const ITEM_ROTATION_INDEX = 4
 const ITEM_PUSH_BACK_DESTINATION_INDEX = 5
 
+const PLAYER_POSITION_INDEX = 1
+const PLAYER_SPEED_INDEX = 2
+const PLAYER_MOVEMENT_INDEX = 3
+const PLAYER_CURRENT_HEALTH_INDEX = 4
+const PLAYER_MAX_HEALTH_INDEX = 5
+const PLAYER_GOLD_INDEX = 6
+const PLAYER_WEAPONS_INDEX = 7
+
+const WEAPON_POSITION_INDEX = 1
+const WEAPON_ROTATION_INDEX = 2
+const WEAPON_SHOOTING_INDEX = 3
+const WEAPON_DATA_PATH_INDEX = 4
+
 # TODO sometimes clear these
 var sent_detail_ids = {}
 
@@ -49,11 +62,14 @@ func get_items_state() -> Dictionary:
 		var item_data = {}
 
 		item_data[ID_INDEX]  = item.id
-		item_data[ITEM_SCALE_X_INDEX] = item.scale.x
-		item_data[ITEM_SCALE_Y_INDEX] = item.scale.y
 		item_data[ITEM_POSITION_INDEX] = item.global_position
-		item_data[ITEM_ROTATION_INDEX] = item.rotation
-		item_data[ITEM_PUSH_BACK_DESTINATION_INDEX]  = item.push_back_destination
+		
+		if not sent_detail_ids.has(item.id):
+			item_data[ITEM_SCALE_X_INDEX] = item.scale.x
+			item_data[ITEM_SCALE_Y_INDEX] = item.scale.y
+			item_data[ITEM_ROTATION_INDEX] = item.rotation
+			item_data[ITEM_PUSH_BACK_DESTINATION_INDEX]  = item.push_back_destination
+			sent_detail_ids[item.id] = true
 
 		# TODO we may want textures propagated
 		items.push_back(item_data)
@@ -326,7 +342,7 @@ func reset_client_items():
 func update_players(players:Array) -> void:
 	var tracked_players = parent.tracked_players
 	for player_data in players:
-		var player_id = player_data.id
+		var player_id = player_data[ID_INDEX]
 		if not player_id in tracked_players:
 			tracked_players[player_id] = {}
 		
@@ -337,37 +353,37 @@ func update_players(players:Array) -> void:
 		if player_id == parent.self_peer_id:
 			if $"/root/ClientMain":
 				var main = $"/root/ClientMain"
-				main._life_bar.update_value(player_data.current_health, player_data.max_health)
-				main.set_life_label(player_data.current_health, player_data.max_health)
-				main._damage_vignette.update_from_hp(player_data.current_health, player_data.max_health)
-				RunData.gold = player_data.gold
-				$"/root/ClientMain"._ui_gold.on_gold_changed(player_data.gold)
+				main._life_bar.update_value(player_data[PLAYER_CURRENT_HEALTH_INDEX], player_data[PLAYER_MAX_HEALTH_INDEX])
+				main.set_life_label(player_data[PLAYER_CURRENT_HEALTH_INDEX], player_data[PLAYER_MAX_HEALTH_INDEX])
+				main._damage_vignette.update_from_hp(player_data[PLAYER_CURRENT_HEALTH_INDEX], player_data[PLAYER_MAX_HEALTH_INDEX])
+				RunData.gold = player_data[PLAYER_GOLD_INDEX]
+				$"/root/ClientMain"._ui_gold.on_gold_changed(player_data[PLAYER_GOLD_INDEX])
 		else:
 			if is_instance_valid(player):
-				player.position = player_data.position
-				player.call_deferred("maybe_update_animation", player_data.movement, true)
+				player.position = player_data[PLAYER_POSITION_INDEX]
+				player.call_deferred("maybe_update_animation", player_data[PLAYER_MOVEMENT_INDEX], true)
 
 		if is_instance_valid(player):
 			for weapon_data_index in player.current_weapons.size():
-				if not player_data.weapons.has(weapon_data_index):
+				if not player_data[PLAYER_WEAPONS_INDEX].has(weapon_data_index):
 					continue
-				var weapon_data = player_data.weapons[weapon_data_index]
+				var weapon_data = player_data[PLAYER_WEAPONS_INDEX][weapon_data_index]
 				var weapon = player.current_weapons[weapon_data_index]
-				weapon.sprite.position = weapon_data.position
-				weapon.sprite.rotation = weapon_data.rotation
-				weapon._is_shooting = weapon_data.shooting
+				weapon.sprite.position = weapon_data[WEAPON_POSITION_INDEX]
+				weapon.sprite.rotation = weapon_data[WEAPON_ROTATION_INDEX]
+				weapon._is_shooting = weapon_data[WEAPON_SHOOTING_INDEX]
 
 func spawn_player(player_data:Dictionary):
 	var spawned_player = player_scene.instance()
-	spawned_player.position = player_data.position
-	spawned_player.current_stats.speed = player_data.speed
+	spawned_player.position = player_data[PLAYER_POSITION_INDEX]
+	spawned_player.current_stats.speed = player_data[PLAYER_SPEED_INDEX]
 
-	for weapon in player_data.weapons:
-		spawned_player.call_deferred("add_weapon", load(weapon.data_path), spawned_player.current_weapons.size())
+	for weapon in player_data[PLAYER_WEAPONS_INDEX]:
+		spawned_player.call_deferred("add_weapon", load(weapon[WEAPON_DATA_PATH_INDEX]), spawned_player.current_weapons.size())
 
 	$"/root/ClientMain/Entities".add_child(spawned_player)
 
-	if player_data.id == parent.self_peer_id:
+	if player_data[ID_INDEX] == parent.self_peer_id:
 		spawned_player.get_remote_transform().remote_path = $"/root/ClientMain/Camera".get_path()
 	spawned_player.call_deferred("remove_weapon_behaviors")
 
@@ -388,7 +404,13 @@ func get_game_state() -> Dictionary:
 			data["neutrals"] = get_neutrals_state()
 			
 	print_debug("size: ", str(data).length(), " ", str(data.enemies).length(), " ", str(data.births).length(), " ", str(data.items).length(), " ", str(data.players).length(), " ", str(data.projectiles).length(), " ", str(data.consumables).length(), " ", str(data.neutrals).length())
+	print_debug("size 2: ", data.enemies.size())
+	print_debug("size 2.5: ", (str(data.enemies)).length())
+	print_debug("size 3: ", var2bytes(data.enemies).size())
+	print_debug("size 4: ", var2bytes(data.enemies).compress(File.COMPRESSION_GZIP).size())
+	
 	print_debug(data)
+
 
 	return data
 
@@ -431,34 +453,36 @@ func get_players_state() -> Dictionary:
 	for player_id in tracked_players:
 		var player_data = {}
 		var tracked_player = tracked_players[player_id]["player"]
-		player_data["id"] = player_id
-		player_data["position"] = tracked_player.position
-		player_data["speed"] = tracked_player.current_stats.speed
-		player_data["movement"] = tracked_player._current_movement
-		player_data["current_health"] = tracked_player.current_stats.health
-		player_data["max_health"] = tracked_player.max_stats.health
+		player_data[ID_INDEX] = player_id
+		player_data[PLAYER_POSITION_INDEX] = tracked_player.position
+		player_data[PLAYER_SPEED_INDEX] = tracked_player.current_stats.speed
+		player_data[PLAYER_MOVEMENT_INDEX] = tracked_player._current_movement
+		player_data[PLAYER_CURRENT_HEALTH_INDEX] = tracked_player.current_stats.health
+		player_data[PLAYER_MAX_HEALTH_INDEX] = tracked_player.max_stats.health
 
 		# This would be where individual inventories are sent out instead of
 		# RunData.gold
-		player_data["gold"] = RunData.gold
+		player_data[PLAYER_GOLD_INDEX] = RunData.gold
 
 		var weapons = []
 		for weapon in tracked_player.current_weapons:
 			if not is_instance_valid(weapon):
 				continue
 			var weapon_data = {}
-			weapon_data["weapon_id"] = weapon.weapon_id
-			weapon_data["position"] = weapon.sprite.position
-			weapon_data["rotation"] = weapon.sprite.rotation
-			weapon_data["shooting"] = weapon._is_shooting
+			weapon_data[WEAPON_POSITION_INDEX] = weapon.sprite.position
+			weapon_data[WEAPON_ROTATION_INDEX] = weapon.sprite.rotation
+			weapon_data[WEAPON_SHOOTING_INDEX] = weapon._is_shooting
 
-			if weapon.has_node("data_node"):
-				var weapon_data_path = RunData.weapon_paths[weapon.get_node("data_node").weapon_data.my_id]
-				weapon_data["data_path"] = weapon_data_path
+			if not sent_detail_ids.has(player_id):
+				if weapon.has_node("data_node"):
+					var weapon_data_path = RunData.weapon_paths[weapon.get_node("data_node").weapon_data.my_id]
+					weapon_data[WEAPON_DATA_PATH_INDEX] = weapon_data_path
+#				TODO: uncomment this to stop writes, it'll cause problems later though
+#				sent_detail_ids[player_id] = true
 
 			weapons.push_back(weapon_data)
 
-		player_data["weapons"] = weapons
+		player_data[PLAYER_WEAPONS_INDEX] = weapons
 		players.push_back(player_data)
 	return players
 
