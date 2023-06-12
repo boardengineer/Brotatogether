@@ -187,6 +187,9 @@ func send_flash_neutral(neutral_id):
 	send_data_to_all(send_data)
 
 func send_data_to_all(packet_data: Dictionary):
+	var compressed_data = var2bytes(packet_data).compress(File.COMPRESSION_GZIP)
+	print_debug("compressied_size: ", compressed_data.size())
+	
 	for player_id in parent.tracked_players:
 		if player_id == parent.self_peer_id:
 			continue

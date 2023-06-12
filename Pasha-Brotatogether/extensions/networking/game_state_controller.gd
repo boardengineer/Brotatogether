@@ -26,6 +26,19 @@ const tree_scene = preload("res://entities/units/neutral/tree.tscn")
 const ClientMovementBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/client_movement_behavior.gd")
 const ClientAttackBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/client_attack_behavior.gd")
 
+const ID_INDEX = 0
+
+const ENEMY_POSITION_INDEX = 1
+const ENEMY_MOVEMENT_INDEX = 2
+const ENEMY_RESOURCE_INDEX = 3
+const ENEMY_FILENAME_INDEX = 4
+
+const ITEM_SCALE_X_INDEX = 1
+const ITEM_SCALE_Y_INDEX = 2
+const ITEM_POSITION_INDEX = 3
+const ITEM_ROTATION_INDEX = 4
+const ITEM_PUSH_BACK_DESTINATION_INDEX = 5
+
 # TODO sometimes clear these
 var sent_detail_ids = {}
 
@@ -35,12 +48,12 @@ func get_items_state() -> Dictionary:
 	for item in main._items_container.get_children():
 		var item_data = {}
 
-		item_data["id"]  = item.id
-		item_data["scale_x"] = item.scale.x
-		item_data["scale_y"] = item.scale.y
-		item_data["position"] = item.global_position
-		item_data["rotation"] = item.rotation
-		item_data["push_back_destination"]  = item.push_back_destination
+		item_data[ID_INDEX]  = item.id
+		item_data[ITEM_SCALE_X_INDEX] = item.scale.x
+		item_data[ITEM_SCALE_Y_INDEX] = item.scale.y
+		item_data[ITEM_POSITION_INDEX] = item.global_position
+		item_data[ITEM_ROTATION_INDEX] = item.rotation
+		item_data[ITEM_PUSH_BACK_DESTINATION_INDEX]  = item.push_back_destination
 
 		# TODO we may want textures propagated
 		items.push_back(item_data)
@@ -49,14 +62,14 @@ func get_items_state() -> Dictionary:
 func update_items(items:Array) -> void:
 	var server_items = {}
 	for item_data in items:
-		if not client_items.has(item_data.id):
-			client_items[item_data.id] = spawn_gold(item_data)
-		if is_instance_valid(client_items[item_data.id]):
-			client_items[item_data.id].global_position = item_data.position
+		if not client_items.has(item_data[ID_INDEX]):
+			client_items[item_data[ID_INDEX]] = spawn_gold(item_data)
+		if is_instance_valid(client_items[item_data[ID_INDEX]]):
+			client_items[item_data[ID_INDEX]].global_position = item_data[ITEM_POSITION_INDEX]
 			# The item will try to float around on its own
-			client_items[item_data.id].push_back_destination = item_data.position
+			client_items[item_data[ID_INDEX]].push_back_destination = item_data[ITEM_POSITION_INDEX]
 
-		server_items[item_data.id] = true
+		server_items[item_data[ID_INDEX]] = true
 	for item_id in client_items:
 		if not server_items.has(item_id):
 			var item = client_items[item_id]
@@ -75,11 +88,11 @@ func update_items(items:Array) -> void:
 func spawn_gold(item_data:Dictionary):
 	var gold = gold_scene.instance()
 	
-	gold.global_position = item_data.position
-	gold.scale.x = item_data.scale_x
-	gold.scale.y = item_data.scale_y
-	gold.rotation = item_data.rotation
-	gold.push_back_destination = item_data.push_back_destination
+	gold.global_position = item_data[ITEM_POSITION_INDEX]
+	gold.scale.x = item_data[ITEM_SCALE_X_INDEX]
+	gold.scale.y = item_data[ITEM_SCALE_Y_INDEX]
+	gold.rotation = item_data[ITEM_ROTATION_INDEX]
+	gold.push_back_destination = item_data[ITEM_PUSH_BACK_DESTINATION_INDEX]
 	
 	$"/root/ClientMain/Items".add_child(gold)
 	
@@ -156,17 +169,17 @@ func flash_neutral(neutral_id):
 func update_enemies(enemies:Array) -> void:
 	var server_enemies = {}
 	for enemy_data in enemies:
-		if not client_enemies.has(enemy_data.id):
-			if not enemy_data.has("filename"):
+		if not client_enemies.has(enemy_data[ID_INDEX]):
+			if not enemy_data.has(ENEMY_FILENAME_INDEX):
 				continue
 			var enemy = spawn_enemy(enemy_data)
-			client_enemies[enemy_data.id] = enemy
+			client_enemies[enemy_data[ID_INDEX]] = enemy
 
-		var stored_enemy = client_enemies[enemy_data.id]
+		var stored_enemy = client_enemies[enemy_data[ID_INDEX]]
 		if is_instance_valid(stored_enemy):
-			server_enemies[enemy_data.id] = true
-			stored_enemy.position = enemy_data.position
-			stored_enemy.call_deferred("update_animation", enemy_data.movement)
+			server_enemies[enemy_data[ID_INDEX]] = true
+			stored_enemy.position = enemy_data[ENEMY_POSITION_INDEX]
+			stored_enemy.call_deferred("update_animation", enemy_data[ENEMY_MOVEMENT_INDEX])
 	for enemy_id in client_enemies:
 		if not server_enemies.has(enemy_id):
 			# TODO clean this up when the animation finishes
@@ -174,10 +187,10 @@ func update_enemies(enemies:Array) -> void:
 			client_enemies.erase(enemy_id)
 
 func spawn_enemy(enemy_data: Dictionary):
-	var entity = load(enemy_data.filename).instance()
+	var entity = load(enemy_data[ENEMY_FILENAME_INDEX]).instance()
 
-	entity.position = enemy_data.position
-	entity.stats = load(enemy_data.resource)
+	entity.position = enemy_data[ENEMY_POSITION_INDEX]
+	entity.stats = load(enemy_data[ENEMY_RESOURCE_INDEX])
 
 	_clear_movement_behavior(entity)
 
@@ -387,15 +400,15 @@ func get_enemies_state() -> Dictionary:
 		if is_instance_valid(enemy):
 				var network_id = enemy.id
 				var enemy_data = {}
-				enemy_data["id"] = network_id
+				enemy_data[ID_INDEX] = network_id
 
 				if not sent_detail_ids.has(network_id):
-					enemy_data["resource"] = enemy.stats.resource_path
-					enemy_data["filename"] = enemy.filename
+					enemy_data[ENEMY_RESOURCE_INDEX] = enemy.stats.resource_path
+					enemy_data[ENEMY_FILENAME_INDEX] = enemy.filename
 					sent_detail_ids[network_id] = true
 
-				enemy_data["position"] = enemy.position
-				enemy_data["movement"] = enemy._current_movement
+				enemy_data[ENEMY_POSITION_INDEX] = enemy.position
+				enemy_data[ENEMY_MOVEMENT_INDEX] = enemy._current_movement
 
 				enemies.push_back(enemy_data)
 	return enemies
