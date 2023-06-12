@@ -72,6 +72,10 @@ func spawn_additional_players() -> void:
 			var spawn_pos = Vector2(spawn_x_pos, _entity_spawner._zone_max_pos.y / 2)
 			var spawned_player = _entity_spawner.spawn_entity(player_scene, spawn_pos, true)
 			
+			spawned_player.connect("health_updated", self, "on_health_update")
+			
+			spawned_player.dodge_sounds = _player.dodge_sounds.duplicate()
+			
 			connect_visual_effects(spawned_player)
 			_clear_movement_behavior(spawned_player)
 			

@@ -260,6 +260,8 @@ func update_tracked_players(updated_tracked_players: Dictionary) -> void:
 	elif current_scene_name == "Main":
 		update_health_ui()
 		check_win()
+	elif current_scene_name == "ClientMain":
+		update_health_ui()
 
 func create_ready_toggle() -> Node:
 	ready_toggle = toggle_scene.instance()
@@ -398,10 +400,6 @@ func get_items_state() -> Dictionary:
 		items.push_back(item_data)
 	return items
 
-
-
-
-
 func get_projectiles_state() -> Dictionary:
 	var main = $"/root/Main"
 	var projectiles = []
@@ -429,12 +427,28 @@ func update_health_ui() -> void:
 	if current_scene_name == "Main":
 		if $"/root/Main/UI/HealthTracker":
 			$"/root/Main/UI/HealthTracker".update_health_bars(tracked_players)
+	if current_scene_name == "ClientMain":
+		if $"/root/ClientMain/UI/HealthTracker":
+			$"/root/ClientMain/UI/HealthTracker".update_health_bars(tracked_players)
 	
 func update_health(current_health:int, max_health:int) -> void:
-	if is_host:
-		receive_health_update(current_health, max_health, self_peer_id)
+	# If this player owns all the players, all the updates will come through
+	# here.
+	if is_source_of_truth:
+		for player_id in tracked_players:
+			var player_dict = tracked_players[player_id]
+			if player_dict.has("player") and is_instance_valid(player_dict.player):
+				var player = player_dict.player
+				
+				tracked_players[player_id]["max_health"] = player.max_stats.health
+				tracked_players[player_id]["current_health"] = player.current_stats.health		
+		connection.send_tracked_players(tracked_players)
+		update_health_ui()
 	else:
-		connection.send_health_update(current_health, max_health)
+		if is_host:
+			receive_health_update(current_health, max_health, self_peer_id)
+		else:
+			connection.send_health_update(current_health, max_health)
 
 func update_game_state(data: Dictionary) -> void:
 	if run_updates:

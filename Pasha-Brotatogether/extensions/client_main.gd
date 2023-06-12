@@ -101,6 +101,9 @@ onready var game_controller = $"/root/GameController"
 const refresh_time = 1.0 / 100.0
 var update_timer = refresh_time
 
+const HealthTracker = preload("res://mods-unpacked/Pasha-Brotatogether/ui/health_tracker/health_tracker.tscn")
+
+
 func _physics_process(delta:float)->void :
 	update_timer -= delta
 	if update_timer <= 0:
@@ -187,6 +190,14 @@ func _ready()->void :
 	DebugService.log_run_info()
 	RunData.reset_weapons_dmg_dealt()
 	RunData.reset_cache()
+	
+	if $"/root".has_node("GameController"):
+		game_controller = $"/root/GameController"
+	
+	var health_tracker = HealthTracker.instance()
+	health_tracker.set_name("HealthTracker")
+	$UI.add_child(health_tracker)
+	health_tracker.init(game_controller.tracked_players)
 
 
 func _input(event:InputEvent)->void :
