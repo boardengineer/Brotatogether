@@ -7,6 +7,7 @@ var client_items = {}
 var client_player_projectiles = {}
 var client_consumables = {}
 var client_neutrals = {}
+var client_structures = {}
 
 var parent
 var run_updates = false
@@ -19,6 +20,7 @@ const player_scene = preload("res://entities/units/player/player.tscn")
 
 #TODO this is the sussiest of bakas
 var weapon_stats_resource = ResourceLoader.load("res://weapons/ranged/pistol/1/pistol_stats.tres")
+var turret_stats_resource = ResourceLoader.load("res://entities/structures/turret/turret_stats.tres")
 
 # TODO all neutrals are going to be trees for now
 const tree_scene = preload("res://entities/units/neutral/tree.tscn")
@@ -42,14 +44,7 @@ func get_game_state() -> PoolByteArray:
 			get_projectiles_state(buffer)
 			get_consumables_state(buffer)
 			get_neutrals_state(buffer)
-		
-#	print_debug("enemies type ", typeof(get_enemies_state()))
-#	print_debug("births type ", typeof(get_births_state()))
-#	print_debug("items type ", typeof(get_items_state()))
-#	print_debug("players type ", typeof(get_players_state()))
-#	print_debug("projectiles type ", typeof(get_projectiles_state()))
-#	print_debug("consumables type ", typeof(get_consumables_state()))
-#	print_debug("neutrals type ", typeof(get_neutrals_state()))
+			get_structures_state(buffer)
 	
 	return buffer.data_array
 
@@ -67,6 +62,9 @@ func update_game_state(data: PoolByteArray) -> void:
 	update_player_projectiles(buffer)
 	update_consumables(buffer)
 	update_neutrals(buffer)
+	update_structures(buffer)
+
+
 
 func get_items_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	var main = $"/root/Main"
@@ -252,7 +250,35 @@ func flash_neutral(neutral_id):
 	if client_neutrals.has(neutral_id):
 		if is_instance_valid(client_neutrals[neutral_id]):
 			client_neutrals[neutral_id].flash()
-			
+
+func get_enemies_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+	var main = $"/root/Main"
+	var entity_spawner = main._entity_spawner
+	
+	var num_enemies = entity_spawner.enemies.size()
+	buffer.put_u16(num_enemies)
+	
+	for enemy in entity_spawner.enemies:
+		if is_instance_valid(enemy):
+				var network_id = enemy.id
+				buffer.put_32(network_id)
+
+				if not sent_detail_ids.has(network_id):
+					buffer.put_8(1)
+					
+					buffer.put_string(enemy.stats.resource_path)
+					buffer.put_string(enemy.filename)
+					
+					sent_detail_ids[network_id] = true
+				else:
+					buffer.put_8(0)
+				
+				buffer.put_float(enemy.position.x)
+				buffer.put_float(enemy.position.y)
+				buffer.put_float(enemy._current_movement.x)
+				buffer.put_float(enemy._current_movement.y)
+	return buffer.data_array
+
 func update_enemies(buffer:StreamPeerBuffer) -> void:
 	var server_enemies = {}
 	
@@ -348,34 +374,66 @@ func reset_client_items():
 	client_consumables = {}
 	client_neutrals = {}
 
-func get_enemies_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_structures_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
-	var enemies = []
 	var entity_spawner = main._entity_spawner
 	
-	var num_enemies = entity_spawner.enemies.size()
-	buffer.put_u16(num_enemies)
+	var num_structures = entity_spawner.structures.size()
+	buffer.put_u16(num_structures)
 	
-	for enemy in entity_spawner.enemies:
-		if is_instance_valid(enemy):
-				var network_id = enemy.id
-				buffer.put_32(network_id)
+	for structure in entity_spawner.structures:
+		if is_instance_valid(structure):
+			var structure_id = structure.id
+			buffer.put_32(structure_id)
+			
+			# TODO only send spawn info once
+			if not sent_detail_ids.has(structure_id):
+				buffer.put_8(1)
+				buffer.put_string(structure.filename)
+			else:
+				buffer.put_8(0)
+			
+			buffer.put_float(structure.position.x)
+			buffer.put_float(structure.position.y)
 
-				if not sent_detail_ids.has(network_id):
-					buffer.put_8(1)
-					
-					buffer.put_string(enemy.stats.resource_path)
-					buffer.put_string(enemy.filename)
-					
-					sent_detail_ids[network_id] = true
-				else:
-					buffer.put_8(0)
-				
-				buffer.put_float(enemy.position.x)
-				buffer.put_float(enemy.position.y)
-				buffer.put_float(enemy._current_movement.x)
-				buffer.put_float(enemy._current_movement.y)
-	return buffer.data_array
+func update_structures(buffer:StreamPeerBuffer) -> void:
+	var server_structures = {}
+	
+	var num_structures = buffer.get_u16()
+	
+	for _structure_index in num_structures:
+		var structure_id = buffer.get_32()
+		var has_filename = buffer.get_8() == 1
+		var filename = ""
+		
+		if has_filename:
+			filename = buffer.get_string()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		
+		var position = Vector2(pos_x, pos_y)
+		
+		if not client_structures.has(structure_id):
+			if not has_filename:
+				continue
+			var enemy = spawn_stucture(position, filename)
+			client_structures[structure_id] = enemy
+			
+		var stored_structure = client_structures[structure_id]
+		if is_instance_valid(stored_structure):
+			server_structures[structure_id] = true
+			stored_structure.position = position
+
+func spawn_stucture(position:Vector2, filename:String):
+	var structure = load(filename).instance()
+
+	structure.position = position
+	structure.stats = turret_stats_resource
+
+	$"/root/ClientMain/Entities".add_child(structure)
+
+	return structure
 
 func get_births_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	var main = $"/root/Main"
