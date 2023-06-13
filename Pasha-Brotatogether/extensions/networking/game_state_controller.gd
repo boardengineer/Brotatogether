@@ -8,6 +8,7 @@ var client_player_projectiles = {}
 var client_consumables = {}
 var client_neutrals = {}
 var client_structures = {}
+var client_enemy_projectiles = {}
 
 var parent
 var run_updates = false
@@ -45,6 +46,7 @@ func get_game_state() -> PoolByteArray:
 			get_consumables_state(buffer)
 			get_neutrals_state(buffer)
 			get_structures_state(buffer)
+			get_enemy_projectiles(buffer)
 	
 	return buffer.data_array
 
@@ -63,7 +65,97 @@ func update_game_state(data: PoolByteArray) -> void:
 	update_consumables(buffer)
 	update_neutrals(buffer)
 	update_structures(buffer)
+	update_enemy_projectiles(buffer)
 
+func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
+	var projectiles_container = $"/root/Main/Projectiles"
+	
+	var num_projectiles = projectiles_container.get_children().size()
+	
+	buffer.put_u16(num_projectiles)
+
+	for projectile in projectiles_container.get_children():
+		buffer.put_32(projectile.id)
+		
+		buffer.put_float(projectile.position.x)
+		buffer.put_float(projectile.position.y)
+		
+		buffer.put_float(projectile.global_position.x)
+		buffer.put_float(projectile.global_position.y)
+		
+		buffer.put_float(projectile.rotation)
+		
+		if not sent_detail_ids.has(projectile.id):
+			buffer.put_8(1)
+			
+			buffer.put_string(projectile.filename)
+			
+			sent_detail_ids[projectile.id] = true
+		else:
+			buffer.put_8(0)
+
+func update_enemy_projectiles(buffer:StreamPeerBuffer) -> void:
+	var server_enemy_projectiles = {}
+	
+	var num_projectiles = buffer.get_u16()
+	
+	for _projectile_index in num_projectiles:
+		var projectile_id = buffer.get_32()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		var position = Vector2(pos_x, pos_y)
+		
+		var global_pos_x = buffer.get_float()
+		var global_pos_y = buffer.get_float()
+		var global_position = Vector2(global_pos_x, global_pos_y)
+		
+		var rotation = buffer.get_float()
+		
+		var has_detail = buffer.get_8() == 1
+		
+		var filename = ""
+		
+		if has_detail:
+			filename = buffer.get_string()
+			
+		if not client_enemy_projectiles.has(projectile_id):
+			client_enemy_projectiles[projectile_id] = spawn_enemy_projectile(position, global_position, rotation, filename)
+		if is_instance_valid(client_enemy_projectiles[projectile_id]):
+			client_enemy_projectiles[projectile_id].position = position
+			client_enemy_projectiles[projectile_id].global_position = global_position
+		server_enemy_projectiles[projectile_id] = true
+
+	for projectile_id in client_enemy_projectiles:
+		if not server_enemy_projectiles.has(projectile_id):
+			var projectile = client_enemy_projectiles[projectile_id]
+			if not client_enemy_projectiles[projectile_id]:
+				continue
+
+			client_enemy_projectiles.erase(projectile_id)
+			if not $"/root/ClientMain/Projectiles":
+				continue 
+			if not projectile:
+				continue
+				
+			# This sometimes throws a C++ error
+			$"/root/ClientMain/Projectiles".remove_child(projectile)
+
+func spawn_enemy_projectile(position:Vector2, global_position:Vector2, rotation:float, filename:String):
+	var projectiles_container = $"/root/ClientMain/Projectiles"
+	var projectile = load(filename).instance()
+	
+	projectile.position = position
+	projectile.global_position = global_position
+	projectile.rotation = rotation
+	
+	projectile.set_physics_process(false)
+	
+	projectiles_container.add_child(projectile, true)
+	
+	projectile.call_deferred("set_physics_process", false)
+	
+	return projectile
 
 
 func get_items_state(buffer: StreamPeerBuffer) -> PoolByteArray:

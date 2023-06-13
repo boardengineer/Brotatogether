@@ -26,7 +26,9 @@ func _init(modLoader = ModLoader):
 	modLoader.install_script_extension(ext_dir + "items/consumables/consumable.gd")
 	modLoader.install_script_extension(ext_dir + "items/materials/gold.gd")
 	modLoader.install_script_extension(ext_dir + "singletons/run_data.gd")
+	
 	modLoader.install_script_extension(ext_dir + "projectiles/player_projectile.gd")
+	modLoader.install_script_extension(ext_dir + "projectiles/bullet_enemy/enemy_projectile.gd")
 	
 	modLoader.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
 	
