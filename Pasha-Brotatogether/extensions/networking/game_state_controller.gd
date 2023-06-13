@@ -424,6 +424,13 @@ func update_structures(buffer:StreamPeerBuffer) -> void:
 		if is_instance_valid(stored_structure):
 			server_structures[structure_id] = true
 			stored_structure.position = position
+			
+	for structure_id in client_structures:
+		if not server_structures.has(structure_id):
+			var structure = client_structures[structure_id]
+			client_structures.erase(structure_id)
+			if is_instance_valid(structure):
+				$"/root/ClientMain/Entities".remove_child(structure)
 
 func spawn_stucture(position:Vector2, filename:String):
 	var structure = load(filename).instance()
@@ -442,15 +449,16 @@ func get_births_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	buffer.put_u16(num_births)
 	
 	for birth in main._entity_spawner.births:
-		buffer.put_32(birth.id)
-		
-		buffer.put_float(birth.global_position.x)
-		buffer.put_float(birth.global_position.y)
-		
-		buffer.put_float(birth.color.r)
-		buffer.put_float(birth.color.g)
-		buffer.put_float(birth.color.b)
-		buffer.put_float(birth.color.a)
+		if is_instance_valid(birth):
+			buffer.put_32(birth.id)
+			
+			buffer.put_float(birth.global_position.x)
+			buffer.put_float(birth.global_position.y)
+			
+			buffer.put_float(birth.color.r)
+			buffer.put_float(birth.color.g)
+			buffer.put_float(birth.color.b)
+			buffer.put_float(birth.color.a)
 		
 	return buffer.data_array
 

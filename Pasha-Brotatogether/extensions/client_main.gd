@@ -137,7 +137,8 @@ func _ready()->void :
 		
 	_current_wave_label.text = Text.text("WAVE", [str(RunData.current_wave)]).to_upper()
 	
-	_wave_timer.wait_time = 15
+#	_wave_timer.wait_time = 15
+	_wave_timer.wait_time = 1 if RunData.instant_waves else current_wave_data.wave_duration
 	_wave_timer.start()
 	_wave_timer_label.wave_timer = _wave_timer
 	var _error_wave_timer = _wave_timer.connect("tick_started", self, "on_tick_started")
