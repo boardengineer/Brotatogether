@@ -2,6 +2,7 @@ extends Control
 
 onready var player_list = $PlayerList
 onready var start_button = $ControlBox/Buttons/StartButton
+onready var other_start_button = $ControlBox/Buttons/OtherStartButton
 
 onready var character_info = $"GameSettings/CharacterBox/CharacterInfo"
 onready var weapon_select_info = $"GameSettings/WeaponBox/WeaponInfo"
@@ -18,11 +19,11 @@ func _ready():
 	
 	if not $"/root/GameController".is_host:
 		start_button.disabled = true
+		other_start_button.disabled = true
 		
 		character_select_button.hide()
 		weapon_select_button.hide()
 		danger_select_button.hide()
-		
 	
 	update_player_list()
 	update_selections()
@@ -54,19 +55,24 @@ func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: i
 	update_player_list()
 
 func update_selections() -> void:
+	var can_start = false
+	
 	if RunData.current_character:
-		weapon_select_button.disabled = false
+		var is_bull = RunData.current_character.my_id == "character_bull"
+		weapon_select_button.disabled = is_bull
 		danger_select_button.disabled = false
 		character_info.set_data(RunData.current_character)
+		
+		var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
+		danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
+		
 		
 		if RunData.starting_weapon:
 			danger_select_button.disabled = false
 			weapon_select_info.set_data(RunData.starting_weapon)
 			
-			var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-			danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
-		
-		
+		if is_bull or RunData.starting_weapon:
+			can_start = true
 	else:
 		# reset weapon selection
 		weapon_select_button.disabled = true
@@ -75,6 +81,13 @@ func update_selections() -> void:
 	
 	if game_controller.is_host:
 		game_controller.send_lobby_update(get_lobby_info_dictionary())
+		
+	if can_start:
+		start_button.disabled = false
+		other_start_button.disabled = false
+	else:
+		start_button.disabled = true
+		other_start_button.disabled = true
 	
 
 func _on_StartButton_pressed():

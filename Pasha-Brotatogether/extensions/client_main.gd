@@ -516,6 +516,7 @@ func _on_EndWaveTimer_timeout()->void :
 			yield (_challenge_completed_ui, "finished")
 		
 		var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
+#		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.gd")
 
 func on_focus_lost()->void :
 	if _end_wave_timer_timedout:
@@ -674,6 +675,13 @@ func _on_WaveTimer_timeout()->void :
 	InputService.hide_mouse = true
 	
 	if $"/root/GameController":
-		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
+		if $"/root/GameController".game_mode == "shared":
+			if not $"/root/GameController".is_source_of_truth:
+				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/waiting.tscn")
+			else:
+				# This is an opponent shop now, might need to be a friendlier shop later
+				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
+		else:
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
 	else:
 		var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")

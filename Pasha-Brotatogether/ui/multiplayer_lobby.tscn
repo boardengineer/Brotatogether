@@ -146,17 +146,17 @@ __meta__ = {
 margin_right = 600.0
 margin_bottom = 65.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "Start Game"
+text = "Start VS Game"
 
-[node name="StartButton2" type="Button" parent="ControlBox/Buttons"]
+[node name="OtherStartButton" type="Button" parent="ControlBox/Buttons"]
 margin_top = 90.0
 margin_right = 600.0
 margin_bottom = 155.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "Start Other Game"
+text = "Start Co-op Game [Alpha]"
 
 [connection signal="pressed" from="GameSettings/CharacterBox/CharacterButton" to="." method="_on_CharacterButton_pressed"]
 [connection signal="pressed" from="GameSettings/WeaponBox/WeaponButton" to="." method="_on_WeaponButton_pressed"]
 [connection signal="pressed" from="GameSettings/DangerBox/DangerButton" to="." method="_on_DangerButton_pressed"]
 [connection signal="pressed" from="ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
-[connection signal="pressed" from="ControlBox/Buttons/StartButton2" to="." method="_on_StartButton2_pressed"]
+[connection signal="pressed" from="ControlBox/Buttons/OtherStartButton" to="." method="_on_StartButton2_pressed"]

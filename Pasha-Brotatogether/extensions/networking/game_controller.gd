@@ -145,7 +145,13 @@ func start_game(game_info: Dictionary):
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
 			RunData.init_elites_spawn()
+			
+			for effect in ItemService.difficulties[danger].effects:
+				effect.apply()
+			
 			back_to_lobby = false
+			
+			
 #		tracked_players = {}
 #		RunData.current_wave = game_info.current_wave
 		
@@ -172,16 +178,23 @@ func start_game(game_info: Dictionary):
 			var lobby_info = game_info.lobby_info
 			
 			var character_data = load(lobby_info.character)
-			var weapon_data = load(lobby_info.weapon)
+			
+			if lobby_info.has("weapon"):
+				var weapon_data = load(lobby_info.weapon)
+				var _unused = RunData.add_weapon(weapon_data, true)
 			var danger = lobby_info.danger
 			
 			RunData.add_character(character_data)
-			var _unused = RunData.add_weapon(weapon_data, true)
+			
 			RunData.add_starting_items_and_weapons()
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
 			RunData.init_elites_spawn()
+			
+			for effect in ItemService.difficulties[danger].effects:
+				effect.apply()
+			
 			back_to_lobby = false
 			
 		RunData.current_wave = game_info.current_wave
@@ -364,8 +377,9 @@ func update_ready_state(sender_id, is_ready):
 		update_go_button()
 
 func reset_ready_map():
+	var need_readies = game_mode == "async"
 	for player_id in tracked_players:
-		tracked_players[player_id]["is_ready"] = false
+		tracked_players[player_id]["is_ready"] = not need_readies
 		
 func reset_extra_creatures():
 	for player_id in tracked_players:
