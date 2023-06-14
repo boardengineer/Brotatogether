@@ -1,12 +1,25 @@
-[gd_scene load_steps=2 format=2]
+[gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://resources/themes/inventory_button_theme.tres" type="Theme" id=1]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/waiting.gd" type="Script" id=2]
 
 [node name="Node2D" type="Node2D"]
+script = ExtResource( 2 )
 
 [node name="Label" type="Label" parent="."]
-margin_right = 1548.0
-margin_bottom = 645.0
+margin_left = 2.0
+margin_top = 6.0
+margin_right = 1918.0
+margin_bottom = 192.0
 size_flags_horizontal = 3
 theme = ExtResource( 1 )
-text = "Wait for the Game To Resume"
+text = "Please wait for the host to shop and resume the game"
+
+[node name="Message" type="Label" parent="."]
+margin_left = -1.0
+margin_top = 285.0
+margin_right = 1915.0
+margin_bottom = 471.0
+size_flags_horizontal = 3
+theme = ExtResource( 1 )
+text = "These Pretzels are making me Thirsty!"
