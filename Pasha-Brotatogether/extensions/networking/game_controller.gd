@@ -229,8 +229,9 @@ func check_win() -> void:
 			all_others_dead = false
 	
 	if all_others_dead:
-		var main = $"/root/Main"
-		main._is_run_won = true
+		var main = get_tree().get_current_scene()
+		main._is_run_won = game_mode == "async"
+		main._is_run_lost = not main._is_run_won
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
 		main._end_wave_timer.start()
 		ProgressData.reset_run_state()
@@ -308,7 +309,8 @@ func send_ready(is_ready:bool) -> void:
 	connection.send_ready(is_ready)
 
 func send_game_state() -> void:
-	connection.send_state(game_state_controller.get_game_state())
+	if run_updates:
+		connection.send_state(game_state_controller.get_game_state())
 
 func send_start_game(game_info:Dictionary) -> void:
 	connection.send_start_game(game_info)
@@ -468,8 +470,7 @@ func update_health(current_health:int, max_health:int) -> void:
 			connection.send_health_update(current_health, max_health)
 
 func update_game_state(data: PoolByteArray) -> void:
-	if run_updates:
-		game_state_controller.update_game_state(data)
+	game_state_controller.update_game_state(data)
 
 func enemy_death(enemy_id):
 	game_state_controller.enemy_death(enemy_id)
