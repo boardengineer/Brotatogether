@@ -206,10 +206,11 @@ func start_game(game_info: Dictionary):
 
 func send_death() -> void:
 	print_debug("sending death")
+	run_updates = false
 	if is_host:
 		receive_death(self_peer_id)
-	else:
-		connection.send_death()
+	
+	connection.send_death()
 
 func receive_death(source_player_id:int) -> void:
 	tracked_players[source_player_id]["dead"] = true

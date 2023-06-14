@@ -730,7 +730,7 @@ func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array, a
 	for filename in appeareances_filenames:
 		var item_sprite = Sprite.new()
 		item_sprite.texture = load(filename).sprite
-		spawned_player.get_child("Animation").add_child(item_sprite)
+		spawned_player.get_node("Animation").add_child(item_sprite)
 
 	return spawned_player
 

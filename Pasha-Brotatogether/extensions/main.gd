@@ -74,6 +74,7 @@ func spawn_additional_players() -> void:
 			var spawned_player = _entity_spawner.spawn_entity(player_scene, spawn_pos, true)
 			
 			spawned_player.connect("health_updated", self, "on_health_update")
+			spawned_player.connect("died", self, "_on_player_died")
 			
 			spawned_player.dodge_sounds = _player.dodge_sounds.duplicate()
 			
@@ -101,7 +102,7 @@ func send_player_position():
 func _on_WaveTimer_timeout()->void :
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth:
+		if game_controller and game_controller.is_source_of_truth and game_controller.run_updates:
 			game_controller.send_end_wave()
 	._on_WaveTimer_timeout()
 
