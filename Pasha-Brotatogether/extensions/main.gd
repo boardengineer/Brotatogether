@@ -204,3 +204,51 @@ func _on_EndWaveTimer_timeout()->void :
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
 		else:
 			var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
+
+func on_consumable_picked_up(consumable:Node)->void :
+	RunData.consumables_picked_up_this_run += 1
+	_consumables.erase(consumable)
+	
+	if (consumable.consumable_data.my_id == "consumable_item_box" or consumable.consumable_data.my_id == "consumable_legendary_item_box") and RunData.effects["item_box_gold"] != 0:
+		RunData.add_gold(RunData.effects["item_box_gold"])
+		RunData.tracked_item_effects["item_bag"] += RunData.effects["item_box_gold"]
+	
+	if consumable.consumable_data.to_be_processed_at_end_of_wave:
+		_consumables_to_process.push_back(consumable.consumable_data)
+		emit_signal("consumable_to_process_added", consumable.consumable_data)
+	
+	if RunData.consumables_picked_up_this_run >= RunData.chal_hungry_value:
+		ChallengeService.complete_challenge("chal_hungry")
+	
+	if RunData.effects["consumable_stats_while_max"].size() > 0 and _player.current_stats.health >= _player.max_stats.health:
+		for i in RunData.effects["consumable_stats_while_max"].size():
+			var stat = RunData.effects["consumable_stats_while_max"][i]
+			var has_max = (stat.size() > 2
+				 and RunData.max_consumable_stats_gained_this_wave.size() > i
+				 and RunData.max_consumable_stats_gained_this_wave[i].size() > 2)
+			
+			var reached_max = false
+			
+			if has_max:
+				reached_max = RunData.max_consumable_stats_gained_this_wave[i][2] >= stat[2]
+			
+			if not has_max or not reached_max:
+				RunData.add_stat(stat[0], stat[1])
+				
+				if stat[0] == "stat_max_hp":
+					RunData.tracked_item_effects["item_extra_stomach"] += stat[1]
+				
+				if has_max:
+					RunData.max_consumable_stats_gained_this_wave[i][2] += stat[1]
+	
+	if not _cleaning_up:
+		RunData.handle_explosion("explode_on_consumable", consumable.global_position)
+	
+	for effect in consumable.consumable_data.effects:
+		if effect is HealingEffect:
+			var player = consumable.attracted_by
+			if player:
+				player.on_healing_effect(max(1, effect.value + RunData.effects["consumable_heal"]), "")
+		else:
+			effect.apply()
+	ChallengeService.check_stat_challenges()
