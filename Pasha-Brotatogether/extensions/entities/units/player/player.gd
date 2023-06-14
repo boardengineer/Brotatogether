@@ -46,11 +46,11 @@ func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 	
 	if movement.x > 0:
 		_shadow.scale.x = abs(_shadow.scale.x)
-		for sprite in _sprites:
+		for sprite in $Animation.get_children():
 			sprite.scale.x = abs(sprite.scale.x)
 	elif movement.x < 0:
 		_shadow.scale.x = - abs(_shadow.scale.x)
-		for sprite in _sprites:
+		for sprite in $Animation.get_children():
 			sprite.scale.x = - abs(sprite.scale.x)
 
 	if _animation_player.current_animation == "idle" and movement != Vector2.ZERO:
