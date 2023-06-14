@@ -120,6 +120,8 @@ func update_enemy_projectiles(buffer:StreamPeerBuffer) -> void:
 			filename = buffer.get_string()
 			
 		if not client_enemy_projectiles.has(projectile_id):
+			if filename.empty():
+				continue
 			client_enemy_projectiles[projectile_id] = spawn_enemy_projectile(position, global_position, rotation, filename)
 		if is_instance_valid(client_enemy_projectiles[projectile_id]):
 			client_enemy_projectiles[projectile_id].position = position
@@ -791,7 +793,7 @@ func get_neutrals_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 		if is_instance_valid(neutral):
 			num_neutrals += 1
 			
-	buffer.put_u32(num_neutrals)
+	buffer.put_u16(num_neutrals)
 	
 	for neutral in main._entity_spawner.neutrals:
 		if is_instance_valid(neutral):
@@ -805,7 +807,7 @@ func get_neutrals_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 
 func update_neutrals(buffer:StreamPeerBuffer) -> void:
 	var server_neutrals = {}
-	var num_neutrals = buffer.get_u32()
+	var num_neutrals = buffer.get_u16()
 	for _neutral_index in num_neutrals:
 		var neutral_id = buffer.get_32()
 		

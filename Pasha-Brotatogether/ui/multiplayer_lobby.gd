@@ -81,8 +81,7 @@ func update_selections() -> void:
 	
 	if game_controller.is_host:
 		game_controller.send_lobby_update(get_lobby_info_dictionary())
-		
-	if can_start:
+	if can_start and game_controller.is_host:
 		start_button.disabled = false
 		other_start_button.disabled = false
 	else:

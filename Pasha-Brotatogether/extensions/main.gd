@@ -20,11 +20,13 @@ const HealthTracker = preload("res://mods-unpacked/Pasha-Brotatogether/ui/health
 const ClientMovementBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/client_movement_behavior.gd")
 
 var game_controller
+var send_updates = true
 
 func _ready():
 	if not $"/root".has_node("GameController"):
 		return
 	game_controller = $"/root/GameController"
+	send_updates = true
 	
 	if game_controller and game_controller.is_source_of_truth:
 		spawn_additional_players()
@@ -89,7 +91,7 @@ func spawn_additional_players() -> void:
 func _process(_delta):
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth:
+		if game_controller and game_controller.is_source_of_truth and send_updates:
 			game_controller.send_game_state()
 
 func send_player_position():
@@ -102,7 +104,8 @@ func send_player_position():
 func _on_WaveTimer_timeout()->void :
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth and game_controller.run_updates:
+		if game_controller and game_controller.is_source_of_truth:
+			send_updates = false
 			game_controller.send_end_wave()
 	._on_WaveTimer_timeout()
 

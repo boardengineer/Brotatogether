@@ -86,7 +86,7 @@ func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
 		var _set_error = Steam.setLobbyData(lobby_id, "game", "Brotatogether")
 		_set_error = Steam.setLobbyData(lobby_id, "host", Steam.getPersonaName())
 		
-		var _error = Steam.allowP2PPacketRelay(true)
+		var _error = Steam.allowP2PPacketRelay(false)
 
 func close_lobby() -> void:
 	# TODO this probably isn't the correct way to close a lobby but at least no one will find it
