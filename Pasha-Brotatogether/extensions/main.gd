@@ -28,6 +28,7 @@ func _ready():
 	
 	if game_controller and game_controller.is_source_of_truth:
 		spawn_additional_players()
+		game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
 	
 	var health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
@@ -252,3 +253,25 @@ func on_consumable_picked_up(consumable:Node)->void :
 		else:
 			effect.apply()
 	ChallengeService.check_stat_challenges()
+
+func on_levelled_up()->void :
+	SoundManager.play(level_up_sound, 0, 0, true)
+	var level = RunData.current_level
+	emit_signal("upgrade_to_process_added", ItemService.upgrade_to_process_icon, level)
+	_upgrades_to_process.push_back(level)
+	set_level_label()
+	RunData.add_stat("stat_max_hp", 1)
+	RunData.emit_signal("healing_effect", 1)
+	
+	if  $"/root".has_node("GameController"):
+		game_controller = $"/root/GameController"
+		if game_controller and game_controller.is_source_of_truth:
+			for player_id in game_controller.tracked_players:
+				if player_id == game_controller.self_peer_id:
+					continue
+				if game_controller.tracked_players[player_id].has("player"):
+					var player = game_controller.tracked_players[player_id]["player"]
+					if player and is_instance_valid(player):
+						player.max_stats.health += 1
+						player.current_stats.health += 1
+			game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
