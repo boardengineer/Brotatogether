@@ -606,6 +606,12 @@ func get_players_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 		# RunData.gold
 		buffer.put_u16(RunData.gold)
 
+		var num_appearances = RunData.appearances_displayed.size()
+		buffer.put_u16(num_appearances)
+		
+		for appearance in RunData.appearances_displayed:
+			buffer.put_string(appearance.resource_path) 
+
 		var num_weapons = tracked_player.current_weapons.size()
 		buffer.put_u16(num_weapons)
 		
@@ -656,8 +662,12 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 		
 		var gold = buffer.get_u16()
 		
-		var num_weapons = buffer.get_u16()
+		var num_appearances = buffer.get_u16()
+		var appeareances_filenames = []
+		for _appearance_index in num_appearances:
+			appeareances_filenames.push_back(buffer.get_string())
 		
+		var num_weapons = buffer.get_u16()
 		var weapons = []
 		for _weapon_index in num_weapons:
 			var weapon = {}
@@ -677,9 +687,10 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 				var weapon_path = buffer.get_string()
 				weapon["path"] = weapon_path
 			weapons.push_back(weapon)
+			
 				
 		if not tracked_players[player_id].has("player") or not is_instance_valid(tracked_players[player_id].player):
-			tracked_players[player_id]["player"] = spawn_player(player_id, Vector2(pos_x, pos_y), speed, weapons)
+			tracked_players[player_id]["player"] = spawn_player(player_id, Vector2(pos_x, pos_y), speed, weapons, appeareances_filenames)
 			
 		var player = tracked_players[player_id]["player"]
 		if player_id == parent.self_peer_id:
@@ -702,7 +713,7 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 				weapon.sprite.rotation = weapon_data.rotation
 				weapon._is_shooting = weapon_data.is_shooting
 
-func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array):
+func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array, appeareances_filenames: Array):
 	var spawned_player = player_scene.instance()
 	spawned_player.position = position
 	spawned_player.current_stats.speed = speed
@@ -715,6 +726,11 @@ func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array):
 	if player_id == parent.self_peer_id:
 		spawned_player.get_remote_transform().remote_path = $"/root/ClientMain/Camera".get_path()
 	spawned_player.call_deferred("remove_weapon_behaviors")
+
+	for filename in appeareances_filenames:
+		var item_sprite = Sprite.new()
+		item_sprite.texture = load(filename).sprite
+		spawned_player.get_child("Animation").add_child(item_sprite)
 
 	return spawned_player
 

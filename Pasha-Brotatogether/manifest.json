@@ -4,7 +4,7 @@
 	"version_number": "1.0.0",
 	"description": "Wanna Brotato with your bros?",
 	"website_url": "",
-	"dependencies": ["Darkly77-ContentLoader", "dami-ModOptions"],
+	"dependencies": [],
 	"extra": {
 		"godot": {
 			"incompatibilities": [],
