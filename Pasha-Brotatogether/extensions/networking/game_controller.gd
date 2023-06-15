@@ -25,6 +25,7 @@ const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions
 
 var current_scene_name = ""
 var run_updates = false
+var disable_pause = false
 var back_to_lobby = false
 
 var ready_toggle
@@ -119,6 +120,7 @@ func _on_GoButton_pressed()-> void:
 func start_game(game_info: Dictionary):
 	reset_extra_creatures()
 	reset_ready_map()
+	disable_pause = true
 	
 	if not is_host:
 		is_source_of_truth = false
@@ -205,7 +207,7 @@ func start_game(game_info: Dictionary):
 		var _change_error = get_tree().change_scene(MenuData.game_scene)
 
 func send_death() -> void:
-	print_debug("sending death")
+	disable_pause = false
 	run_updates = false
 	if is_host:
 		receive_death(self_peer_id)
@@ -229,6 +231,7 @@ func check_win() -> void:
 			all_others_dead = false
 	
 	if all_others_dead:
+		disable_pause = false
 		var main = get_tree().get_current_scene()
 		main._is_run_won = game_mode == "async"
 		main._is_run_lost = not main._is_run_won

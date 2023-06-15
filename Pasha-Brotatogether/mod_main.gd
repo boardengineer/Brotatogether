@@ -35,8 +35,11 @@ func _init(modLoader = ModLoader):
 	modLoader.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
 	modLoader.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	modLoader.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
+	modLoader.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")
+	
 	
 	modLoader.install_script_extension(ext_dir + "zones/wave_manager.gd")
 	modLoader.install_script_extension(ext_dir + "weapons/shooting_behaviors/ranged_weapon_shooting_behavior.gd")
 	modLoader.install_script_extension(ext_dir + "visual_effects/floating_text/floating_text_manager.gd")
 	modLoader.install_script_extension(ext_dir + "global/effects_manager.gd")
+	

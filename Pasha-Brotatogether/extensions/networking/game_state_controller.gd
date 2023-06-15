@@ -75,7 +75,7 @@ func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	buffer.put_u16(num_projectiles)
 
 	for projectile in projectiles_container.get_children():
-		buffer.put_32(projectile.id)
+		buffer.put_32(projectile.network_id)
 		
 		buffer.put_float(projectile.position.x)
 		buffer.put_float(projectile.position.y)
@@ -85,12 +85,12 @@ func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 		
 		buffer.put_float(projectile.rotation)
 		
-		if not sent_detail_ids.has(projectile.id):
+		if not sent_detail_ids.has(projectile.network_id):
 			buffer.put_8(1)
 			
 			buffer.put_string(projectile.filename)
 			
-			sent_detail_ids[projectile.id] = true
+			sent_detail_ids[projectile.network_id] = true
 		else:
 			buffer.put_8(0)
 
@@ -167,11 +167,11 @@ func get_items_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	buffer.put_u16(num_items)
 	
 	for item in main._items_container.get_children():
-		buffer.put_32(item.id)
+		buffer.put_32(item.get_network_id())
 		buffer.put_float(item.global_position.x)
 		buffer.put_float(item.global_position.y)
 				
-		if not sent_detail_ids.has(item.id):
+		if not sent_detail_ids.has(item.get_network_id()):
 			buffer.put_8(1)
 			
 			buffer.put_float(item.scale.x)
@@ -182,7 +182,7 @@ func get_items_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 			buffer.put_float(item.push_back_destination.x)
 			buffer.put_float(item.push_back_destination.y)
 			
-			sent_detail_ids[item.id] = true
+			sent_detail_ids[item.get_network_id()] = true
 		else:
 			buffer.put_8(0)
 
@@ -263,7 +263,7 @@ func get_projectiles_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	
 	for child in main.get_children():
 		if child is PlayerProjectile:
-			buffer.put_32(child.id)
+			buffer.put_32(child.get_network_id())
 			
 			buffer.put_float(child.position.x)
 			buffer.put_float(child.position.y)
@@ -354,7 +354,7 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	
 	for enemy in entity_spawner.enemies:
 		if is_instance_valid(enemy):
-				var network_id = enemy.id
+				var network_id = enemy.get_network_id()
 				buffer.put_32(network_id)
 
 				if not sent_detail_ids.has(network_id):
@@ -477,7 +477,7 @@ func get_structures_state(buffer: StreamPeerBuffer) -> void:
 	
 	for structure in entity_spawner.structures:
 		if is_instance_valid(structure):
-			var structure_id = structure.id
+			var structure_id = structure.network_id
 			buffer.put_32(structure_id)
 			
 			# TODO only send spawn info once
@@ -544,7 +544,7 @@ func get_births_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	
 	for birth in main._entity_spawner.births:
 		if is_instance_valid(birth):
-			buffer.put_32(birth.id)
+			buffer.put_32(birth.get_network_id())
 			
 			buffer.put_float(birth.global_position.x)
 			buffer.put_float(birth.global_position.y)
@@ -743,7 +743,7 @@ func get_consumables_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 	buffer.put_u16(num_consumables)
 	
 	for consumable in main._consumables_container.get_children():
-		buffer.put_32(consumable.id)
+		buffer.put_32(consumable.get_network_id())
 		
 		buffer.put_float(consumable.global_position.x)
 		buffer.put_float(consumable.global_position.y)
@@ -799,7 +799,7 @@ func get_neutrals_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 		if is_instance_valid(neutral):
 			var neutral_data = {}
 			
-			buffer.put_32(neutral.id)
+			buffer.put_32(neutral.get_network_id())
 			
 			buffer.put_float(neutral.global_position.x)
 			buffer.put_float(neutral.global_position.y)

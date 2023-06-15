@@ -23,7 +23,7 @@
 [ext_resource path="res://ui/menus/ingame/pause_menu.tscn" type="PackedScene" id=21]
 [ext_resource path="res://ui/menus/shop/shop_item.tscn" type="PackedScene" id=22]
 [ext_resource path="res://ui/menus/global/my_menu_button.gd" type="Script" id=23]
-[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.gd" type="Script" id=24]
+[ext_resource path="res://ui/menus/shop/shop.gd" type="Script" id=24]
 [ext_resource path="res://ui/menus/shop/elite_container.gd" type="Script" id=25]
 [ext_resource path="res://resources/sounds/metal_small_movement_03.wav" type="AudioStream" id=26]
 [ext_resource path="res://resources/sounds/metal_small_movement_06.wav" type="AudioStream" id=27]
@@ -71,12 +71,12 @@ custom_constants/margin_bottom = 25
 margin_left = 25.0
 margin_top = 25.0
 margin_right = 1895.0
-margin_bottom = 1603.0
+margin_bottom = 1677.0
 custom_constants/separation = 25
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Content/MarginContainer/HBoxContainer"]
 margin_right = 1434.0
-margin_bottom = 1578.0
+margin_bottom = 1652.0
 custom_constants/separation = 50
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer"]
@@ -87,21 +87,21 @@ alignment = 2
 
 [node name="Title" type="Label" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
 margin_top = 18.0
-margin_right = 338.0
+margin_right = 236.0
 margin_bottom = 63.0
 custom_fonts/font = ExtResource( 7 )
-text = "Multiplayer Shop"
+text = "MENU_SHOP"
 
 [node name="EmptySpace" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
 modulate = Color( 1, 1, 1, 0 )
-margin_left = 342.0
-margin_right = 822.0
+margin_left = 240.0
+margin_right = 771.0
 margin_bottom = 82.0
 size_flags_horizontal = 3
 
 [node name="GoldUI" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
-margin_left = 826.0
-margin_right = 916.0
+margin_left = 775.0
+margin_right = 865.0
 margin_bottom = 82.0
 alignment = 1
 
@@ -119,7 +119,7 @@ script = ExtResource( 4 )
 
 [node name="EmptySpace2" type="Control" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer"]
 modulate = Color( 1, 1, 1, 0 )
-margin_left = 920.0
+margin_left = 869.0
 margin_right = 1400.0
 margin_bottom = 82.0
 size_flags_horizontal = 3
@@ -249,20 +249,20 @@ focus_neighbour_right = NodePath("../../../../../../VBoxContainer2/GoButton")
 [node name="HBoxContainer3" type="HBoxContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer"]
 margin_top = 718.0
 margin_right = 1434.0
-margin_bottom = 1578.0
+margin_bottom = 1652.0
 size_flags_vertical = 3
 custom_constants/separation = 25
 
 [node name="ItemsContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer3" instance=ExtResource( 11 )]
-margin_top = 584.0
+margin_top = 658.0
 margin_right = 115.0
-margin_bottom = 860.0
+margin_bottom = 934.0
 
 [node name="EmptySpace" type="ColorRect" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer3"]
 modulate = Color( 1, 1, 1, 0 )
 margin_left = 140.0
 margin_right = 1091.0
-margin_bottom = 860.0
+margin_bottom = 934.0
 size_flags_horizontal = 3
 __meta__ = {
 "_edit_use_anchors_": false
@@ -270,15 +270,15 @@ __meta__ = {
 
 [node name="WeaponsContainer" parent="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer3" instance=ExtResource( 13 )]
 margin_left = 1116.0
-margin_top = 584.0
+margin_top = 658.0
 margin_right = 1434.0
-margin_bottom = 860.0
+margin_bottom = 934.0
 nb_columns = 3
 
 [node name="VBoxContainer2" type="VBoxContainer" parent="Content/MarginContainer/HBoxContainer"]
 margin_left = 1459.0
 margin_right = 1870.0
-margin_bottom = 1578.0
+margin_bottom = 1652.0
 size_flags_horizontal = 3
 custom_constants/separation = 9
 
@@ -367,10 +367,21 @@ margin_right = 96.0
 margin_bottom = 96.0
 icon = ExtResource( 2 )
 
-[node name="GoButton" type="Button" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+[node name="EndlessButton" type="Button" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+unique_name_in_owner = true
 margin_top = 1513.0
 margin_right = 411.0
 margin_bottom = 1578.0
+focus_neighbour_top = NodePath("../../VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
+size_flags_horizontal = 3
+size_flags_vertical = 8
+text = "ENDLESS"
+script = ExtResource( 23 )
+
+[node name="GoButton" type="Button" parent="Content/MarginContainer/HBoxContainer/VBoxContainer2"]
+margin_top = 1587.0
+margin_right = 411.0
+margin_bottom = 1652.0
 focus_neighbour_top = NodePath("../../VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem4/PanelContainer/MarginContainer/VBoxContainer/BuyButton")
 size_flags_horizontal = 3
 size_flags_vertical = 8
@@ -417,6 +428,7 @@ focus_mode = 2
 
 [connection signal="focus_entered" from="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer/RerollButton" to="." method="_on_RerollButton_focus_entered"]
 [connection signal="pressed" from="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer/RerollButton" to="." method="_on_RerollButton_pressed"]
+[connection signal="pressed" from="Content/MarginContainer/HBoxContainer/VBoxContainer2/EndlessButton" to="." method="_on_EndlessButton_pressed"]
 [connection signal="pressed" from="Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton" to="." method="_on_GoButton_pressed"]
 
 [editable path="Content/MarginContainer/HBoxContainer/VBoxContainer/HBoxContainer2/ShopItemsContainer/ShopItem"]
