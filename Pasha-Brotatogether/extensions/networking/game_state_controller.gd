@@ -69,30 +69,59 @@ func update_game_state(data: PoolByteArray) -> void:
 
 func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	var projectiles_container = $"/root/Main/Projectiles"
+	var main = $"/root/Main"
+	var entity_spawner = main._entity_spawner
 	
 	var num_projectiles = projectiles_container.get_children().size()
+	
+	for enemy in entity_spawner.enemies:
+		if enemy.has_node("Pivot"):
+			for projectile in enemy.get_node("Pivot").get_children():
+				if projectile is EnemyProjectile:
+					num_projectiles += 1
+					
+	for boss in entity_spawner.bosses:
+		if boss.has_node("Pivot"):
+			for projectile in boss.get_node("Pivot").get_children():
+				if projectile is EnemyProjectile:
+					num_projectiles += 1
 	
 	buffer.put_u16(num_projectiles)
 
 	for projectile in projectiles_container.get_children():
-		buffer.put_32(projectile.network_id)
+		encode_projectile(buffer, projectile)
 		
-		buffer.put_float(projectile.position.x)
-		buffer.put_float(projectile.position.y)
-		
-		buffer.put_float(projectile.global_position.x)
-		buffer.put_float(projectile.global_position.y)
-		
-		buffer.put_float(projectile.rotation)
-		
-		if not sent_detail_ids.has(projectile.network_id):
-			buffer.put_8(1)
+	for enemy in entity_spawner.enemies:
+		if enemy.has_node("Pivot"):
+			for projectile in enemy.get_node("Pivot").get_children():
+				if projectile is EnemyProjectile:
+					encode_projectile(buffer, projectile)
+					
+	for boss in entity_spawner.bosses:
+		if boss.has_node("Pivot"):
+			for projectile in boss.get_node("Pivot").get_children():
+				if projectile is EnemyProjectile:
+					encode_projectile(buffer, projectile)
 			
-			buffer.put_string(projectile.filename)
-			
-			sent_detail_ids[projectile.network_id] = true
-		else:
-			buffer.put_8(0)
+func encode_projectile(buffer: StreamPeerBuffer, projectile) -> void:
+	buffer.put_32(projectile.network_id)
+		
+	buffer.put_float(projectile.position.x)
+	buffer.put_float(projectile.position.y)
+		
+	buffer.put_float(projectile.global_position.x)
+	buffer.put_float(projectile.global_position.y)
+		
+	buffer.put_float(projectile.rotation)
+		
+	if not sent_detail_ids.has(projectile.network_id):
+		buffer.put_8(1)
+		
+		buffer.put_string(projectile.filename)
+		
+		sent_detail_ids[projectile.network_id] = true
+	else:
+		buffer.put_8(0)
 
 func update_enemy_projectiles(buffer:StreamPeerBuffer) -> void:
 	var server_enemy_projectiles = {}
@@ -371,6 +400,30 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 				buffer.put_float(enemy.position.y)
 				buffer.put_float(enemy._current_movement.x)
 				buffer.put_float(enemy._current_movement.y)
+				
+	var num_bosses = entity_spawner.bosses.size()
+	buffer.put_u16(num_bosses)
+	
+	for enemy in entity_spawner.bosses:
+		if is_instance_valid(enemy):
+				var network_id = enemy.get_network_id()
+				buffer.put_32(network_id)
+
+				if not sent_detail_ids.has(network_id):
+					buffer.put_8(1)
+					
+					buffer.put_string(enemy.stats.resource_path)
+					buffer.put_string(enemy.filename)
+					
+					sent_detail_ids[network_id] = true
+				else:
+					buffer.put_8(0)
+				
+				buffer.put_float(enemy.position.x)
+				buffer.put_float(enemy.position.y)
+				buffer.put_float(enemy._current_movement.x)
+				buffer.put_float(enemy._current_movement.y)			
+				
 	return buffer.data_array
 
 func update_enemies(buffer:StreamPeerBuffer) -> void:
@@ -379,6 +432,39 @@ func update_enemies(buffer:StreamPeerBuffer) -> void:
 	var num_enemies = buffer.get_u16()
 	
 	for _enemy_index in num_enemies:
+		var enemy_id = buffer.get_32()
+		var has_filenames = buffer.get_8() == 1
+		var filename = ""
+		var resource_path = ""
+		
+		if has_filenames:
+			resource_path = buffer.get_string()
+			
+			filename = buffer.get_string()
+		
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		var mov_x = buffer.get_float()
+		var mov_y = buffer.get_float()
+		
+		var position = Vector2(pos_x, pos_y)
+		var movement = Vector2(mov_x, mov_y)
+		
+		if not client_enemies.has(enemy_id):
+			if not has_filenames:
+				continue
+			var enemy = spawn_enemy(position, filename, resource_path)
+			client_enemies[enemy_id] = enemy
+			
+		var stored_enemy = client_enemies[enemy_id]
+		if is_instance_valid(stored_enemy):
+			server_enemies[enemy_id] = true
+			stored_enemy.position = position
+			stored_enemy.call_deferred("update_animation", movement)
+			
+	var num_bosses = buffer.get_u16()
+	
+	for _enemy_index in num_bosses:
 		var enemy_id = buffer.get_32()
 		var has_filenames = buffer.get_8() == 1
 		var filename = ""

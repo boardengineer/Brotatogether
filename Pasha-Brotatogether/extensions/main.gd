@@ -78,6 +78,8 @@ func spawn_additional_players() -> void:
 			spawned_player.connect("health_updated", self, "on_health_update")
 			spawned_player.connect("died", self, "_on_player_died")
 			
+			var _error_on_healed = spawned_player.connect("healed", self, "on_player_healed")
+			
 			spawned_player.dodge_sounds = _player.dodge_sounds.duplicate()
 			
 			connect_visual_effects(spawned_player)
