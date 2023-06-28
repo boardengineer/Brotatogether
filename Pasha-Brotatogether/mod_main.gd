@@ -39,7 +39,10 @@ func _init(modLoader = ModLoader):
 	
 	
 	ModLoaderMod.install_script_extension(ext_dir + "zones/wave_manager.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "weapons/shooting_behaviors/ranged_weapon_shooting_behavior.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "weapons/shooting_behaviors/melee_weapon_shooting_behavior.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "visual_effects/floating_text/floating_text_manager.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	
