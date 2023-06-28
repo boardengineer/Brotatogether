@@ -17,7 +17,16 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 		var game_controller = $"/root/GameController"
 		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 			return [0, 0 ,0]
-	return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
+	
+	var result = .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
+	
+	if  $"/root".has_node("GameController"):
+		var game_controller = $"/root/GameController"
+		
+		var is_dodge = result.size() >= 3 and result[2] 
+		game_controller.send_enemy_take_damage(get_network_id(), is_dodge)
+	
+	return result
 
 func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false)->void :
 	if  $"/root".has_node("GameController"):

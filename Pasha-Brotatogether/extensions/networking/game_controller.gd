@@ -347,6 +347,21 @@ func receive_shot(player_id:int, weapon_index:int) -> void:
 				var weapon = player.current_weapons[weapon_index]
 				SoundManager.play(Utils.get_rand_element(weapon.current_stats.shooting_sounds), weapon.current_stats.sound_db_mod, 0.2)
 
+
+func send_enemy_take_damage(enemy_id:int, is_dodge: bool) -> void:
+	connection.send_enemy_take_damage(enemy_id, is_dodge)
+
+func receive_enemy_take_damage(enemy_id:int, is_dodge:bool) -> void:
+	if game_state_controller.client_enemies.has(enemy_id):
+		var enemy = game_state_controller.client_enemies[enemy_id]
+		if is_instance_valid(enemy):
+			var sound
+			if is_dodge:
+				sound = Utils.get_rand_element(enemy.dodge_sounds)
+			else:
+				sound = Utils.get_rand_element(enemy.hurt_sounds)
+			SoundManager2D.play(sound, enemy.global_position, 0, 0.2, enemy.always_play_hurt_sound)
+
 func send_flash_neutral(neutral_id:int) -> void:
 	connection.send_flash_neutral(neutral_id)
 
