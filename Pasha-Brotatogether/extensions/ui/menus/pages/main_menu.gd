@@ -13,6 +13,13 @@ func _ready():
 	
 	buttons_node.add_child_below_node(buttons_node.get_children()[0], multiplayer_button)
 	buttons_node.move_child(multiplayer_button, 0)
+	
+	remove_game_controller()
 
 func _on_MultiplayerButton_pressed():
 	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/multiplayer_menu.tscn")
+
+func remove_game_controller():
+	if $"/root".has_node("GameController"):
+		var game_controller = $"/root/GameController"
+		$"/root".remove_child(game_controller)
