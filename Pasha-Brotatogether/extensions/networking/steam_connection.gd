@@ -60,6 +60,8 @@ func read_p2p_packet() -> bool:
 			parent.receive_death(sender)
 		elif type == "shot":
 			parent.receive_shot(data.player_id, data.weapon_index)
+		elif type == "explosion":
+			parent.receive_explosion(Vector2(data.pos_x, data.pos_y), data.scale)
 		elif type == "enemy_take_damage":
 			parent.receive_enemy_take_damage(data.enemy_id, data.is_dodge)
 		elif type == "request_lobby_update":
@@ -273,6 +275,14 @@ func send_health_update(current_health:int, max_health:int) -> void:
 func send_death() -> void:
 	var send_data = {}
 	send_data["type"] = "death"
+	send_data_to_all(send_data)
+
+func send_explosion(pos: Vector2, scale: float) -> void:
+	var send_data = {}
+	send_data["type"] = "explosion"
+	send_data["pos_x"] = pos.x
+	send_data["pos_y"] = pos.y
+	send_data["scale"] = scale
 	send_data_to_all(send_data)
 
 func send_enemy_take_damage(enemy_id:int, is_dodge:bool) -> void:

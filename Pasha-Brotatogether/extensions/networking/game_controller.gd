@@ -22,6 +22,7 @@ const GameStateController = preload("res://mods-unpacked/Pasha-Brotatogether/ext
 
 const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/toggle.tscn")
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")
+const explosion_scene = preload("res://projectiles/explosion.tscn")
 
 var current_scene_name = ""
 var run_updates = false
@@ -347,6 +348,16 @@ func receive_shot(player_id:int, weapon_index:int) -> void:
 				var weapon = player.current_weapons[weapon_index]
 				SoundManager.play(Utils.get_rand_element(weapon.current_stats.shooting_sounds), weapon.current_stats.sound_db_mod, 0.2)
 
+
+func send_explosion(pos: Vector2, scale: float) -> void:
+	connection.send_explosion(pos, scale)
+	
+func receive_explosion(pos: Vector2, scale: float) -> void:
+	var main = get_tree().current_scene
+	var instance = explosion_scene.instance()
+	instance.set_deferred("global_position", pos)
+	main.call_deferred("add_child", instance)
+	instance.call_deferred("set_area", scale)
 
 func send_enemy_take_damage(enemy_id:int, is_dodge: bool) -> void:
 	connection.send_enemy_take_damage(enemy_id, is_dodge)

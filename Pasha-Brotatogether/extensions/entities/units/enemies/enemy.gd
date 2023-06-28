@@ -51,4 +51,6 @@ func _on_Hurtbox_area_entered(hitbox:Area2D)->void :
 	._on_Hurtbox_area_entered(hitbox)
 
 func get_network_id() -> int:
-	return get_node("data_node").network_id
+	if self.has_node("data_node"):
+		return get_node("data_node").network_id
+	return -1
