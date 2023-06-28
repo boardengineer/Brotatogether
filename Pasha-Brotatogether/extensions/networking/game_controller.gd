@@ -334,6 +334,18 @@ func send_end_wave() -> void:
 
 func send_flash_enemy(enemy_id:int) -> void:
 	connection.send_flash_enemy(enemy_id)
+	
+func send_shot(player_id:int, weapon_index:int) -> void:
+	connection.send_shot(player_id, weapon_index)
+	
+func receive_shot(player_id:int, weapon_index:int) -> void:
+	if tracked_players.has(player_id):
+		if tracked_players[player_id].has("player"):
+			var player = tracked_players[player_id]["player"]
+			
+			if is_instance_valid(player):
+				var weapon = player.current_weapons[weapon_index]
+				SoundManager.play(Utils.get_rand_element(weapon.current_stats.shooting_sounds), weapon.current_stats.sound_db_mod, 0.2)
 
 func send_flash_neutral(neutral_id:int) -> void:
 	connection.send_flash_neutral(neutral_id)

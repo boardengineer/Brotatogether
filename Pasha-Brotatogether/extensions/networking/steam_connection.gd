@@ -58,6 +58,8 @@ func read_p2p_packet() -> bool:
 			parent.receive_health_update(data.current_health, data.max_health, sender)
 		elif type == "death":
 			parent.receive_death(sender)
+		elif type == "shot":
+			parent.receive_shot(data.player_id, data.weapon_index)
 		elif type == "request_lobby_update":
 			print_debug("received updated request")
 			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
@@ -174,12 +176,19 @@ func send_end_wave():
 	send_data["type"] = "end_wave"
 	send_data_to_all(send_data)
 
+func send_shot(player_id:int, weapon_index:int) -> void:
+	var send_data = {}
+	send_data["type"] = "shot"
+	send_data["player_id"] = player_id
+	send_data["weapon_index"] = weapon_index
+	send_data_to_all(send_data)
+	
 func send_flash_enemy(enemy_id):
 	var send_data = {}
 	send_data["type"] = "flash_enemy"
 	send_data["enemy_id"] = enemy_id
 	send_data_to_all(send_data)
-			
+	
 func send_flash_neutral(neutral_id):
 	var send_data = {}
 	send_data["type"] = "flash_neutral"
