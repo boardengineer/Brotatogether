@@ -2,6 +2,7 @@ extends "res://mods-unpacked/Pasha-Brotatogether/extensions/networking/connectio
 
 var lobby_id = 0
 var parent
+var established_p2p_connections = {}
 
 func _ready():
 	lobby_id = 0
@@ -49,6 +50,8 @@ func read_p2p_packet() -> bool:
 			parent.update_ready_state(sender, data.is_ready)
 		elif type == "handshake":
 			# completes the handshake?
+			established_p2p_connections[sender] = true
+			update_tracked_players()
 			send_welcomes()
 		elif type == "update_tracked_players":
 			parent.update_tracked_players(data.tracked_players)
@@ -101,6 +104,7 @@ func close_lobby() -> void:
 
 func _on_Lobby_Joined(joined_lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == 1:
+		print_debug("on lobby joined")
 		lobby_id = joined_lobby_id
 		parent.self_peer_id = Steam.getSteamID()
 		var _scene_error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
@@ -115,7 +119,7 @@ func _on_Lobby_Chat_Update(_update_lobby_id: int, change_id: int, _making_change
 	update_tracked_players()
 	
 	if chat_state == 1:
-		print_debug(username, " joined the lobby")
+		print_debug(username, " joined the lobby ", change_id)
 		pass
 		
 	# Else if a player has left the lobby
@@ -137,13 +141,22 @@ func update_tracked_players() -> void:
 
 	# Get the number of members from this lobby from Steam
 	var num_members = Steam.getNumLobbyMembers(lobby_id)
+	var all_players_ready = true
 
 	# Get the data of these players from Steam
 	for member_index in range(num_members):
 		var member_steam_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
 		var member_username: String = Steam.getFriendPersonaName(member_steam_id)
 		
+		if not established_p2p_connections.has(member_steam_id) or not established_p2p_connections[member_steam_id]:
+			if member_steam_id != parent.self_peer_id:
+				all_players_ready = false
+				member_username = member_username + " (loading)"
+		
 		parent.tracked_players[member_steam_id] = {"username": member_username}
+	
+	parent.all_players_ready = all_players_ready
+	parent.update_multiplayer_lobby()
 
 func send_state(game_state:PoolByteArray) -> void:
 	var send_data = {}

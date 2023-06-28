@@ -33,11 +33,16 @@ func update_player_list() -> void:
 	var steam_connection = $"/root/SteamConnection"
 	steam_connection.update_tracked_players()
 	
+func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: int, _chat_state: int) -> void:
+	update_player_list()
+
+func update_selections() -> void:
 	for node in player_list.get_children():
 		player_list.remove_child(node)
 		node.queue_free()
 		
 	var game_controller = $"/root/GameController"
+	var steam_connection = $"/root/SteamConnection"
 	var host = steam_connection.get_lobby_host()
 	
 	for player_id in game_controller.tracked_players:
@@ -50,11 +55,7 @@ func update_player_list() -> void:
 			label.text = username
 		label.show()
 		player_list.add_child(label)
-
-func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: int, _chat_state: int) -> void:
-	update_player_list()
-
-func update_selections() -> void:
+	
 	var can_start = false
 	
 	if RunData.current_character:
@@ -77,10 +78,10 @@ func update_selections() -> void:
 		# reset weapon selection
 		weapon_select_button.disabled = true
 		danger_select_button.disabled = true
-	var game_controller = $"/root/GameController"
 	
 	if game_controller.is_host:
 		game_controller.send_lobby_update(get_lobby_info_dictionary())
+	can_start = can_start and game_controller.all_players_ready
 	if can_start and game_controller.is_host:
 		start_button.disabled = false
 		other_start_button.disabled = false
@@ -88,7 +89,6 @@ func update_selections() -> void:
 		start_button.disabled = true
 		other_start_button.disabled = true
 	
-
 func _on_StartButton_pressed():
 	var game_controller = $"/root/GameController"
 	if not game_controller.is_host:

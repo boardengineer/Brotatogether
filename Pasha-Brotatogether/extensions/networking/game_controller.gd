@@ -28,6 +28,7 @@ var current_scene_name = ""
 var run_updates = false
 var disable_pause = false
 var back_to_lobby = false
+var all_players_ready = true
 
 var ready_toggle
 
@@ -383,6 +384,10 @@ func receive_lobby_update(lobby_info:Dictionary) -> void:
 	if current_scene_name == "MultiplayerLobby":
 		$"/root/MultiplayerLobby".remote_update_lobby(lobby_info)
 	
+func update_multiplayer_lobby() -> void:
+	if current_scene_name == "MultiplayerLobby":
+		$"/root/MultiplayerLobby".update_selections()
+
 func send_client_position() -> void:
 	if not tracked_players.has(self_peer_id) or not tracked_players[self_peer_id].has("player"):
 		return
