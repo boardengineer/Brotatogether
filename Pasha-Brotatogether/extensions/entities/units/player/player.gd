@@ -57,10 +57,6 @@ func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 	elif _animation_player.current_animation == "move" and movement == Vector2.ZERO:
 		_animation_player.play("idle")
 		_running_smoke.stop()
-
-#TODO get rid of this, add assets to the client scene
-func play_step_sound()->void :
-	pass
 	
 func _on_ItemAttractArea_area_entered(area:Area2D)->void :
 	if  $"/root".has_node("GameController"):

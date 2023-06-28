@@ -137,11 +137,13 @@ func start_game(game_info: Dictionary):
 			var lobby_info = game_info.lobby_info
 			
 			var character_data = load(lobby_info.character)
-			var weapon_data = load(lobby_info.weapon)
+			
+			if lobby_info.has("weapon"):
+				var weapon_data = load(lobby_info.weapon)
+				var _unused = RunData.add_weapon(weapon_data, true)
 			var danger = lobby_info.danger
 			
 			RunData.add_character(character_data)
-			var _unused = RunData.add_weapon(weapon_data, true)
 			RunData.add_starting_items_and_weapons()
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
