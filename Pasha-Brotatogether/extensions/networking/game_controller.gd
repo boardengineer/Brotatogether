@@ -157,6 +157,14 @@ func start_game(game_info: Dictionary):
 			
 			back_to_lobby = false
 			
+			var num_players = tracked_players.size()
+			var speed_multi = 1 + (num_players - 1.0) * .25 
+			
+			RunData.current_run_accessibility_settings = ProgressData.settings.enemy_scaling.duplicate()
+			RunData.current_run_accessibility_settings.health = RunData.current_run_accessibility_settings.health * num_players
+			RunData.current_run_accessibility_settings.damage = RunData.current_run_accessibility_settings.damage * num_players
+			RunData.current_run_accessibility_settings.speed = RunData.current_run_accessibility_settings.speed * speed_multi
+			
 			
 #		tracked_players = {}
 #		RunData.current_wave = game_info.current_wave
