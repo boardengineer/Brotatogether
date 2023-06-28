@@ -833,6 +833,8 @@ func get_consumables_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 		
 		buffer.put_float(consumable.global_position.x)
 		buffer.put_float(consumable.global_position.y)
+		
+		buffer.put_string(consumable.consumable_data.icon.load_path)
 	return buffer.data_array
 
 func update_consumables(buffer:StreamPeerBuffer) -> void:
@@ -846,8 +848,11 @@ func update_consumables(buffer:StreamPeerBuffer) -> void:
 		var pos_x = buffer.get_float()
 		var pos_y = buffer.get_float()
 		var position = Vector2(pos_x, pos_y)
+		
+		var texture_path = buffer.get_string()
+		
 		if not client_consumables.has(consumable_id):
-			client_consumables[consumable_id] = spawn_consumable(position)
+			client_consumables[consumable_id] = spawn_consumable(position, texture_path)
 			
 		var consumable = client_consumables[consumable_id]
 		if is_instance_valid(consumable):
@@ -860,11 +865,11 @@ func update_consumables(buffer:StreamPeerBuffer) -> void:
 			if is_instance_valid(consumable):
 				$"/root/ClientMain/Consumables".remove_child(consumable)
 
-func spawn_consumable(position:Vector2):
+func spawn_consumable(position:Vector2, filepath:String):
 	var consumable = consumable_scene.instance()
 	
 	consumable.global_position = position
-	consumable.call_deferred("set_texture", consumable_texture)
+	consumable.call_deferred("set_texture", load(filepath))
 	consumable.call_deferred("set_physics_process", false)
 	
 	$"/root/ClientMain/Consumables".add_child(consumable)
