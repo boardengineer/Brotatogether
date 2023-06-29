@@ -19,7 +19,6 @@ export (Array, Resource) var end_wave_sounds:Array
 const EDGE_SIZE = 96
 const MAX_GOLDS = 50
 const MIN_MAP_SIZE = 12
-const PlaceHolderSprite = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/PlaceHolder.tscn")
 
 const MOUSE_DIST_FROM_PLAYER_MANUAL_AIM = 200
 
