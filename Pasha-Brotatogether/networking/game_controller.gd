@@ -20,8 +20,8 @@ var id_count = 0
 
 const GameStateController = preload("res://mods-unpacked/Pasha-Brotatogether/networking/game_state_controller.gd")
 
-const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/toggle.tscn")
-const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")
+const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/toggle.tscn")
+const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/button.tscn")
 const explosion_scene = preload("res://projectiles/explosion.tscn")
 
 var current_scene_name = ""

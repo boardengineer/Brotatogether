@@ -17,7 +17,7 @@ func _ready():
 	remove_game_controller()
 
 func _on_MultiplayerButton_pressed():
-	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/multiplayer_menu.tscn")
+	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
 
 func remove_game_controller():
 	if $"/root".has_node("GameController"):
