@@ -18,7 +18,7 @@ var game_mode = ""
 # A counter user to assign ids for game components
 var id_count = 0
 
-const GameStateController = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/game_state_controller.gd")
+const GameStateController = preload("res://mods-unpacked/Pasha-Brotatogether/networking/game_state_controller.gd")
 
 const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/toggle.tscn")
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/ui/menus/pages/button.tscn")

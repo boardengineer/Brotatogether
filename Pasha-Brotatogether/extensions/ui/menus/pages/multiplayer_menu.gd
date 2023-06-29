@@ -9,10 +9,10 @@ onready var ip_box = $"HBoxContainer/InfoBox/ServerIp"
 
 var lobby_id = 0
 
-const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/steam_connection.gd")
-const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/direct_connection.gd")
+const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/steam_connection.gd")
+const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/direct_connection.gd")
 
-var GameController = load("res://mods-unpacked/Pasha-Brotatogether/extensions/networking/game_controller.gd")
+var GameController = load("res://mods-unpacked/Pasha-Brotatogether/networking/game_controller.gd")
 
 var steam_connection
 var direct_connection

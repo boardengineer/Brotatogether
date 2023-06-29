@@ -1,4 +1,4 @@
-extends "res://mods-unpacked/Pasha-Brotatogether/extensions/networking/connection.gd"
+extends "res://mods-unpacked/Pasha-Brotatogether/networking/connection.gd"
 
 var parent
 	
