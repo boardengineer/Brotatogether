@@ -515,7 +515,6 @@ func _on_EndWaveTimer_timeout()->void :
 			yield (_challenge_completed_ui, "finished")
 		
 		var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
-#		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.gd")
 
 func on_focus_lost()->void :
 	if _end_wave_timer_timedout:

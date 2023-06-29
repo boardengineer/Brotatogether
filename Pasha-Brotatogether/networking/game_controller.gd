@@ -18,7 +18,7 @@ var game_mode = ""
 # A counter user to assign ids for game components
 var id_count = 0
 
-const GameStateController = preload("res://mods-unpacked/Pasha-Brotatogether/networking/game_state_controller.gd")
+var GameStateController = load("res://mods-unpacked/Pasha-Brotatogether/networking/game_state_controller.gd")
 
 const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/toggle.tscn")
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/button.tscn")
@@ -169,17 +169,13 @@ func start_game(game_info: Dictionary):
 #		tracked_players = {}
 #		RunData.current_wave = game_info.current_wave
 		
-		# TODO, I think i only need to do this in the first frame but i need to do the testing to 
-		# make sure
-#		RunData.add_character(load("res://items/characters/well_rounded/well_rounded_data.tres"))
-#		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
 		# MIGRATE reset_client_items()
 		run_updates = true
 		RunData.current_wave = game_info.current_wave
 		if is_host:
 			var _change_error = get_tree().change_scene(MenuData.game_scene)
 		else:
-			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/client_main.tscn")
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/client_main.tscn")
 		
 	elif game_mode == "async":
 		if game_info.current_wave == 1:

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://resources/themes/inventory_button_theme.tres" type="Theme" id=1]
-[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/waiting.gd" type="Script" id=2]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/client/waiting.gd" type="Script" id=2]
 
 [node name="Node2D" type="Node2D"]
 script = ExtResource( 2 )

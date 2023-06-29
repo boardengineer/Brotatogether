@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=2]
+[gd_scene load_steps=14 format=2]
 
 [ext_resource path="res://resources/shaders/flash.gdshader" type="Shader" id=1]
 [ext_resource path="res://overlap/hitbox.tscn" type="PackedScene" id=2]
@@ -6,7 +6,6 @@
 [ext_resource path="res://entities/units/enemies/attack_behaviors/attack_behavior.gd" type="Script" id=4]
 [ext_resource path="res://particles/burning/unit_burning_particles.tscn" type="PackedScene" id=5]
 [ext_resource path="res://entities/units/enemies/001/1.png" type="Texture" id=6]
-[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/enemies/enemy.gd" type="Script" id=7]
 [ext_resource path="res://overlap/hurtbox.tscn" type="PackedScene" id=8]
 
 [sub_resource type="ShaderMaterial" id=3]
@@ -244,7 +243,6 @@ tracks/3/keys = {
 [node name="Enemy" type="KinematicBody2D"]
 collision_layer = 4
 collision_mask = 132
-script = ExtResource( 7 )
 
 [node name="Animation" type="Node2D" parent="."]
 position = Vector2( 0, -24 )
