@@ -189,7 +189,7 @@ func spawn_enemy_projectile(position:Vector2, global_position:Vector2, rotation:
 	return projectile
 
 
-func get_items_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_items_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
 	
 	var num_items = main._items_container.get_children().size()
@@ -216,7 +216,6 @@ func get_items_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 			buffer.put_8(0)
 
 		# TODO we may want textures propagated
-	return buffer.data_array
 
 func update_items(buffer:StreamPeerBuffer) -> void:
 	var server_items = {}
@@ -280,7 +279,7 @@ func spawn_gold(position:Vector2, scale:Vector2, rotation:float, push_back_desti
 	
 	return gold
 
-func get_projectiles_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_projectiles_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
 	
 	var num_projectiles = 0 
@@ -304,7 +303,6 @@ func get_projectiles_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 			
 			# TODO send conditionally 
 			buffer.put_string(child.filename)
-	return buffer.data_array
 
 func update_player_projectiles(buffer:StreamPeerBuffer) -> void:
 	var server_player_projectiles = {}
@@ -374,7 +372,7 @@ func flash_neutral(neutral_id):
 		if is_instance_valid(client_neutrals[neutral_id]):
 			client_neutrals[neutral_id].flash()
 
-func get_enemies_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_enemies_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
 	var entity_spawner = main._entity_spawner
 	
@@ -423,8 +421,6 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 				buffer.put_float(enemy.position.y)
 				buffer.put_float(enemy._current_movement.x)
 				buffer.put_float(enemy._current_movement.y)			
-				
-	return buffer.data_array
 
 func update_enemies(buffer:StreamPeerBuffer) -> void:
 	var server_enemies = {}
@@ -622,7 +618,7 @@ func spawn_stucture(position:Vector2, filename:String):
 
 	return structure
 
-func get_births_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_births_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
 	
 	var num_births = main._entity_spawner.births.size()
@@ -639,8 +635,6 @@ func get_births_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 			buffer.put_float(birth.color.g)
 			buffer.put_float(birth.color.b)
 			buffer.put_float(birth.color.a)
-		
-	return buffer.data_array
 
 func update_births(buffer:StreamPeerBuffer) -> void:
 	var server_births = {}
@@ -669,7 +663,7 @@ func update_births(buffer:StreamPeerBuffer) -> void:
 				client_births.erase(birth_id)
 
 
-func get_players_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_players_state(buffer: StreamPeerBuffer) -> void:
 	var tracked_players = parent.tracked_players
 	
 	var num_players = tracked_players.size()
@@ -724,8 +718,6 @@ func get_players_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 #				sent_detail_ids[player_id] = true
 			else:
 				buffer.put_8(0)
-
-	return buffer.data_array
 
 func update_players(buffer:StreamPeerBuffer) -> void:
 	var tracked_players = parent.tracked_players
@@ -822,7 +814,7 @@ func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array, a
 
 	return spawned_player
 
-func get_consumables_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_consumables_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
 	
 	var num_consumables = main._consumables_container.get_children().size()
@@ -835,7 +827,6 @@ func get_consumables_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 		buffer.put_float(consumable.global_position.y)
 		
 		buffer.put_string(consumable.consumable_data.icon.load_path)
-	return buffer.data_array
 
 func update_consumables(buffer:StreamPeerBuffer) -> void:
 	var num_consumables = buffer.get_u16()
@@ -876,7 +867,7 @@ func spawn_consumable(position:Vector2, filepath:String):
 	
 	return consumable
 
-func get_neutrals_state(buffer: StreamPeerBuffer) -> PoolByteArray:
+func get_neutrals_state(buffer: StreamPeerBuffer) -> void:
 	var main = $"/root/Main"
 	
 	var num_neutrals = 0
@@ -894,7 +885,6 @@ func get_neutrals_state(buffer: StreamPeerBuffer) -> PoolByteArray:
 			
 			buffer.put_float(neutral.global_position.x)
 			buffer.put_float(neutral.global_position.y)
-	return buffer.data_array
 
 func update_neutrals(buffer:StreamPeerBuffer) -> void:
 	var server_neutrals = {}
