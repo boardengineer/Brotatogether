@@ -26,8 +26,8 @@ var turret_stats_resource = ResourceLoader.load("res://entities/structures/turre
 # TODO all neutrals are going to be trees for now
 const tree_scene = preload("res://entities/units/neutral/tree.tscn")
 
-const ClientMovementBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
-const ClientAttackBehavior = preload("res://mods-unpacked/Pasha-Brotatogether/client/client_attack_behavior.gd")
+var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
+var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_attack_behavior.gd")
 
 # TODO sometimes clear these
 var sent_detail_ids = {}
