@@ -675,7 +675,7 @@ func _on_WaveTimer_timeout()->void :
 	if $"/root/GameController":
 		if $"/root/GameController".game_mode == "shared":
 			if not $"/root/GameController".is_source_of_truth:
-				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/extensions/waiting.tscn")
+				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/waiting.tscn")
 			else:
 				# This is an opponent shop now, might need to be a friendlier shop later
 				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
