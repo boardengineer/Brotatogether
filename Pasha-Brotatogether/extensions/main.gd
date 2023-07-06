@@ -269,6 +269,9 @@ func on_levelled_up()->void :
 	RunData.add_stat("stat_max_hp", 1)
 	RunData.emit_signal("healing_effect", 1)
 	
+	for stat_level_up in RunData.effects["stats_on_level_up"]:
+		RunData.add_stat(stat_level_up[0], stat_level_up[1])
+	
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
 		if game_controller and game_controller.is_source_of_truth:
