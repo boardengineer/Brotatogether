@@ -130,8 +130,8 @@ func _on_StartButton2_pressed():
 	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_SteamLobbies_pressed():
-	for old_child in $"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".get_children():
-		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".remove_child(old_child)
+	for old_child in $"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".get_children():
+		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".remove_child(old_child)
 	
 	Steam.addRequestLobbyListDistanceFilter(3)
 	Steam.addRequestLobbyListStringFilter("game", "Brotatogether", 0)
@@ -160,7 +160,7 @@ func update_lobbies(lobbies: Array) -> void:
 		var join_button = Button.new()
 		var host_name = Steam.getLobbyData(found_lobby_id, "host")
 		join_button.text = str(host_name)
-		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox".add_child(join_button)
+		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".add_child(join_button)
 		join_button.connect("pressed", self, "join_button_pressed", [found_lobby_id])
 		# Steam.joinLobby(lobbies[0])
 		

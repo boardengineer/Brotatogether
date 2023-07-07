@@ -40,18 +40,26 @@ grow_vertical = 0
 rect_min_size = Vector2( 0, 50 )
 text = "127.0.0.1"
 
-[node name="LobbiesBox" type="VBoxContainer" parent="HBoxContainer"]
+[node name="LobbiesBox" type="ScrollContainer" parent="HBoxContainer"]
 margin_left = 625.0
+margin_top = 190.0
 margin_right = 1118.0
-margin_bottom = 1080.0
+margin_bottom = 890.0
+rect_min_size = Vector2( 0, 700 )
+size_flags_horizontal = 2
+size_flags_vertical = 6
+scroll_horizontal_enabled = false
+
+[node name="Lobbies" type="VBoxContainer" parent="HBoxContainer/LobbiesBox"]
+margin_right = 493.0
+margin_bottom = 31.0
 size_flags_horizontal = 2
 custom_constants/separation = 50
 alignment = 1
 
-[node name="Label" type="Label" parent="HBoxContainer/LobbiesBox"]
-margin_top = 524.0
+[node name="Label" type="Label" parent="HBoxContainer/LobbiesBox/Lobbies"]
 margin_right = 493.0
-margin_bottom = 555.0
+margin_bottom = 31.0
 custom_fonts/font = ExtResource( 1 )
 text = "Lobbies Will Show up Here As Buttons"
 
