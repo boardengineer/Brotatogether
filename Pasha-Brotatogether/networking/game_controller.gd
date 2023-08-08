@@ -119,6 +119,32 @@ func _on_GoButton_pressed()-> void:
 	
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
+func init_multiplayer_run_data():
+	for player_id in tracked_players:
+		var run_data = {}
+		
+		run_data["effects"] = RunData.init_effects()
+		
+		run_data["items"] = []
+		run_data["weapons"] = []
+		run_data["additional_weapon_effects"] = []
+		
+		run_data["tier_i_weapon_effects"] = []
+		run_data["tier_iv_weapon_effects"] = []
+		
+		run_data["unique_effects"] = []
+		run_data["appearances_displayed"] = []
+		
+		tracked_players[player_id]["linked_stats"] = {}
+		tracked_players[player_id]["linked_stats"]["stats"] = RunData.init_stats()
+		tracked_players[player_id]["linked_stats"]["update_on_gold_chance"] = false
+		
+		tracked_players[player_id]["temp_stats"] = {}
+		tracked_players[player_id]["temp_stats"]["stats"] = RunData.init_stats()
+		
+		tracked_players[player_id]["run_data"] = run_data
+		
+
 func start_game(game_info: Dictionary):
 	reset_extra_creatures()
 	reset_ready_map()
@@ -130,6 +156,8 @@ func start_game(game_info: Dictionary):
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		if game_info.current_wave == 1:
+			init_multiplayer_run_data()
+			
 			RunData.weapons = []
 			RunData.items = []
 			RunData.effects = RunData.init_effects()
@@ -246,6 +274,31 @@ func check_win() -> void:
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
 		main._end_wave_timer.start()
 		ProgressData.reset_run_state()
+
+# Send normal item
+func send_bought_item_by_id(item_id:String) -> void:
+	if is_host:
+		receive_bought_item_by_id(item_id, self_peer_id)
+	else:
+		connection.send_bought_item_by_id(item_id)
+
+func receive_bought_item_by_id(item_id:String, self_peer_id:int) -> void:
+	print_debug("This is where we should add all the items for ", item_id, " " , self_peer_id)
+	
+	for item in ItemService.items:
+		if item.my_id == item_id:
+			var run_data = $"/root/MultiplayerRunData"
+			run_data.add_item(self_peer_id, item)
+			
+			print_debug("matched item ", item_id)
+			for effect in item.effects:
+				print_debug(effect.key)
+			
+#	for weapon in ItemService.weapons:
+#		if weapon.my_id == item_id:
+#			print_debug("matched weapon ", item_id)
+			
+	connection.send_tracked_players(tracked_players)
 
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:

@@ -24,6 +24,7 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/follow_player_movement_behavior.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "items/consumables/consumable.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "items/global/effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "items/materials/gold.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/run_data.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/weapon_service.gd")
@@ -37,8 +38,8 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")
-	
-	
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/stat_container.gd")
+		
 	ModLoaderMod.install_script_extension(ext_dir + "zones/wave_manager.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "weapons/shooting_behaviors/ranged_weapon_shooting_behavior.gd")
@@ -47,3 +48,13 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "visual_effects/floating_text/floating_text_manager.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	
+func _ready():
+	var run_data = load("res://mods-unpacked/Pasha-Brotatogether/run_data.gd")
+	var run_data_node = run_data.new()
+	run_data_node.set_name("MultiplayerRunData")
+	$"/root".call_deferred("add_child", run_data_node)
+	
+	var utils = load("res://mods-unpacked/Pasha-Brotatogether/utils.gd")
+	var utils_node = utils.new()
+	utils_node.set_name("MultiplayerUtils")
+	$"/root".call_deferred("add_child", utils_node)
