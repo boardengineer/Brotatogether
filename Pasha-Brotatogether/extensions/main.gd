@@ -67,6 +67,13 @@ func spawn_additional_players() -> void:
 	
 	# The first player was created on at startup, create the rest manually
 	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
+	_player.player_network_id = game_controller.self_peer_id
+	
+	# re-init the weapons after we set the network id
+	for weapon in _player.current_weapons:
+		if is_instance_valid(weapon):
+			init_weapon_stats(weapon, game_controller.self_peer_id, false)
+	
 	if game_controller.is_source_of_truth:
 		for player_id in game_controller.tracked_players: 
 			if player_id == game_controller.self_peer_id:
@@ -74,6 +81,12 @@ func spawn_additional_players() -> void:
 				
 			var spawn_pos = Vector2(spawn_x_pos, _entity_spawner._zone_max_pos.y / 2)
 			var spawned_player = _entity_spawner.spawn_entity(player_scene, spawn_pos, true)
+			spawned_player.player_network_id = player_id
+			
+			# re-init the weapons after we set the network id
+			for weapon in spawned_player.current_weapons:
+				if is_instance_valid(weapon):
+					init_weapon_stats(weapon, player_id, false)
 			
 			spawned_player.connect("health_updated", self, "on_health_update")
 			spawned_player.connect("died", self, "_on_player_died")
@@ -90,6 +103,63 @@ func spawn_additional_players() -> void:
 			game_controller.tracked_players[player_id]["player"] = spawned_player
 			spawn_x_pos += 200
 	
+func reload_stats()->void :
+	if  $"/root".has_node("GameController"):
+		var game_controller = $"/root/GameController"
+		
+		for player_id in game_controller.tracked_players:
+			for weapon in game_controller.tracked_players[player_id].player.current_weapons:
+				if is_instance_valid(weapon):
+					init_weapon_stats(weapon, player_id, false)
+			
+			print_debug("player_id ", player_id)
+			
+			game_controller.tracked_players[player_id].player.update_player_stats_multiplayer()
+		
+		print_debug("multiplayer reload stats")
+		
+		LinkedStats.reset()
+		
+		for struct in _entity_spawner.structures:
+			if is_instance_valid(struct):
+				struct.reload_data()
+	
+		_proj_on_death_stat_cache.clear()
+	else:
+		.reload_stats()
+
+func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) -> void:
+	print_debug("initting multiplayer weapon stats")
+	
+	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+	
+	if weapon.stats is RangedWeaponStats:
+		weapon.current_stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_id, weapon.stats, weapon.weapon_id, weapon.weapon_sets, weapon.effects)
+	else :
+		weapon.current_stats = multiplayer_weapon_service.init_melee_stats_multiplayer(player_id, weapon.stats, weapon.weapon_id, weapon.weapon_sets, weapon.effects)
+	
+	weapon._hitbox.projectiles_on_hit = []
+		
+	for effect in weapon.effects:
+		if effect is ProjectilesOnHitEffect:
+			var weapon_stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_id, effect.weapon_stats)
+			weapon.set_projectile_on_hit(effect.value, weapon.weapon_stats, effect.auto_target_enemy)
+	
+	weapon.current_stats.burning_data = weapon.current_stats.burning_data.duplicate()
+	weapon.current_stats.burning_data.from = self
+	
+	var current_stats = weapon.current_stats
+	
+	weapon._hitbox.effect_scale = weapon.current_stats.effect_scale
+	weapon._hitbox.set_damage(current_stats.damage, current_stats.accuracy, current_stats.crit_chance, current_stats.crit_damage, current_stats.burning_data, current_stats.is_healing)
+	weapon._hitbox.effects = weapon.effects
+	weapon._hitbox.from = self
+	
+	if at_wave_begin:
+		weapon._current_cooldown = current_stats.cooldown
+	
+	weapon._range_shape.shape.radius = current_stats.max_range + 200
+
 func _process(_delta):
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"

@@ -1,4 +1,4 @@
-extends Weapon
+extends "res://weapons/melee/melee_weapon.gd"
 
 func init_stats(at_wave_begin:bool = true) -> void:
 	print_debug("(override) init weapon stats: ", _parent.player_network_id)

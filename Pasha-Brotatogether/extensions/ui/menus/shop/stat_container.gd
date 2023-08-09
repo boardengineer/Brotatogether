@@ -5,6 +5,7 @@ func update_stat()->void :
 		var game_controller = $"/root/GameController"
 
 		var player = game_controller.tracked_players[game_controller.self_peer_id]
+		var run_data = player.run_data
 		
 		var utils = $"/root/MultiplayerUtils"
 		
@@ -14,12 +15,12 @@ func update_stat()->void :
 		_icon.texture = ItemService.get_stat_small_icon(key.to_lower())
 		_label.text = key
 	
-		if key.to_lower() == "stat_dodge" and stat_value > RunData.effects["dodge_cap"]:
-			value_text += " | " + str(RunData.effects["dodge_cap"] as int)
-		elif key.to_lower() == "stat_max_hp" and RunData.effects["hp_cap"] < 9999:
-			value_text += " | " + str(RunData.effects["hp_cap"] as int)
-		elif key.to_lower() == "stat_speed" and RunData.effects["speed_cap"] < 9999:
-			value_text += " | " + str(RunData.effects["speed_cap"] as int)
+		if key.to_lower() == "stat_dodge" and stat_value > run_data.effects["dodge_cap"]:
+			value_text += " | " + str(run_data.effects["dodge_cap"] as int)
+		elif key.to_lower() == "stat_max_hp" and run_data.effects["hp_cap"] < 9999:
+			value_text += " | " + str(run_data.effects["hp_cap"] as int)
+		elif key.to_lower() == "stat_speed" and run_data.effects["speed_cap"] < 9999:
+			value_text += " | " + str(run_data.effects["speed_cap"] as int)
 		
 		_value.text = value_text
 	
@@ -33,7 +34,7 @@ func update_stat()->void :
 			_label.modulate = Color.white
 			_value.modulate = Color.white
 		
-		print_debug("showing updated stat for ", key, " ", value_text)
+#		print_debug("showing updated stat for ", key, " ", value_text)
 #		.update_stat()
 	else:
 		.update_stat()

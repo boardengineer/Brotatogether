@@ -496,7 +496,7 @@ func reset_extra_creatures():
 
 func update_go_button():
 	var should_enable = true
-	print_debug("tracked players: ", tracked_players)
+#	print_debug("tracked players: ", tracked_players)
 	for player_id in tracked_players:
 		if player_id != self_peer_id and not tracked_players[player_id]["is_ready"]:
 			should_enable = false

@@ -14,9 +14,7 @@ func _init(_modLoader = ModLoader):
 	# Add extensions
 #	modLoader.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
-#	ModLoaderMod.install_script_extension(ext_dir + "weapons/weapon.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/player.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/neutral/neutral.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/enemy.gd")
@@ -49,6 +47,8 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	
 func _ready():
+	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/player.gd")
+		
 	var run_data = load("res://mods-unpacked/Pasha-Brotatogether/run_data.gd")
 	var run_data_node = run_data.new()
 	run_data_node.set_name("MultiplayerRunData")
@@ -58,3 +58,8 @@ func _ready():
 	var utils_node = utils.new()
 	utils_node.set_name("MultiplayerUtils")
 	$"/root".call_deferred("add_child", utils_node)
+	
+	var weapon_service = load("res://mods-unpacked/Pasha-Brotatogether/weapon_service.gd")
+	var weapon_service_node = weapon_service.new()
+	weapon_service_node.set_name("MultiplayerWeaponService")
+	$"/root".call_deferred("add_child", weapon_service_node)
