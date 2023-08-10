@@ -128,6 +128,7 @@ func init_multiplayer_run_data():
 		run_data["items"] = []
 		run_data["weapons"] = []
 		run_data["additional_weapon_effects"] = []
+		run_data["active_set_effects"] = []
 		
 		run_data["tier_i_weapon_effects"] = []
 		run_data["tier_iv_weapon_effects"] = []
@@ -136,11 +137,11 @@ func init_multiplayer_run_data():
 		run_data["appearances_displayed"] = []
 		
 		tracked_players[player_id]["linked_stats"] = {}
-		tracked_players[player_id]["linked_stats"]["stats"] = RunData.init_stats()
+		tracked_players[player_id]["linked_stats"]["stats"] = RunData.init_stats(true)
 		tracked_players[player_id]["linked_stats"]["update_on_gold_chance"] = false
 		
 		tracked_players[player_id]["temp_stats"] = {}
-		tracked_players[player_id]["temp_stats"]["stats"] = RunData.init_stats()
+		tracked_players[player_id]["temp_stats"]["stats"] = RunData.init_stats(true)
 		
 		tracked_players[player_id]["run_data"] = run_data
 		
@@ -156,13 +157,15 @@ func start_game(game_info: Dictionary):
 	game_mode = game_info.mode
 	if game_mode == "shared":
 		if game_info.current_wave == 1:
+			var run_data_node = $"/root/MultiplayerRunData"
 			init_multiplayer_run_data()
 			
+			# TODO this should go away
 			RunData.weapons = []
 			RunData.items = []
 			RunData.effects = RunData.init_effects()
-			RunData.current_character = null
-			RunData.starting_weapon = null
+#			RunData.current_character = null
+#			RunData.starting_weapon = null
 			
 			var lobby_info = game_info.lobby_info
 			
@@ -170,11 +173,18 @@ func start_game(game_info: Dictionary):
 			
 			if lobby_info.has("weapon"):
 				var weapon_data = load(lobby_info.weapon)
-				var _unused = RunData.add_weapon(weapon_data, true)
+#				var _unused = RunData.add_weapon(weapon_data, true)
+				run_data_node.add_weapon(self_peer_id, weapon_data, true)
+				
 			var danger = lobby_info.danger
 			
+			# Needed for random checks in main
 			RunData.add_character(character_data)
-			RunData.add_starting_items_and_weapons()
+			
+			run_data_node.add_character(self_peer_id, character_data)
+			
+#			RunData.add_starting_items_and_weapons()
+			run_data_node.add_starting_items_and_weapons(self_peer_id)
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger

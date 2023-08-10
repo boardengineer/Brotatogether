@@ -29,6 +29,46 @@ func remove_weapon_behaviors():
 func update_animation(movement:Vector2)->void :
 	maybe_update_animation(movement, false)
 
+func apply_items_effects() -> void:
+	if not $"/root".has_node("GameController") or player_network_id == null:
+		.apply_items_effects()
+		return
+		
+	var game_controller = $"/root/GameController"
+
+	var run_data = game_controller.tracked_players[player_network_id].run_data
+	
+	var animation_node = $Animation
+	
+	for i in run_data.weapons.size():
+		add_weapon(run_data.weapons[i], i)
+	
+	RunData.sort_appearances()
+	var appearances_behind = []
+		
+	for appearance in RunData.appearances_displayed:
+		var item_sprite = Sprite.new()
+		item_sprite.texture = appearance.sprite
+		animation_node.add_child(item_sprite)
+		
+		if appearance.depth < - 1:
+			appearances_behind.push_back(item_sprite)
+		
+		_item_appearances.push_back(item_sprite)
+	
+	var popped = appearances_behind.pop_back()
+	
+	while popped != null:
+		animation_node.move_child(popped, 0)
+		popped = appearances_behind.pop_back()
+	
+	_sprites = animation_node.get_children()
+	
+	
+	update_player_stats()
+	
+	current_stats.copy(max_stats)
+
 func update_player_stats_multiplayer()->void :
 	if not $"/root".has_node("GameController"):
 		.update_player_stats()

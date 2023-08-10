@@ -14,9 +14,91 @@ func add_item(player_id: int, item:ItemData) -> void:
 	update_item_related_effects(player_id)
 	reset_linked_stats(player_id)
 
+func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->WeaponData:
+	var game_controller = get_game_controller()
+
+	if not game_controller:
+		return null
+
+	var run_data = game_controller.tracked_players[player_id]["run_data"]
+	
+	
+	var new_weapon = weapon.duplicate()
+	
+	if is_starting:
+		run_data["starting_weapon"] = weapon
+	
+	run_data.weapons.push_back(new_weapon)
+	apply_item_effects(player_id, new_weapon, run_data)
+	update_sets(player_id)
+	update_item_related_effects(player_id)
+	reset_linked_stats(player_id)
+	
+	return new_weapon
+
+
+func add_starting_items_and_weapons(player_id:int) -> void:
+	var game_controller = $"/root/GameController"
+
+	var player = game_controller.tracked_players[player_id]
+	var run_data = player.run_data
+	
+	if run_data.effects["starting_item"].size() > 0:
+		for item_id in run_data.effects["starting_item"]:
+			for i in item_id[1]:
+				var item = ItemService.get_element(ItemService.items, item_id[0])
+				add_item(player_id, item)
+	
+	if run_data.effects["starting_weapon"].size() > 0:
+		for weapon_id in run_data.effects["starting_weapon"]:
+			for i in weapon_id[1]:
+				var weapon = ItemService.get_element(ItemService.weapons, weapon_id[0])
+				var _weapon = add_weapon(player_id, weapon)
+
+func add_character(player_id: int, character:CharacterData) -> void:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+		
+	var run_data = game_controller.tracked_players[player_id]["run_data"]
+	run_data["current_character"] = character
+	add_item(player_id, character)
+
 func apply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> void:
 	for effect in item_data.effects:
 		effect.multiplayer_apply(run_data)
+
+func update_sets(player_id: int) -> void:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	for effect in run_data["active_set_effects"]:
+		effect[1].multiplayer_unapply(player_id)
+	
+	run_data["active_set_effects"] = []
+	run_data["active_sets"] = {}
+	
+	for weapon in run_data["weapons"]:
+		for set in weapon.sets:
+			if run_data["active_sets"].has(set.my_id):
+				run_data["active_sets"][set.my_id] += 1
+			else :
+				run_data["active_sets"][set.my_id] = 1
+	
+	for key in run_data["active_sets"]:
+		if run_data["active_sets"][key] >= 2:
+			var set = ItemService.get_set(key)
+			var set_effects = set.set_bonuses[min(run_data["active_sets"][key] - 2, set.set_bonuses.size() - 1)]
+			
+			for effect in set_effects:
+				effect.multiplayer_apply(player_id)
+				run_data["active_set_effects"].push_back([key, effect])
 
 # Mirrors LinkedStats.reset()
 # Zeroes out the stats in linked_stats and recalculates them based on effects
@@ -30,7 +112,7 @@ func reset_linked_stats(player_id: int) -> void:
 	var tracked_players = game_controller.tracked_players
 	var run_data = tracked_players[player_id]["run_data"]
 	
-	var linked_stats = RunData.init_stats()
+	var linked_stats = RunData.init_stats(true)
 	var update_on_gold_chance = false
 	
 	for linked_stat in run_data["effects"]["stat_links"]:

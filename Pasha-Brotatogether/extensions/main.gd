@@ -68,6 +68,7 @@ func spawn_additional_players() -> void:
 	# The first player was created on at startup, create the rest manually
 	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
 	_player.player_network_id = game_controller.self_peer_id
+	_player.apply_items_effects()
 	
 	# re-init the weapons after we set the network id
 	for weapon in _player.current_weapons:
@@ -82,6 +83,7 @@ func spawn_additional_players() -> void:
 			var spawn_pos = Vector2(spawn_x_pos, _entity_spawner._zone_max_pos.y / 2)
 			var spawned_player = _entity_spawner.spawn_entity(player_scene, spawn_pos, true)
 			spawned_player.player_network_id = player_id
+			spawned_player.apply_item_effects()
 			
 			# re-init the weapons after we set the network id
 			for weapon in spawned_player.current_weapons:
@@ -106,6 +108,7 @@ func spawn_additional_players() -> void:
 func reload_stats()->void :
 	if  $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
+		var run_data_node = $"/root/MultiplayerRunData"
 		
 		for player_id in game_controller.tracked_players:
 			for weapon in game_controller.tracked_players[player_id].player.current_weapons:
@@ -115,10 +118,9 @@ func reload_stats()->void :
 			print_debug("player_id ", player_id)
 			
 			game_controller.tracked_players[player_id].player.update_player_stats_multiplayer()
+			run_data_node.reset_linked_stats(player_id)
 		
 		print_debug("multiplayer reload stats")
-		
-		LinkedStats.reset()
 		
 		for struct in _entity_spawner.structures:
 			if is_instance_valid(struct):
