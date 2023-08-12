@@ -1,7 +1,7 @@
 extends "res://items/global/effect.gd"
 
 func multiplayer_apply(run_data):
-#	print_debug("applied effect ", key)
+	print_debug("applied effect ", key)
 	
 #	print_debug("applied effect before ", run_data.effects[key])
 	

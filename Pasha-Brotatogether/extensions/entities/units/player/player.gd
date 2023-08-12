@@ -65,9 +65,25 @@ func apply_items_effects() -> void:
 	_sprites = animation_node.get_children()
 	
 	
-	update_player_stats()
+	print_debug("this is where the update comes from?")
+	update_player_stats_multiplayer()
 	
 	current_stats.copy(max_stats)
+
+func on_healing_effect_multiplayer(value:int, tracking_text:String = "", from_torture:bool = false)->int:
+	
+	var actual_value = min(value, max_stats.health - current_stats.health)
+	var value_healed = heal(actual_value, from_torture)
+	
+	if value_healed > 0:
+		SoundManager.play(Utils.get_rand_element(hp_regen_sounds), get_heal_db(), 0.1)
+		emit_signal("health_updated", current_stats.health, max_stats.health)
+		emit_signal("healed", self, actual_value)
+		
+		if tracking_text != "":
+			RunData.tracked_item_effects[tracking_text] += value_healed
+	
+	return value_healed
 
 func update_player_stats_multiplayer()->void :
 	if not $"/root".has_node("GameController"):

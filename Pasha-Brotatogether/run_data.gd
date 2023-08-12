@@ -19,9 +19,10 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 
 	if not game_controller:
 		return null
+		
+	RunData.weapon_paths[weapon.my_id] = weapon.get_path()
 
 	var run_data = game_controller.tracked_players[player_id]["run_data"]
-	
 	
 	var new_weapon = weapon.duplicate()
 	
@@ -97,7 +98,7 @@ func update_sets(player_id: int) -> void:
 			var set_effects = set.set_bonuses[min(run_data["active_sets"][key] - 2, set.set_bonuses.size() - 1)]
 			
 			for effect in set_effects:
-				effect.multiplayer_apply(player_id)
+				effect.multiplayer_apply(run_data)
 				run_data["active_set_effects"].push_back([key, effect])
 
 # Mirrors LinkedStats.reset()

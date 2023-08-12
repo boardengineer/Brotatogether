@@ -39,6 +39,9 @@ func _ready():
 	
 	print_debug("added health tracker")
 	
+	# connnect multiplayer signals
+	var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
+	var _connect_error = RunData.connect("levelled_up", self, "on_levelled_up_multiplayer")
 	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
@@ -52,6 +55,8 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 	if game_controller:	
 		game_controller.update_health(player.current_stats.health, player.max_stats.health)
 		var _error = player.connect("health_updated", self, "on_health_update")
+		
+#	RunData.disconnect("healing_effect", player, "on_healing_effect")
 
 func _on_player_died(_p_player:Player)->void :
 	if game_controller:
@@ -107,6 +112,7 @@ func spawn_additional_players() -> void:
 	
 func reload_stats()->void :
 	if  $"/root".has_node("GameController"):
+		print_debug("MP reload stats")
 		var game_controller = $"/root/GameController"
 		var run_data_node = $"/root/MultiplayerRunData"
 		
@@ -145,17 +151,17 @@ func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) 
 	for effect in weapon.effects:
 		if effect is ProjectilesOnHitEffect:
 			var weapon_stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_id, effect.weapon_stats)
-			weapon.set_projectile_on_hit(effect.value, weapon.weapon_stats, effect.auto_target_enemy)
+			weapon.set_projectile_on_hit(effect.value, weapon_stats, effect.auto_target_enemy)
 	
 	weapon.current_stats.burning_data = weapon.current_stats.burning_data.duplicate()
-	weapon.current_stats.burning_data.from = self
+	weapon.current_stats.burning_data.from = weapon
 	
 	var current_stats = weapon.current_stats
 	
 	weapon._hitbox.effect_scale = weapon.current_stats.effect_scale
 	weapon._hitbox.set_damage(current_stats.damage, current_stats.accuracy, current_stats.crit_chance, current_stats.crit_damage, current_stats.burning_data, current_stats.is_healing)
 	weapon._hitbox.effects = weapon.effects
-	weapon._hitbox.from = self
+	weapon._hitbox.from = weapon
 	
 	if at_wave_begin:
 		weapon._current_cooldown = current_stats.cooldown
@@ -204,35 +210,102 @@ func _clear_movement_behavior(player:Player) -> void:
 #		weapon._shooting_behavior = client_shooting_behavior
 
 func on_gold_picked_up(gold:Node) -> void:
+	if not gold.attracted_by is Player or not $"/root".has_node("GameController"):
+		.on_gold_picked_up(gold)
+		return
+	
 	_golds.erase(gold)
+	
 	if ProgressData.settings.alt_gold_sounds:
 		SoundManager.play(Utils.get_rand_element(gold_alt_pickup_sounds), - 5, 0.2)
 	else :
 		SoundManager.play(Utils.get_rand_element(gold_pickup_sounds), 0, 0.2)
 	
 	var value = gold.value
+	var player_id = gold.attracted_by.player_network_id
+	var run_data = game_controller.tracked_players[player_id].run_data
+	var linked_stats = game_controller.tracked_players[player_id].linked_stats
+	var run_data_node = $"/root/MultiplayerRunData"
+	var multiplayer_utils = $"/root/MultiplayerUtils"
 	
-	if randf() < RunData.effects["chance_double_gold"] / 100.0:
-		RunData.tracked_item_effects["item_metal_detector"] += value
+	if randf() < run_data.effects["chance_double_gold"] / 100.0:
+		run_data.tracked_item_effects["item_metal_detector"] += value
 		value *= 2
 		gold.boosted *= 2
 	
-	if randf() < RunData.effects["heal_when_pickup_gold"] / 100.0:
-		RunData.emit_signal("healing_effect", 1, "item_cute_monkey")
+#	TODO cute monkey
+#	if randf() < run_data.effects["heal_when_pickup_gold"] / 100.0:
+#		RunData.emit_signal("healing_effect", 1, "item_cute_monkey")
 	
 	# NOTE: this is the only difference in this function, changing it from 
 	# THE player to ANY player, in the future there may be separate inventories.
-	if gold.attracted_by is Player:
+#	print_debug("A played picked up gold that player is ", gold.attracted_by.player_network_id)
 		
-		if RunData.effects["dmg_when_pickup_gold"].size() > 0:
-			var dmg_taken = handle_stat_damages(RunData.effects["dmg_when_pickup_gold"])
-			RunData.tracked_item_effects["item_baby_elephant"] += dmg_taken[1]
+	if run_data.effects["dmg_when_pickup_gold"].size() > 0:
+		var dmg_taken = handle_stat_damages(run_data.effects["dmg_when_pickup_gold"])
+		run_data.tracked_item_effects["item_baby_elephant"] += dmg_taken[1]
 		
-		RunData.add_gold(value)
-		RunData.add_xp(value)
-		ProgressData.add_data("materials_collected")
-	else :
-		RunData.add_bonus_gold(value)
+#	RunData.add_gold(value)
+	run_data.gold += value
+	
+	# TODO MP-aware gold change?
+	emit_signal("gold_changed", gold)
+	
+	if linked_stats.update_on_gold_chance:
+		run_data_node.reset_linked_stats(player_id)
+	
+#	RunData.add_xp(value)
+
+	var xp_gained = value * (1 + multiplayer_utils.get_stat_multiplayer(player_id, "xp_gain") / 100)
+	run_data.current_xp += xp_gained
+	
+	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+	
+#	TODO MP-aware ex change?
+	RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
+	
+	
+	while run_data.current_xp >= next_level_xp:
+
+#		level_up
+		run_data.current_xp = max(0, run_data.current_xp - RunData.get_xp_needed(run_data.current_level + 1))
+		run_data.current_level += 1
+		RunData.emit_signal("levelled_up", player_id)
+		
+		RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
+		next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+
+#	ProgressData.add_data("materials_collected")
+
+func on_levelled_up_multiplayer(player_id:int) -> void:
+	print_debug("running multiplayer level up")
+	
+	var game_controller = $"/root/GameController"
+
+	var run_data = game_controller.tracked_players[player_id].run_data
+	SoundManager.play(level_up_sound, 0, 0, true)
+	var level = run_data.current_level
+	
+	emit_signal("upgrade_to_process_added", ItemService.upgrade_to_process_icon, level)
+
+#	upgrades to process
+	_upgrades_to_process.push_back(level)
+#	set_level_label()
+	_level_label.text = "LV." + str(level)
+	
+	run_data.effects["stat_max_hp"] += 1
+	reload_stats()
+	
+	print_debug("new max health is ", run_data.effects["stat_max_hp"])
+	
+#	RunData.add_stat("stat_max_hp", 1)
+	
+	# TODO healing effect signal
+	RunData.emit_signal("healing_effect", 1)
+	
+	for stat_level_up in run_data.effects["stats_on_level_up"]:
+		run_data.effects[stat_level_up[0]] += stat_level_up[1]
+#		RunData.add_stat(stat_level_up[0], stat_level_up[1])
 
 func _on_EndWaveTimer_timeout()->void :
 	DebugService.log_data("_on_EndWaveTimer_timeout")

@@ -129,6 +129,9 @@ func init_multiplayer_run_data():
 		run_data["weapons"] = []
 		run_data["additional_weapon_effects"] = []
 		run_data["active_set_effects"] = []
+		run_data["gold"] = DebugService.starting_gold
+		run_data["current_xp"] = 0
+		run_data["current_level"] = 0
 		
 		run_data["tier_i_weapon_effects"] = []
 		run_data["tier_iv_weapon_effects"] = []
@@ -295,10 +298,35 @@ func send_bought_item_by_id(item_id:String) -> void:
 func receive_bought_item_by_id(item_id:String, self_peer_id:int) -> void:
 	print_debug("This is where we should add all the items for ", item_id, " " , self_peer_id)
 	
+	for item in ItemService.weapons:
+		if item.my_id == item_id:
+			var run_data = $"/root/MultiplayerRunData"
+			
+			var item_dupe = item.duplicate()
+			
+			if item_dupe.get_category() == Category.ITEM:
+				print_debug("adding item")
+				run_data.add_item(self_peer_id, item_dupe)
+			elif item_dupe.get_category() == Category.WEAPON:
+				print_debug("adding weapon")
+				run_data.add_weapon(self_peer_id, item_dupe)
+			
+			print_debug("matched item ", item_id)
+			for effect in item.effects:
+				print_debug(effect.key)
+	
 	for item in ItemService.items:
 		if item.my_id == item_id:
 			var run_data = $"/root/MultiplayerRunData"
-			run_data.add_item(self_peer_id, item)
+			
+			var item_dupe = item.duplicate()
+			
+			if item_dupe.get_category() == Category.ITEM:
+				print_debug("adding item")
+				run_data.add_item(self_peer_id, item_dupe)
+			elif item_dupe.get_category() == Category.WEAPON:
+				print_debug("adding weapon")
+				run_data.add_weapon(self_peer_id, item_dupe)
 			
 			print_debug("matched item ", item_id)
 			for effect in item.effects:
