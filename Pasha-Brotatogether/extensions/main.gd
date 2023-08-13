@@ -472,6 +472,14 @@ func on_consumable_picked_up(consumable:Node)->void :
 			effect.apply()
 	ChallengeService.check_stat_challenges()
 
+func on_upgrade_selected(upgrade_data:UpgradeData)->void :
+	if not $"/root".has_node("GameController"):
+		.on_upgrade_selected(upgrade_data)
+		return
+		
+	var game_controller = $"/root/GameController"
+	game_controller.on_upgrade_selected(upgrade_data)
+
 func on_levelled_up()->void :
 	SoundManager.play(level_up_sound, 0, 0, true)
 	var level = RunData.current_level

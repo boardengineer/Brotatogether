@@ -63,6 +63,8 @@ func read_p2p_packet() -> bool:
 			parent.receive_health_update(data.current_health, data.max_health, sender)
 		elif type == "death":
 			parent.receive_death(sender)
+		elif type == "select_upgrade":
+			parent.receive_uprade_selected(data.upgrade_data_id, sender)
 		elif type == "shot":
 			parent.receive_shot(data.player_id, data.weapon_index)
 		elif type == "explosion":
@@ -316,3 +318,9 @@ func send_enemy_take_damage(enemy_id:int, is_dodge:bool) -> void:
 
 func get_lobby_host() -> String:
 	return Steam.getLobbyData(lobby_id,"host")
+
+func send_upgrade_selection(upgrade_data_id) -> void:
+	var send_data = {}
+	send_data["type"] = "select_upgrade"
+	send_data["upgrade_id"] = upgrade_data_id
+	send_data_to_all(send_data)

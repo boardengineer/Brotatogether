@@ -288,6 +288,19 @@ func check_win() -> void:
 		main._end_wave_timer.start()
 		ProgressData.reset_run_state()
 
+func on_upgrade_selected(upgrade_data:UpgradeData)->void :
+	if is_host:
+		receive_uprade_selected(upgrade_data.my_id, self_peer_id)
+	else:
+		connection.send_upgrade_selection(upgrade_data.my_id)
+
+func receive_uprade_selected(upgrade_data_id, player_id):
+	for upgrade in ItemService.upgrades:
+		if upgrade.my_id == upgrade_data_id:
+			var run_data = tracked_players[player_id].run_data
+			var run_data_node = $"/root/MultiplayerRunData"
+			run_data_node.apply_item_effects(player_id, upgrade, run_data)
+
 # Send normal item
 func send_bought_item_by_id(item_id:String, value:int) -> void:
 	if is_host:
