@@ -47,7 +47,7 @@ func read_p2p_packet() -> bool:
 		elif type == "send_bought_item":
 			parent.receive_bought_item(load(data.shop_item), sender)
 		elif type == "send_bought_item_by_id":
-			parent.receive_bought_item_by_id(data.item_id, sender)
+			parent.receive_bought_item_by_id(data.item_id, sender, data.value)
 		elif type == "send_ready":
 			parent.update_ready_state(sender, data.is_ready)
 		elif type == "handshake":
@@ -256,10 +256,11 @@ func send_bought_item(shop_item:Resource) -> void:
 	send_data["shop_item"] = shop_item.get_path()
 	send_data_to_all(send_data)
 
-func send_bought_item_by_id(item_id:String) -> void:
+func send_bought_item_by_id(item_id:String, value:int) -> void:
 	var send_data = {}
 	send_data["type"] = "send_bought_item_by_id"
 	send_data["item_id"] = item_id
+	send_data["value"] = value
 	send_data_to_all(send_data)
 
 func send_ready(is_ready:bool) -> void:

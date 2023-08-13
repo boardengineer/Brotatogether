@@ -14,6 +14,58 @@ func add_item(player_id: int, item:ItemData) -> void:
 	update_item_related_effects(player_id)
 	reset_linked_stats(player_id)
 
+func get_currency(player_id: int) -> int:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return 0
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	return get_stat(player_id, "stat_max_hp") as int if run_data["effects"]["hp_shop"] else run_data["gold"]
+
+func remove_currency(player_id: int, value:int) -> void:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	if run_data["effects"]["hp_shop"]:
+		remove_stat(player_id, "stat_max_hp", value)
+	else:
+		remove_gold(player_id, value)
+
+func remove_gold(player_id, value:int) -> void:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	run_data.gold = max(0, run_data.gold - value) as int
+	
+	RunData.emit_signal("gold_changed", run_data.gold)
+
+	if tracked_players[player_id]["linked_stats"]["update_on_gold_chance"]:
+		reset_linked_stats(player_id)
+
+func remove_stat(player_id: int, stat_name:String, value:int)->void :
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	run_data["effects"][stat_name] -= value
+
 func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->WeaponData:
 	var game_controller = get_game_controller()
 
@@ -315,3 +367,24 @@ func get_game_controller():
 	if not $"/root".has_node("GameController"):
 		return null
 	return $"/root/GameController"
+
+func has_weapon_slot_available(player_id: int, weapon_type:int = -1) -> bool:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return false
+		
+	var run_data = game_controller.tracked_players[player_id]["run_data"]
+	
+	if weapon_type == - 1:
+		return run_data["weapons"].size() < run_data["effects"]["weapon_slot"]
+	else :
+		var count = 0
+		
+		for weapon in run_data["weapons"]:
+			if weapon.type == weapon_type:
+				count += 1
+		
+		var max_slots = run_data["effects"]["max_melee_weapons"] if weapon_type == WeaponType.MELEE else run_data["effects"]["max_ranged_weapons"]
+		
+		return run_data["weapons"].size() < run_data["effects"]["weapon_slot"] and count < min(run_data["effects"]["weapon_slot"], max_slots)

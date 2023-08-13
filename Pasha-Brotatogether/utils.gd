@@ -1,12 +1,6 @@
 extends Node
 
 func get_stat_multiplayer(player_id:int, stat_name:String) -> float:
-
-	if stat_name == "stat_max_hp":
-		print_debug("max hp rundata ",  $"/root/MultiplayerRunData".get_stat(player_id, stat_name))
-		print_debug("max hp temp_stat ",  get_temp_stat(player_id, stat_name))
-		print_debug("max hp linked_stat ",  get_linked_stats(player_id, stat_name))
-	
 	return $"/root/MultiplayerRunData".get_stat(player_id, stat_name) + get_temp_stat(player_id, stat_name) + get_linked_stats(player_id, stat_name)
 	
 func get_temp_stat(player_id:int, stat_name:String) -> float:

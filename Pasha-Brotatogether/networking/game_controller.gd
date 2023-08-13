@@ -289,27 +289,22 @@ func check_win() -> void:
 		ProgressData.reset_run_state()
 
 # Send normal item
-func send_bought_item_by_id(item_id:String) -> void:
+func send_bought_item_by_id(item_id:String, value:int) -> void:
 	if is_host:
-		receive_bought_item_by_id(item_id, self_peer_id)
+		receive_bought_item_by_id(item_id, self_peer_id, value)
 	else:
-		connection.send_bought_item_by_id(item_id)
+		connection.send_bought_item_by_id(item_id, value)
 
-func receive_bought_item_by_id(item_id:String, self_peer_id:int) -> void:
-	print_debug("This is where we should add all the items for ", item_id, " " , self_peer_id)
+func receive_bought_item_by_id(item_id:String, self_peer_id:int, value:int) -> void:
+	var run_data = $"/root/MultiplayerRunData"
+	
+	print_debug("removing currency ", value)
+	run_data.remove_currency(self_peer_id, value)
 	
 	for item in ItemService.weapons:
 		if item.my_id == item_id:
-			var run_data = $"/root/MultiplayerRunData"
-			
 			var item_dupe = item.duplicate()
-			
-			if item_dupe.get_category() == Category.ITEM:
-				print_debug("adding item")
-				run_data.add_item(self_peer_id, item_dupe)
-			elif item_dupe.get_category() == Category.WEAPON:
-				print_debug("adding weapon")
-				run_data.add_weapon(self_peer_id, item_dupe)
+			run_data.add_weapon(self_peer_id, item_dupe)
 			
 			print_debug("matched item ", item_id)
 			for effect in item.effects:
@@ -317,8 +312,6 @@ func receive_bought_item_by_id(item_id:String, self_peer_id:int) -> void:
 	
 	for item in ItemService.items:
 		if item.my_id == item_id:
-			var run_data = $"/root/MultiplayerRunData"
-			
 			var item_dupe = item.duplicate()
 			
 			if item_dupe.get_category() == Category.ITEM:

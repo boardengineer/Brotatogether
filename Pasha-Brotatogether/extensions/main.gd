@@ -209,6 +209,44 @@ func _clear_movement_behavior(player:Player) -> void:
 #		weapon.add_child(client_shooting_behavior)
 #		weapon._shooting_behavior = client_shooting_behavior
 
+func add_gold(player_id, value) -> void:
+	var run_data = game_controller.tracked_players[player_id].run_data
+	var linked_stats = game_controller.tracked_players[player_id].linked_stats
+	var run_data_node = $"/root/MultiplayerRunData"
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	run_data.gold += value
+	
+	RunData.emit_signal("gold_changed", run_data.gold)
+	
+	if linked_stats.update_on_gold_chance:
+		run_data_node.reset_linked_stats(player_id)
+		
+func add_xp(player_id, value) -> void:
+	var run_data = game_controller.tracked_players[player_id].run_data
+	var linked_stats = game_controller.tracked_players[player_id].linked_stats
+	var run_data_node = $"/root/MultiplayerRunData"
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	var xp_gained = value * (1 + multiplayer_utils.get_stat_multiplayer(player_id, "xp_gain") / 100)
+	run_data.current_xp += xp_gained
+	
+	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+	
+#	TODO MP-aware ex change?
+	RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
+	
+	
+	while run_data.current_xp >= next_level_xp:
+
+#		level_up
+		run_data.current_xp = max(0, run_data.current_xp - RunData.get_xp_needed(run_data.current_level + 1))
+		run_data.current_level += 1
+		RunData.emit_signal("levelled_up", player_id)
+		
+		RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
+		next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+
 func on_gold_picked_up(gold:Node) -> void:
 	if not gold.attracted_by is Player or not $"/root".has_node("GameController"):
 		.on_gold_picked_up(gold)
@@ -245,37 +283,66 @@ func on_gold_picked_up(gold:Node) -> void:
 		var dmg_taken = handle_stat_damages(run_data.effects["dmg_when_pickup_gold"])
 		run_data.tracked_item_effects["item_baby_elephant"] += dmg_taken[1]
 		
-#	RunData.add_gold(value)
-	run_data.gold += value
-	
-	# TODO MP-aware gold change?
-	emit_signal("gold_changed", gold)
-	
-	if linked_stats.update_on_gold_chance:
-		run_data_node.reset_linked_stats(player_id)
-	
-#	RunData.add_xp(value)
-
-	var xp_gained = value * (1 + multiplayer_utils.get_stat_multiplayer(player_id, "xp_gain") / 100)
-	run_data.current_xp += xp_gained
-	
-	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
-	
-#	TODO MP-aware ex change?
-	RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
-	
-	
-	while run_data.current_xp >= next_level_xp:
-
-#		level_up
-		run_data.current_xp = max(0, run_data.current_xp - RunData.get_xp_needed(run_data.current_level + 1))
-		run_data.current_level += 1
-		RunData.emit_signal("levelled_up", player_id)
-		
-		RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
-		next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+	add_gold(player_id, value)
+	add_xp(player_id, value)
 
 #	ProgressData.add_data("materials_collected")
+
+func remove_gold(player_id, value:int) -> void:
+	var game_controller = $"/root/GameController"
+	var run_data_node = $"/root/MultiplayerRunData"
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	run_data["gold"] = max(0, run_data["gold"] - value) as int
+	
+#	TODO maybe we need signals
+#	emit_signal("gold_changed", gold)
+
+	if tracked_players[player_id]["linked_stats"]["update_on_gold_chance"]:
+		run_data_node.reset_linked_stats(player_id)
+
+func manage_harvesting() -> void:
+	if not $"/root".has_node("GameController"):
+		.manage_harvesting()
+		return
+	
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id]["run_data"]
+	
+		var elite_end_wave_bonus = 0
+		
+		if multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") != 0 or run_data.effects["pacifist"] != 0 or elite_end_wave_bonus != 0 or _elite_killed_bonus != 0 or (run_data.effects["cryptid"] != 0 and RunData.current_living_trees != 0):
+			var pacifist_bonus = round((_entity_spawner.get_all_enemies().size() + _entity_spawner.enemies_removed_for_perf) * (run_data.effects["pacifist"] / 100.0))
+			var cryptid_bonus = RunData.current_living_trees * run_data.effects["cryptid"]
+		
+			if _is_horde_wave:
+				pacifist_bonus = (pacifist_bonus / 2) as int
+		
+			var val = multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") + pacifist_bonus + cryptid_bonus + _elite_killed_bonus + elite_end_wave_bonus
+		
+#			TODO come back here
+			add_gold(player_id, val)
+			add_xp(player_id, val)
+		
+			_floating_text_manager.on_harvested(val)
+		
+			if multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") > 0:
+				_harvesting_timer.start()
+		
+			add_xp(player_id, 0)
+		
+func remove_stat(player_id: int, stat_name:String, value:int)->void :
+	var game_controller = $"/root/GameController"
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	run_data["effects"][stat_name] -= value
+
 
 func on_levelled_up_multiplayer(player_id:int) -> void:
 	print_debug("running multiplayer level up")

@@ -40,7 +40,10 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/stat_container.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_item.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_items_container.gd")
 		
 	ModLoaderMod.install_script_extension(ext_dir + "zones/wave_manager.gd")
 	
