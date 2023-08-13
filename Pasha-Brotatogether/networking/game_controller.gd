@@ -123,6 +123,9 @@ func init_multiplayer_run_data():
 	for player_id in tracked_players:
 		var run_data = {}
 		
+		# Randomly useful in places
+		run_data["player_id"] = player_id
+		
 		run_data["effects"] = RunData.init_effects()
 		
 		run_data["items"] = []

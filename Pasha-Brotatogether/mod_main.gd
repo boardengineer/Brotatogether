@@ -18,6 +18,7 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "effects/items/burn_chance_effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "effects/items/chance_stat_damage_effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "effects/items/stat_gains_modification_effect.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "effects/items/structure_effect.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/null_effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/class_bonus_effect.gd")
@@ -27,6 +28,8 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/enemy.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/structures/structure.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/follow_player_movement_behavior.gd")
+	
+	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "items/consumables/consumable.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "items/global/effect.gd")
@@ -54,10 +57,11 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "weapons/shooting_behaviors/melee_weapon_shooting_behavior.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "visual_effects/floating_text/floating_text_manager.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
+	
 	
 func _ready():
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/player.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
 		
 	var run_data = load("res://mods-unpacked/Pasha-Brotatogether/run_data.gd")
 	var run_data_node = run_data.new()
