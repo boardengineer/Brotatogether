@@ -15,9 +15,12 @@ func _init(_modLoader = ModLoader):
 #	modLoader.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "effects/items/stat_gains_modification_effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "effects/items/burn_chance_effect.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "effects/items/chance_stat_damage_effect.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "effects/items/stat_gains_modification_effect.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/null_effect.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/class_bonus_effect.gd")
 
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/neutral/neutral.gd")

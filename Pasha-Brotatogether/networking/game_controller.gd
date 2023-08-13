@@ -138,6 +138,7 @@ func init_multiplayer_run_data():
 		
 		run_data["unique_effects"] = []
 		run_data["appearances_displayed"] = []
+		run_data["tracked_item_effects"] = RunData.init_tracked_effects()
 		
 		tracked_players[player_id]["linked_stats"] = {}
 		tracked_players[player_id]["linked_stats"]["stats"] = RunData.init_stats(true)
