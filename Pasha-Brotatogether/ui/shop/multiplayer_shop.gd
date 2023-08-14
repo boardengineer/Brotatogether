@@ -9,12 +9,20 @@ func _ready():
 		var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
 		
 		_weapons_container.set_data(label_text, Category.WEAPON, run_data.weapons)
+		_items_container.set_data("ITEMS", Category.ITEM, run_data.items, true, true)
+		
 		_gold_label.update_gold(run_data.gold)
 
 func on_shop_item_bought(shop_item:ShopItem) -> void:
 	if  $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
 		game_controller.send_bought_item_by_id(shop_item.item_data.my_id, shop_item.value)
+
+#		This lack of removal probably has some problems
+#		for item in _shop_items:
+#			if item[0].my_id == shop_item.item_data.my_id:
+#				_shop_items.erase(item)
+#				break
 		
 		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 		

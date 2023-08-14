@@ -174,6 +174,8 @@ func _process(_delta):
 		if game_controller and game_controller.is_source_of_truth and send_updates:
 			game_controller.send_game_state()
 
+
+
 func send_player_position():
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
@@ -471,6 +473,14 @@ func on_consumable_picked_up(consumable:Node)->void :
 		else:
 			effect.apply()
 	ChallengeService.check_stat_challenges()
+
+func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
+	if not $"/root".has_node("GameController"):
+		.on_item_box_take_button_pressed(item_data)
+		return
+		
+	var game_controller = $"/root/GameController"
+	game_controller.on_item_box_take_button_pressed(item_data)
 
 func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	if not $"/root".has_node("GameController"):

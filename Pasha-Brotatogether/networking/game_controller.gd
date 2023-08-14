@@ -298,6 +298,20 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	else:
 		connection.send_upgrade_selection(upgrade_data.my_id)
 
+func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:
+	if is_host:
+		receive_item_box_take(item_data.my_id, self_peer_id)
+	else:
+		pass
+
+func receive_item_box_take(item_id, player_id) -> void:
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	for item in ItemService.items:
+		if item.my_id == item_id:
+			run_data_node.add_item(player_id, item)
+			return
+
 func on_item_discard_button_pressed(weapon_data:WeaponData) -> void:
 	if is_host:
 		receive_item_discard(weapon_data.my_id, self_peer_id)
@@ -396,40 +410,54 @@ func send_bought_item_by_id(item_id:String, value:int) -> void:
 	else:
 		connection.send_bought_item_by_id(item_id, value)
 
-func receive_bought_item_by_id(item_id:String, self_peer_id:int, value:int) -> void:
-	var run_data = $"/root/MultiplayerRunData"
+func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void:
+	var run_data_node = $"/root/MultiplayerRunData"
+	var run_data = tracked_players[player_id].run_data
+	var shop = $"/root/Shop"
 	
-	print_debug("removing currency ", value)
-	run_data.remove_currency(self_peer_id, value)
+	run_data_node.remove_currency(player_id, value)
+	var nb_coupons = run_data_node.get_nb_item(player_id, "item_coupon")
 	
-	for item in ItemService.weapons:
-		if item.my_id == item_id:
-			var item_dupe = item.duplicate()
-			run_data.add_weapon(self_peer_id, item_dupe)
-			
-			print_debug("matched item ", item_id)
-			for effect in item.effects:
-				print_debug(effect.key)
+	var shop_item_data = null
 	
+	for weapon in ItemService.weapons:
+		if weapon.my_id == item_id:
+			shop_item_data = weapon.duplicate()
 	for item in ItemService.items:
 		if item.my_id == item_id:
-			var item_dupe = item.duplicate()
+			shop_item_data = item.duplicate()
+	
+	if nb_coupons > 0:
+		
+#		var coupon_value = get_coupon_value() reimplemented in place
+		var coupon_value = 0
+		for item in run_data.items:
+			if item.my_id == "item_coupon":
+				coupon_value = abs(item.effects[0].value)
+				break
 			
-			if item_dupe.get_category() == Category.ITEM:
-				print_debug("adding item")
-				run_data.add_item(self_peer_id, item_dupe)
-			elif item_dupe.get_category() == Category.WEAPON:
-				print_debug("adding weapon")
-				run_data.add_weapon(self_peer_id, item_dupe)
+		var coupon_effect = nb_coupons * (coupon_value / 100.0)
+		var base_value = ItemService.get_value(RunData.current_wave, shop_item_data.value, false, shop_item_data is WeaponData, shop_item_data.my_id)
+		run_data.tracked_item_effects["item_coupon"] += (base_value * coupon_effect) as int
+		
+	emit_signal("item_bought", shop_item_data)
+	
+	if shop_item_data.get_category() == Category.ITEM:
+		run_data_node.add_item(player_id, shop_item_data)
+	elif shop_item_data.get_category() == Category.WEAPON:
+		if not run_data_node.has_weapon_slot_available(player_id, shop_item_data):
+			for weapon in run_data.weapons:
+				if weapon.my_id == shop_item_data.my_id and weapon.upgrades_into != null:
+					var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
+					on_item_combine_button_pressed(weapon)
+					break
+		else :
+			var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
+	
 			
-			print_debug("matched item ", item_id)
-			for effect in item.effects:
-				print_debug(effect.key)
+	#TODO there's more stuff
 			
-#	for weapon in ItemService.weapons:
-#		if weapon.my_id == item_id:
-#			print_debug("matched weapon ", item_id)
-			
+	shop._stats_container.update_stats()
 	connection.send_tracked_players(tracked_players)
 
 func send_bought_item(shop_item:Resource) -> void:
