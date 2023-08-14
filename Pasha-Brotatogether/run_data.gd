@@ -14,6 +14,21 @@ func add_item(player_id: int, item:ItemData) -> void:
 	update_item_related_effects(player_id)
 	reset_linked_stats(player_id)
 
+func add_gold(player_id:int, value:int) -> void:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	run_data.gold += value
+	RunData.emit_signal("gold_changed", run_data.gold)
+	
+	if tracked_players[player_id]["linked_stats"]["update_on_gold_chance"]:
+		reset_linked_stats(player_id)
+
 func get_currency(player_id: int) -> int:
 	var game_controller = get_game_controller()
 	
@@ -198,6 +213,50 @@ func update_sets(player_id: int) -> void:
 				effect.multiplayer_apply(run_data)
 				run_data["active_set_effects"].push_back([key, effect])
 
+
+func get_nb_item(player_id, item_id:String, use_cache:bool = true)->int:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return 0
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	var nb = 0
+	
+#	if use_cache and items_nb_cache.has(item_id):
+#		return items_nb_cache[item_id]
+	
+	for item in run_data.items:
+		if item_id == item.my_id:
+			nb += 1
+	
+#	if use_cache:
+#		items_nb_cache[item_id] = nb
+	
+	return nb
+
+
+func get_nb_different_items_of_tier(player_id, tier:int = Tier.COMMON)->int:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return 0
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+		
+	var nb = 0
+	var parsed_items = {}
+	
+	for item in run_data.items:
+		if item.tier == tier and not parsed_items.has(item.my_id) and not item.my_id.begins_with("character_"):
+			parsed_items[item.my_id] = true
+			nb += 1
+	
+	return nb
+
 # Mirrors LinkedStats.reset()
 # Zeroes out the stats in linked_stats and recalculates them based on effects
 # with linked stats
@@ -206,6 +265,8 @@ func reset_linked_stats(player_id: int) -> void:
 	
 	if not game_controller:
 		return
+	
+	var multiplayer_utils = $"/root/MultiplayerUtils"
 	
 	var tracked_players = game_controller.tracked_players
 	var run_data = tracked_players[player_id]["run_data"]
@@ -218,26 +279,26 @@ func reset_linked_stats(player_id: int) -> void:
 		var stat_scaled = 0
 		
 		if linked_stat[2] == "materials":
-			stat_scaled = RunData.gold
+			stat_scaled = run_data.gold
 			update_on_gold_chance = true
 		elif linked_stat[2] == "structure":
-			stat_scaled = RunData.effects["structures"].size()
+			stat_scaled = run_data.effects["structures"].size()
 		elif linked_stat[2] == "living_enemy":
 			stat_scaled = RunData.current_living_enemies
 		elif linked_stat[2] == "living_tree":
 			stat_scaled = RunData.current_living_trees
 		elif linked_stat[2] == "common_item":
-			stat_scaled = RunData.get_nb_different_items_of_tier(Tier.COMMON)
+			stat_scaled = get_nb_different_items_of_tier(player_id, Tier.COMMON)
 		elif linked_stat[2] == "legendary_item":
-			stat_scaled = RunData.get_nb_different_items_of_tier(Tier.LEGENDARY)
+			stat_scaled = get_nb_different_items_of_tier(player_id, Tier.LEGENDARY)
 		elif linked_stat[2].begins_with("item_"):
-			stat_scaled = RunData.get_nb_item(linked_stat[2], false)
+			stat_scaled = get_nb_item(player_id, linked_stat[2], false)
 		else :
-			if RunData.effects.has(linked_stat[2]):
+			if run_data.effects.has(linked_stat[2]):
 				if linked_stat[4] == true:
-					stat_scaled = RunData.get_stat(linked_stat[2])
+					stat_scaled = get_stat(player_id, linked_stat[2])
 				else :
-					stat_scaled = RunData.get_stat(linked_stat[2]) + TempStats.get_stat(linked_stat[2])
+					stat_scaled = get_stat(player_id, linked_stat[2]) + multiplayer_utils.get_temp_stat(player_id, linked_stat[2])
 			else :
 				continue
 		

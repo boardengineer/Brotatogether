@@ -298,6 +298,41 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	else:
 		connection.send_upgrade_selection(upgrade_data.my_id)
 
+func on_item_discard_button_pressed(weapon_data:WeaponData) -> void:
+	if is_host:
+		receive_item_discard(weapon_data.my_id, self_peer_id)
+	else:
+		pass
+
+func receive_item_discard(weapon_id, player_id) -> void:
+	var run_data_node = $"/root/MultiplayerRunData"
+	var shop = $"/root/Shop"
+	
+	var run_data = tracked_players[player_id].run_data
+	var weapon_data = null
+	
+	for weapon in run_data.weapons:
+		if weapon.my_id == weapon_id:
+			weapon_data = weapon
+	
+	shop._weapons_container._elements.remove_element(weapon_data)
+	var _weapon = RunData.remove_weapon(weapon_data)
+	run_data_node.add_gold(player_id, ItemService.get_recycling_value(RunData.current_wave, weapon_data.value, true))
+	
+#	RunData.update_recycling_tracking_value(weapon_data)
+	
+	var nb_coupons = run_data_node.get_nb_item(player_id, "item_coupon")
+	
+	if nb_coupons > 0:
+		var base_value = ItemService.get_recycling_value(RunData.current_wave, weapon_data.value, true, false)
+		var actual_value = ItemService.get_recycling_value(RunData.current_wave, weapon_data.value, true)
+		run_data.tracked_item_effects["item_coupon"] -= (base_value - actual_value) as int
+	
+	shop.reset_item_popup_focus()
+	shop._shop_items_container.update_buttons_color()
+	shop._reroll_button.set_color_from_currency(run_data.gold)
+	SoundManager.play(Utils.get_rand_element(shop.recycle_sounds), 0, 0.1, true)
+
 func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false)->void :
 	if is_host:
 		receive_item_combine(weapon_data.my_id, is_upgrade, self_peer_id)
@@ -305,9 +340,6 @@ func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = fa
 		pass
 
 func receive_item_combine(weapon_id, is_upgrade, player_id)->void :
-#	_focus_manager.reset_focus()
-	print_debug("")
-	print_debug("we are at ", get_tree().get_current_scene().get_name())
 	var run_data_node = $"/root/MultiplayerRunData"
 	var shop = $"/root/Shop"
 	
@@ -322,11 +354,9 @@ func receive_item_combine(weapon_id, is_upgrade, player_id)->void :
 	
 	for weapon in run_data.weapons:
 		if weapon.my_id == weapon_id:
-			print_debug("found our weapon")
 			weapon_data = weapon
 			
-	print_debug("weapon_data ", weapon_data)
-
+	
 	shop._weapons_container._elements.remove_element(weapon_data, nb_to_remove)
 	removed_weapons_tracked_value += run_data_node.remove_weapon(player_id, weapon_data)
 
