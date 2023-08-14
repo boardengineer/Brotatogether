@@ -26,7 +26,17 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		emit_signal("item_bought", shop_item.item_data)
 	else:
 		.on_shop_item_bought(shop_item)
-		
+
+func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false)->void :
+	if not $"/root".has_node("GameController"):
+		.on_item_combine_button_pressed(weapon_data, is_upgrade)
+		return
+
+	_focus_manager.reset_focus()
+	
+	var game_controller = $"/root/GameController"
+	game_controller.on_item_combine_button_pressed(weapon_data, is_upgrade)
+
 func _on_RerollButton_pressed()->void :
 	if not $"/root".has_node("GameController"):
 		._on_RerollButton_pressed()

@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=2]
+[gd_scene load_steps=28 format=2]
 
 [ext_resource path="res://ui/menus/shop/shop_background.png" type="Texture" id=1]
 [ext_resource path="res://ui/icons/elite_icon.png" type="Texture" id=2]
@@ -25,6 +25,8 @@
 [ext_resource path="res://ui/menus/global/my_menu_button.gd" type="Script" id=23]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.gd" type="Script" id=24]
 [ext_resource path="res://ui/menus/shop/elite_container.gd" type="Script" id=25]
+[ext_resource path="res://ui/sounds/button_focus.wav" type="AudioStream" id=26]
+[ext_resource path="res://ui/sounds/buy.wav" type="AudioStream" id=27]
 
 [node name="Shop" type="Control"]
 pause_mode = 2
@@ -36,6 +38,8 @@ __meta__ = {
 "_edit_lock_": true,
 "_edit_use_anchors_": false
 }
+combine_sounds = [ ExtResource( 26 ) ]
+recycle_sounds = [ ExtResource( 27 ) ]
 
 [node name="FocusManager" parent="." instance=ExtResource( 17 )]
 

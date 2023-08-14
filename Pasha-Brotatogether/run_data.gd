@@ -25,6 +25,24 @@ func get_currency(player_id: int) -> int:
 	
 	return get_stat(player_id, "stat_max_hp") as int if run_data["effects"]["hp_shop"] else run_data["gold"]
 
+func can_combine_multiplayer(player_id:int, weapon_data:WeaponData)->bool:
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return false
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	var nb_duplicates = 0
+	
+	for weapon in run_data.weapons:
+		if weapon.my_id == weapon_data.my_id:
+			nb_duplicates += 1
+	
+	return nb_duplicates >= 2 and weapon_data.upgrades_into != null and weapon_data.tier < run_data.effects["max_weapon_tier"]
+
+
 func remove_currency(player_id: int, value:int) -> void:
 	var game_controller = get_game_controller()
 	
@@ -89,6 +107,29 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 	
 	return new_weapon
 
+func remove_weapon(player_id:int, weapon:WeaponData) -> int:
+	var game_controller = get_game_controller()
+
+	if not game_controller:
+		return -1
+		
+	RunData.weapon_paths[weapon.my_id] = weapon.get_path()
+
+	var run_data = game_controller.tracked_players[player_id]["run_data"]
+	
+	var removed_weapon_tracked_value = 0
+	for current_weapon in run_data.weapons:
+		if current_weapon.my_id == weapon.my_id:
+			removed_weapon_tracked_value = current_weapon.tracked_value
+			run_data.weapons.erase(current_weapon)
+			break
+			
+	unapply_item_effects(player_id, weapon, run_data)
+	update_sets(player_id)
+	update_item_related_effects(player_id)
+	reset_linked_stats(player_id)
+	
+	return removed_weapon_tracked_value
 
 func add_starting_items_and_weapons(player_id:int) -> void:
 	var game_controller = $"/root/GameController"
@@ -122,6 +163,10 @@ func apply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> v
 	for effect in item_data.effects:
 		effect.multiplayer_apply(run_data)
 
+func unapply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> void:
+	for effect in item_data.effects:
+		effect.multiplayer_unapply(run_data)
+
 func update_sets(player_id: int) -> void:
 	var game_controller = get_game_controller()
 	
@@ -132,7 +177,7 @@ func update_sets(player_id: int) -> void:
 	var run_data = tracked_players[player_id]["run_data"]
 	
 	for effect in run_data["active_set_effects"]:
-		effect[1].multiplayer_unapply(player_id)
+		effect[1].multiplayer_unapply(run_data)
 	
 	run_data["active_set_effects"] = []
 	run_data["active_sets"] = {}

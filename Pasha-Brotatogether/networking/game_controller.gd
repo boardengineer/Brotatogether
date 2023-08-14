@@ -298,6 +298,60 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	else:
 		connection.send_upgrade_selection(upgrade_data.my_id)
 
+func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false)->void :
+	if is_host:
+		receive_item_combine(weapon_data.my_id, is_upgrade, self_peer_id)
+	else:
+		pass
+
+func receive_item_combine(weapon_id, is_upgrade, player_id)->void :
+#	_focus_manager.reset_focus()
+	print_debug("")
+	print_debug("we are at ", get_tree().get_current_scene().get_name())
+	var run_data_node = $"/root/MultiplayerRunData"
+	var shop = $"/root/Shop"
+	
+	var nb_to_remove = 2
+	var removed_weapons_tracked_value = 0
+
+	if is_upgrade:
+		nb_to_remove = 1
+		
+	var run_data = tracked_players[player_id].run_data
+	var weapon_data = null
+	
+	for weapon in run_data.weapons:
+		if weapon.my_id == weapon_id:
+			print_debug("found our weapon")
+			weapon_data = weapon
+			
+	print_debug("weapon_data ", weapon_data)
+
+	shop._weapons_container._elements.remove_element(weapon_data, nb_to_remove)
+	removed_weapons_tracked_value += run_data_node.remove_weapon(player_id, weapon_data)
+
+	if not is_upgrade:
+		removed_weapons_tracked_value += run_data_node.remove_weapon(player_id, weapon_data)
+
+	shop.reset_item_popup_focus()
+
+	var new_weapon = run_data_node.add_weapon(player_id, weapon_data.upgrades_into)
+
+	new_weapon.tracked_value = removed_weapons_tracked_value
+
+	if is_upgrade:
+		new_weapon.dmg_dealt_last_wave = weapon_data.dmg_dealt_last_wave
+
+	shop._stats_container.update_stats()
+
+	shop._weapons_container._elements.add_element(new_weapon)
+
+	if Input.get_mouse_mode() == Input.MOUSE_MODE_HIDDEN:
+		shop._weapons_container._elements.focus_element(new_weapon)
+
+	SoundManager.play(Utils.get_rand_element(shop.combine_sounds), 0, 0.1, true)
+	shop._weapons_container.set_label(shop.get_weapons_label_text())
+
 func receive_uprade_selected(upgrade_data_id, player_id):
 	for upgrade in ItemService.upgrades:
 		if upgrade.my_id == upgrade_data_id:

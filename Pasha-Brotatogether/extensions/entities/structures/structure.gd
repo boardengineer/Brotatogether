@@ -30,7 +30,7 @@ func make_fake_stats() -> void:
 	stats.max_range = 100
 	stats.cooldown = 100
 
-func reload_data() -> void :
+func reload_data() -> void:
 	if player_id == -1:
 		.reload_data()
 		return
@@ -48,6 +48,6 @@ func reload_data() -> void :
 				effect.burning_data.type
 			)
 			
-			stats.burning_data = multiplayer_weapon_service.init_burning_data_multiplayer(base_burning, false, true)
+			stats.burning_data = multiplayer_weapon_service.init_burning_data_multiplayer(player_id, base_burning, false, true)
 			
 	_ready()
