@@ -34,6 +34,8 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "items/consumables/consumable.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "items/global/effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "items/materials/gold.gd")
+	
+	ModLoaderMod.install_script_extension(ext_dir + "singletons/item_service.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/run_data.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/weapon_service.gd")
 	
