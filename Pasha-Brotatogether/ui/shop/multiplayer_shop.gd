@@ -28,7 +28,6 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		
 		var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
 		
-		print_debug("setting shop item text to ", label_text)
 		_weapons_container.set_label(label_text)
 		
 		emit_signal("item_bought", shop_item.item_data)

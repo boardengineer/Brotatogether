@@ -68,9 +68,6 @@ func apply_items_effects() -> void:
 	current_stats.copy(max_stats)
 	
 	emit_signal("health_updated", current_stats.health, max_stats.health)
-	
-	print_debug("this is where the update comes from? ", current_stats.health, " ", max_stats.health)
-	
 
 func on_healing_effect_multiplayer(value:int, tracking_text:String = "", from_torture:bool = false)->int:
 	

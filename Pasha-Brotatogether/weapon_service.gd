@@ -17,7 +17,6 @@ func init_melee_stats_multiplayer(player_id:int, from_stats:MeleeWeaponStats = M
 
 
 func init_ranged_stats_multiplayer(player_id:int, from_stats:RangedWeaponStats = RangedWeaponStats.new(), weapon_id:String = "", sets:Array = [], effects:Array = [], is_structure:bool = false)->RangedWeaponStats:
-	print_debug("initting multiplayer ranged stats")
 	var new_stats = init_base_stats_multiplayer(player_id, from_stats, weapon_id, sets, effects, is_structure) as RangedWeaponStats
 	
 	var multiplayer_utils = $"/root/MultiplayerUtils"

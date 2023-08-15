@@ -47,7 +47,6 @@ func _ready():
 func _on_EntitySpawner_player_spawned(player:Player)->void :
 	._on_EntitySpawner_player_spawned(player)
 	
-	print_debug("spawned player with health ", player.current_stats.health, " ", player.max_stats.health)
 	# This happens before ready()
 	if not game_controller:
 		if $"/root".has_node("GameController"):
@@ -58,7 +57,9 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 		var _error = player.connect("health_updated", self, "on_health_update")
 		set_life_label(player.current_stats.health, player.max_stats.health)
 		
-#	RunData.disconnect("healing_effect", player, "on_healing_effect")
+		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+		var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+		_xp_bar.update_value(run_data.current_xp, next_level_xp)
 
 func _on_player_died(_p_player:Player)->void :
 	if game_controller:
@@ -139,8 +140,6 @@ func reload_stats()->void :
 		.reload_stats()
 
 func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) -> void:
-	print_debug("initting multiplayer weapon stats")
-	
 	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
 	
 	if weapon.stats is RangedWeaponStats:
@@ -236,10 +235,7 @@ func add_xp(player_id, value) -> void:
 	run_data.current_xp += xp_gained
 	
 	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
-	
-#	TODO MP-aware ex change?
 	RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
-	
 	
 	while run_data.current_xp >= next_level_xp:
 
@@ -347,6 +343,16 @@ func remove_stat(player_id: int, stat_name:String, value:int)->void :
 	
 	run_data["effects"][stat_name] -= value
 
+
+func set_level_label()->void :
+	if not $"/root".has_node("GameController"):
+		.set_level_label()
+		return
+		
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	
+	_level_label.text = "LV." + str(run_data.current_level)
 
 func on_levelled_up_multiplayer(player_id:int) -> void:
 	print_debug("running multiplayer level up")
