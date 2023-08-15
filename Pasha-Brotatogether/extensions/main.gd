@@ -47,6 +47,7 @@ func _ready():
 func _on_EntitySpawner_player_spawned(player:Player)->void :
 	._on_EntitySpawner_player_spawned(player)
 	
+	print_debug("spawned player with health ", player.current_stats.health, " ", player.max_stats.health)
 	# This happens before ready()
 	if not game_controller:
 		if $"/root".has_node("GameController"):
@@ -55,6 +56,7 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 	if game_controller:	
 		game_controller.update_health(player.current_stats.health, player.max_stats.health)
 		var _error = player.connect("health_updated", self, "on_health_update")
+		set_life_label(player.current_stats.health, player.max_stats.health)
 		
 #	RunData.disconnect("healing_effect", player, "on_healing_effect")
 

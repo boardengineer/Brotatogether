@@ -445,7 +445,7 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 	if shop_item_data.get_category() == Category.ITEM:
 		run_data_node.add_item(player_id, shop_item_data)
 	elif shop_item_data.get_category() == Category.WEAPON:
-		if not run_data_node.has_weapon_slot_available(player_id, shop_item_data):
+		if not run_data_node.has_weapon_slot_available(player_id, shop_item_data.type):
 			for weapon in run_data.weapons:
 				if weapon.my_id == shop_item_data.my_id and weapon.upgrades_into != null:
 					var _weapon = run_data_node.add_weapon(player_id, shop_item_data)

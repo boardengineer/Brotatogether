@@ -326,7 +326,7 @@ func get_stat_gain(player_id: int, stat_name:String)->float:
 	
 	if not game_controller:
 		return 1.0
-			
+	
 	var tracked_players = game_controller.tracked_players
 	var run_data = tracked_players[player_id]["run_data"]
 	

@@ -64,11 +64,13 @@ func apply_items_effects() -> void:
 	
 	_sprites = animation_node.get_children()
 	
-	
-	print_debug("this is where the update comes from?")
 	update_player_stats_multiplayer()
-	
 	current_stats.copy(max_stats)
+	
+	emit_signal("health_updated", current_stats.health, max_stats.health)
+	
+	print_debug("this is where the update comes from? ", current_stats.health, " ", max_stats.health)
+	
 
 func on_healing_effect_multiplayer(value:int, tracking_text:String = "", from_torture:bool = false)->int:
 	
@@ -96,7 +98,6 @@ func update_player_stats_multiplayer()->void :
 	var run_data = game_controller.tracked_players[player_network_id]["run_data"]
 	var multiplayer_utils = $"/root/MultiplayerUtils"
 	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
-	
 	
 	max_stats.health = clamp(multiplayer_utils.get_stat_multiplayer(player_network_id, "stat_max_hp"), 1, run_data.effects["hp_cap"]) as int
 	max_stats.speed = stats.speed * (1 + (min(multiplayer_utils.get_stat_multiplayer(player_network_id, "stat_speed"), run_data.effects["speed_cap"]) / 100.0)) as float

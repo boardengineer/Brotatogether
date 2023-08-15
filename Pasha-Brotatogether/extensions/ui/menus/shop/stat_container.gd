@@ -2,8 +2,6 @@ extends StatContainer
 
 func update_stat()->void :
 	if  $"/root".has_node("GameController"):
-		print_debug("updating key ", key)
-		
 		var game_controller = $"/root/GameController"
 
 		var player = game_controller.tracked_players[game_controller.self_peer_id]
