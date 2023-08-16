@@ -176,22 +176,23 @@ func start_game(game_info: Dictionary):
 			
 			var lobby_info = game_info.lobby_info
 			
-			var character_data = load(lobby_info.character)
-			
-			if lobby_info.has("weapon"):
-				var weapon_data = load(lobby_info.weapon)
-#				var _unused = RunData.add_weapon(weapon_data, true)
-				run_data_node.add_weapon(self_peer_id, weapon_data, true)
-				
 			var danger = lobby_info.danger
+			
+			var character_data = load(lobby_info.character)
 			
 			# Needed for random checks in main
 			RunData.add_character(character_data)
-			
-			run_data_node.add_character(self_peer_id, character_data)
-			
-#			RunData.add_starting_items_and_weapons()
-			run_data_node.add_starting_items_and_weapons(self_peer_id)
+						
+			for player_id in tracked_players:
+				if lobby_info.has("weapon"):
+					var weapon_data = load(lobby_info.weapon)
+#					var _unused = RunData.add_weapon(weapon_data, true)
+					run_data_node.add_weapon(player_id, weapon_data, true)
+					
+				run_data_node.add_character(player_id, character_data)
+				
+	#			RunData.add_starting_items_and_weapons()
+				run_data_node.add_starting_items_and_weapons(player_id)
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger

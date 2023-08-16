@@ -90,7 +90,7 @@ func spawn_additional_players() -> void:
 			var spawn_pos = Vector2(spawn_x_pos, _entity_spawner._zone_max_pos.y / 2)
 			var spawned_player = _entity_spawner.spawn_entity(player_scene, spawn_pos, true)
 			spawned_player.player_network_id = player_id
-			spawned_player.apply_item_effects()
+			spawned_player.apply_items_effects()
 			
 			# re-init the weapons after we set the network id
 			for weapon in spawned_player.current_weapons:
