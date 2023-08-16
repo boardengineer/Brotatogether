@@ -20,8 +20,9 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "effects/items/stat_gains_modification_effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "effects/items/structure_effect.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/null_effect.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/class_bonus_effect.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/gain_stat_every_killed_enemies_effect.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "effects/weapons/null_effect.gd")
 
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/neutral/neutral.gd")

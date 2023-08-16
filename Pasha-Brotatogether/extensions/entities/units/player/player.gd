@@ -7,8 +7,11 @@ func add_weapon(weapon_data:WeaponData, pos:int)->void :
 	var weapon = current_weapons[current_weapons.size() - 1]
 	var data_node = load("res://mods-unpacked/Pasha-Brotatogether/extensions/entities/units/player/weapon_data_node.gd").new()
 	data_node.weapon_data = weapon_data
+	data_node.weapon = weapon
 	data_node.set_name("data_node")
 	weapon.call_deferred("add_child", data_node)
+	for effect in weapon.effects:
+		effect.player_id = player_network_id
 
 func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0, bypass_invincibility:bool = false)->Array:
 	if  $"/root".has_node("GameController"):

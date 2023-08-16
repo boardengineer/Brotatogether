@@ -1,5 +1,7 @@
 extends "res://items/global/effect.gd"
 
+var player_id = -1
+
 func multiplayer_apply(run_data) -> void:
 	if custom_key != "" or storage_method == StorageMethod.KEY_VALUE:
 		run_data.effects[custom_key].push_back([key, value])

@@ -99,6 +99,18 @@ func remove_stat(player_id: int, stat_name:String, value:int)->void :
 	
 	run_data["effects"][stat_name] -= value
 
+func add_stat(player_id, stat_name:String, value:int)->void :
+	var game_controller = get_game_controller()
+	
+	if not game_controller:
+		return
+			
+	var tracked_players = game_controller.tracked_players
+	var run_data = tracked_players[player_id]["run_data"]
+	
+	run_data.effects[stat_name] += value
+	RunData.emit_signal("stat_added", stat_name, value, 0.0)
+
 func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->WeaponData:
 	var game_controller = get_game_controller()
 
@@ -119,6 +131,7 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 	update_sets(player_id)
 	update_item_related_effects(player_id)
 	reset_linked_stats(player_id)
+	print_debug("done adding weapon")
 	
 	return new_weapon
 

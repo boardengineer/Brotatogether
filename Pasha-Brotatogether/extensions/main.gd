@@ -37,8 +37,6 @@ func _ready():
 	$UI.add_child(health_tracker)
 	health_tracker.init(game_controller.tracked_players)
 	
-	print_debug("added health tracker")
-	
 	# connnect multiplayer signals
 	var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 	var _connect_error = RunData.connect("levelled_up", self, "on_levelled_up_multiplayer")
@@ -76,12 +74,13 @@ func spawn_additional_players() -> void:
 	# The first player was created on at startup, create the rest manually
 	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
 	_player.player_network_id = game_controller.self_peer_id
+	
 	_player.apply_items_effects()
 	
 	# re-init the weapons after we set the network id
 	for weapon in _player.current_weapons:
 		if is_instance_valid(weapon):
-			init_weapon_stats(weapon, game_controller.self_peer_id, false)
+			init_weapon_stats(weapon, game_controller.self_peer_id, true)
 	
 	if game_controller.is_source_of_truth:
 		for player_id in game_controller.tracked_players: 
@@ -96,7 +95,7 @@ func spawn_additional_players() -> void:
 			# re-init the weapons after we set the network id
 			for weapon in spawned_player.current_weapons:
 				if is_instance_valid(weapon):
-					init_weapon_stats(weapon, player_id, false)
+					init_weapon_stats(weapon, player_id, true)
 			
 			spawned_player.connect("health_updated", self, "on_health_update")
 			spawned_player.connect("died", self, "_on_player_died")
@@ -110,6 +109,7 @@ func spawn_additional_players() -> void:
 			
 			if not game_controller.tracked_players.has(player_id):
 				game_controller.tracked_players[player_id] = {}
+				
 			game_controller.tracked_players[player_id]["player"] = spawned_player
 			spawn_x_pos += 200
 	
@@ -166,6 +166,10 @@ func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) 
 	
 	if at_wave_begin:
 		weapon._current_cooldown = current_stats.cooldown
+		
+		weapon._hitbox.disconnect("killed_something", weapon, "on_killed_something")
+#		print_debug("hopefully connecting?? ", weapon.get("data_node"))
+#		weapon._hitbox.connect("killed_something", weapon.get("data_node"), "on_killed_something")
 	
 	weapon._range_shape.shape.radius = current_stats.max_range + 200
 

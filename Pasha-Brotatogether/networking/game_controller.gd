@@ -210,7 +210,6 @@ func start_game(game_info: Dictionary):
 			RunData.current_run_accessibility_settings.damage = RunData.current_run_accessibility_settings.damage * num_players
 			RunData.current_run_accessibility_settings.speed = RunData.current_run_accessibility_settings.speed * speed_multi
 			
-			
 #		tracked_players = {}
 #		RunData.current_wave = game_info.current_wave
 		
