@@ -119,39 +119,40 @@ func _on_GoButton_pressed()-> void:
 	
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
-func init_multiplayer_run_data():
+func init_all_player_data():
 	for player_id in tracked_players:
-		var run_data = {}
+		init_player_data(tracked_players[player_id], player_id)
+
+func init_player_data(player:Dictionary, player_id) -> void:
+	var run_data = {}
+	
+	# Randomly useful in places
+	run_data["player_id"] = player_id
+	
+	run_data["effects"] = RunData.init_effects()
 		
-		# Randomly useful in places
-		run_data["player_id"] = player_id
+	run_data["items"] = []
+	run_data["weapons"] = []
+	run_data["additional_weapon_effects"] = []
+	run_data["active_set_effects"] = []
+	run_data["gold"] = DebugService.starting_gold
+	run_data["current_xp"] = 0
+	run_data["current_level"] = 0
 		
-		run_data["effects"] = RunData.init_effects()
+	run_data["tier_i_weapon_effects"] = []
+	run_data["tier_iv_weapon_effects"] = []
 		
-		run_data["items"] = []
-		run_data["weapons"] = []
-		run_data["additional_weapon_effects"] = []
-		run_data["active_set_effects"] = []
-		run_data["gold"] = DebugService.starting_gold
-		run_data["current_xp"] = 0
-		run_data["current_level"] = 0
+	run_data["unique_effects"] = []
+	run_data["appearances_displayed"] = []
+	run_data["tracked_item_effects"] = RunData.init_tracked_effects()
 		
-		run_data["tier_i_weapon_effects"] = []
-		run_data["tier_iv_weapon_effects"] = []
+	player["linked_stats"] = {}
+	player["linked_stats"]["stats"] = RunData.init_stats(true)
+	player["linked_stats"]["update_on_gold_chance"] = false
 		
-		run_data["unique_effects"] = []
-		run_data["appearances_displayed"] = []
-		run_data["tracked_item_effects"] = RunData.init_tracked_effects()
-		
-		tracked_players[player_id]["linked_stats"] = {}
-		tracked_players[player_id]["linked_stats"]["stats"] = RunData.init_stats(true)
-		tracked_players[player_id]["linked_stats"]["update_on_gold_chance"] = false
-		
-		tracked_players[player_id]["temp_stats"] = {}
-		tracked_players[player_id]["temp_stats"]["stats"] = RunData.init_stats(true)
-		
-		tracked_players[player_id]["run_data"] = run_data
-		
+	player["temp_stats"] = {}
+	player["temp_stats"]["stats"] = RunData.init_stats(true)
+	player["run_data"] = run_data
 
 func start_game(game_info: Dictionary):
 	reset_extra_creatures()
@@ -165,7 +166,7 @@ func start_game(game_info: Dictionary):
 	if game_mode == "shared":
 		if game_info.current_wave == 1:
 			var run_data_node = $"/root/MultiplayerRunData"
-			init_multiplayer_run_data()
+			init_all_player_data()
 			
 			# TODO this should go away
 			RunData.weapons = []

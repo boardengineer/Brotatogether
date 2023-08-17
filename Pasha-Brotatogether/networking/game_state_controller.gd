@@ -665,12 +665,13 @@ func update_births(buffer:StreamPeerBuffer) -> void:
 
 func get_players_state(buffer: StreamPeerBuffer) -> void:
 	var tracked_players = parent.tracked_players
-	
 	var num_players = tracked_players.size()
 	buffer.put_u16(num_players)
 	
 	for player_id in tracked_players:
 		var tracked_player = tracked_players[player_id]["player"]
+		var run_data = tracked_players[player_id]["run_data"]
+		
 		buffer.put_64(player_id)
 		
 		buffer.put_float(tracked_player.position.x)
@@ -686,8 +687,9 @@ func get_players_state(buffer: StreamPeerBuffer) -> void:
 
 		# This would be where individual inventories are sent out instead of
 		# RunData.gold
-		buffer.put_u16(RunData.gold)
-
+		buffer.put_u16(run_data.gold)
+		print_debug("sending gold for player ", player_id, " ", run_data.gold)
+		
 		var num_appearances = RunData.appearances_displayed.size()
 		buffer.put_u16(num_appearances)
 		
@@ -728,6 +730,7 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 		var player_id = buffer.get_64()
 		if not player_id in tracked_players:
 			tracked_players[player_id] = {}
+			parent.init_player_data(tracked_players[player_id], player_id)
 		
 		var pos_x = buffer.get_float()
 		var pos_y = buffer.get_float()
@@ -744,6 +747,8 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 		
 		var num_appearances = buffer.get_u16()
 		var appeareances_filenames = []
+		
+		# TODO This should be part of spawning only
 		for _appearance_index in num_appearances:
 			appeareances_filenames.push_back(buffer.get_string())
 		

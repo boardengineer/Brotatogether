@@ -179,8 +179,6 @@ func _process(_delta):
 		if game_controller and game_controller.is_source_of_truth and send_updates:
 			game_controller.send_game_state()
 
-
-
 func send_player_position():
 	if  $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
@@ -224,7 +222,9 @@ func add_gold(player_id, value) -> void:
 	
 	run_data.gold += value
 	
-	RunData.emit_signal("gold_changed", run_data.gold)
+	print_debug("adding gold for ", player_id, " to ", run_data.gold)
+	if player_id == game_controller.self_peer_id:
+		RunData.emit_signal("gold_changed", run_data.gold)
 	
 	if linked_stats.update_on_gold_chance:
 		run_data_node.reset_linked_stats(player_id)
@@ -239,7 +239,8 @@ func add_xp(player_id, value) -> void:
 	run_data.current_xp += xp_gained
 	
 	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
-	RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
+	if player_id == game_controller.self_peer_id:
+		RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
 	
 	while run_data.current_xp >= next_level_xp:
 
@@ -248,7 +249,8 @@ func add_xp(player_id, value) -> void:
 		run_data.current_level += 1
 		RunData.emit_signal("levelled_up", player_id)
 		
-		RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
+		if player_id == game_controller.self_peer_id:
+			RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
 		next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
 
 func on_gold_picked_up(gold:Node) -> void:
