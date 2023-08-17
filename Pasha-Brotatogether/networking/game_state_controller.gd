@@ -688,6 +688,8 @@ func get_players_state(buffer: StreamPeerBuffer) -> void:
 		# This would be where individual inventories are sent out instead of
 		# RunData.gold
 		buffer.put_u16(run_data.gold)
+		buffer.put_u16(run_data.current_level)
+		buffer.put_u16(run_data.current_xp)
 		print_debug("sending gold for player ", player_id, " ", run_data.gold)
 		
 		var num_appearances = RunData.appearances_displayed.size()
@@ -732,6 +734,7 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 			tracked_players[player_id] = {}
 			parent.init_player_data(tracked_players[player_id], player_id)
 		
+		var run_data = tracked_players[player_id]["run_data"]
 		var pos_x = buffer.get_float()
 		var pos_y = buffer.get_float()
 		
@@ -744,6 +747,8 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 		var max_health = buffer.get_u16()
 		
 		var gold = buffer.get_u16()
+		var current_level = buffer.get_16()
+		var current_xp = buffer.get_16()
 		
 		var num_appearances = buffer.get_u16()
 		var appeareances_filenames = []
@@ -784,8 +789,21 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 				main._life_bar.update_value(current_health, max_health)
 				main.set_life_label(current_health, max_health)
 				main._damage_vignette.update_from_hp(current_health, max_health)
-				RunData.gold = gold
-				$"/root/ClientMain"._ui_gold.on_gold_changed(gold)
+				
+				if run_data.gold != gold:
+					run_data.gold = gold
+					if player_id == parent.self_peer_id:
+						$"/root/ClientMain"._ui_gold.on_gold_changed(gold)
+				
+				if run_data.current_xp != current_xp:
+					run_data.current_xp = current_xp
+					var next_level_xp = RunData.get_xp_needed(current_level + 1)
+					if player_id == parent.self_peer_id:
+						$"/root/ClientMain"._xp_bar.update_value(current_xp, next_level_xp)
+					
+#				TODO this should only be set once but it seems the run_data is set elsewhere
+				run_data.current_level = current_level
+				$"/root/ClientMain"._level_label.text = "LV." + str(current_level)
 		else:
 			if is_instance_valid(player):
 				player.position = Vector2(pos_x, pos_y)
