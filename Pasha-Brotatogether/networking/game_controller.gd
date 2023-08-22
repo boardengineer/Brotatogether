@@ -423,10 +423,10 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 	
 	for weapon in ItemService.weapons:
 		if weapon.my_id == item_id:
-			shop_item_data = weapon.duplicate()
+			shop_item_data = weapon
 	for item in ItemService.items:
 		if item.my_id == item_id:
-			shop_item_data = item.duplicate()
+			shop_item_data = item
 	
 	if nb_coupons > 0:
 		

@@ -133,7 +133,7 @@ func _ready()->void :
 	_tile_map_limits.init(current_zone)
 	
 	ZoneService.current_zone_max_position = Vector2(current_zone.width * Utils.TILE_SIZE, current_zone.height * Utils.TILE_SIZE)
-		
+	
 	_current_wave_label.text = Text.text("WAVE", [str(RunData.current_wave)]).to_upper()
 	
 #	_wave_timer.wait_time = 15
@@ -198,6 +198,12 @@ func _ready()->void :
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)
 	health_tracker.init(game_controller.tracked_players)
+	
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	var current_level = run_data.current_level
+	var current_xp = run_data.current_xp
+	var next_level_xp = RunData.get_xp_needed(current_level + 1)
+	_xp_bar.update_value(current_xp, next_level_xp)
 
 
 func _input(event:InputEvent)->void :
@@ -325,7 +331,6 @@ func on_consumable_picked_up(consumable:Node)->void :
 	
 	RunData.apply_item_effects(consumable.consumable_data)
 
-
 func spawn_gold(unit:Unit, entity_type:int)->void :
 	var pos = unit.global_position
 	var value = unit.stats.value
@@ -334,7 +339,7 @@ func spawn_gold(unit:Unit, entity_type:int)->void :
 		value += (value * round(RunData.effects["neutral_gold_drops"] / 100.0))
 	elif entity_type == EntityType.ENEMY and RunData.effects["enemy_gold_drops"] > 1.0:
 		value += (value * round(RunData.effects["enemy_gold_drops"] / 100.0))
-	
+
 	for i in value:
 		var dist = rand_range(50, 100 + unit.stats.gold_spread)
 		var gold = gold_scene.instance()

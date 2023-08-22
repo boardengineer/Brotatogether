@@ -222,7 +222,7 @@ func add_gold(player_id, value) -> void:
 	
 	run_data.gold += value
 	
-	print_debug("adding gold for ", player_id, " to ", run_data.gold)
+#	print_debug("adding gold for ", player_id, " to ", run_data.gold)
 	if player_id == game_controller.self_peer_id:
 		RunData.emit_signal("gold_changed", run_data.gold)
 	
@@ -369,10 +369,9 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 	SoundManager.play(level_up_sound, 0, 0, true)
 	var level = run_data.current_level
 	
-	emit_signal("upgrade_to_process_added", ItemService.upgrade_to_process_icon, level)
-
 #	upgrades to process
 	if player_id == game_controller.self_peer_id:
+		emit_signal("upgrade_to_process_added", ItemService.upgrade_to_process_icon, level)
 		_upgrades_to_process.push_back(level)
 		_level_label.text = "LV." + str(level)
 	
