@@ -372,9 +372,9 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 	emit_signal("upgrade_to_process_added", ItemService.upgrade_to_process_icon, level)
 
 #	upgrades to process
-	_upgrades_to_process.push_back(level)
-#	set_level_label()
-	_level_label.text = "LV." + str(level)
+	if player_id == game_controller.self_peer_id:
+		_upgrades_to_process.push_back(level)
+		_level_label.text = "LV." + str(level)
 	
 	run_data.effects["stat_max_hp"] += 1
 	reload_stats()
