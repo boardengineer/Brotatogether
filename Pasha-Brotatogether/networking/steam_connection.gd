@@ -38,6 +38,8 @@ func read_p2p_packet() -> bool:
 			parent.enemy_death(data.enemy_id)
 		elif type == "end_wave":
 			parent.end_wave()
+		elif type == "level_up":
+			parent.receive_player_level_up(data.player_id, data.level)
 		elif type == "flash_enemy":
 			parent.flash_enemy(data.enemy_id)
 		elif type == "flash_neutral":
@@ -323,4 +325,11 @@ func send_upgrade_selection(upgrade_data_id) -> void:
 	var send_data = {}
 	send_data["type"] = "select_upgrade"
 	send_data["upgrade_id"] = upgrade_data_id
+	send_data_to_all(send_data)
+
+func send_player_level_up(player_id:int, level:int) -> void:
+	var send_data = {}
+	send_data["type"] = "level_up"
+	send_data["player_id"] = player_id
+	send_data["level"] = level
 	send_data_to_all(send_data)

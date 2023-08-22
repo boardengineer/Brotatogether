@@ -525,9 +525,7 @@ func end_wave():
 	run_updates = false
 	game_state_controller.reset_client_items()
 	
-	print_debug("erasing keys??")
 	for player_id in tracked_players:
-		print_debug("erasing key: ", player_id)
 		tracked_players[player_id].erase("player")
 
 func send_ready(is_ready:bool) -> void:
@@ -699,6 +697,15 @@ func get_projectiles_state() -> Dictionary:
 
 			projectiles.push_back(projectile_data)
 	return projectiles
+
+func send_player_level_up(player_id: int, level:int) -> void:
+	connection.send_player_level_up(player_id, level)
+	
+func receive_player_level_up(player_id: int, level:int) -> void:
+	if player_id == self_peer_id:
+		var main = $"/root/ClientMain"
+		main._ui_upgrades_to_process.add_element(ItemService.upgrade_to_process_icon, level)
+		main._upgrades_to_process.push_back(level)
 
 func receive_health_update(current_health:int, max_health:int, source_player_id:int) -> void:
 	tracked_players[source_player_id]["max_health"] = max_health

@@ -635,9 +635,6 @@ func on_gold_changed(gold:int)->void :
 
 
 func _on_WaveTimer_timeout()->void :
-	
-	DebugService.log_run_info(_upgrades_to_process, _consumables_to_process)
-	
 	var is_last_wave = is_last_wave()
 	
 	ProgressData.update_mouse_cursor(true)
@@ -645,46 +642,14 @@ func _on_WaveTimer_timeout()->void :
 	if not _is_run_lost and is_last_wave:
 		_is_run_won = true
 	
-	ChallengeService.check_counted_challenges()
-	
-	if RunData.effects["stats_end_of_wave"].size() > 0:
-		for stat_end_of_wave in RunData.effects["stats_end_of_wave"]:
-			RunData.add_stat(stat_end_of_wave[0], stat_end_of_wave[1])
-			
-			if stat_end_of_wave[0] == "stat_percent_damage":
-				RunData.tracked_item_effects["item_vigilante_ring"] += stat_end_of_wave[1]
-			elif stat_end_of_wave[0] == "stat_max_hp":
-				
-				var leaf_value = 0
-				
-				for item in RunData.items:
-					if item.my_id == "item_grinds_magical_leaf":
-						leaf_value = item.effects[0].value + 2
-				
-				RunData.tracked_item_effects["item_grinds_magical_leaf"] += leaf_value
-	
-	if RunData.effects["convert_stats_end_of_wave"].size() > 0:
-		Utils.convert_stats(RunData.effects["convert_stats_end_of_wave"])
-	
 	manage_harvesting()
-	DebugService.log_data("start clean_up_room...")
+	
 	clean_up_room(is_last_wave, false, _is_run_won)
 	
 	if _is_run_won:
 		apply_run_won()
 	
 	_end_wave_timer.start()
-	TempStats.reset()
 	InputService.hide_mouse = true
 	
-	if $"/root/GameController":
-		if $"/root/GameController".game_mode == "shared":
-			if not $"/root/GameController".is_source_of_truth:
-				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/waiting.tscn")
-			else:
-				# This is an opponent shop now, might need to be a friendlier shop later
-				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
-		else:
-			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
-	else:
-		var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
+	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/waiting.tscn")
