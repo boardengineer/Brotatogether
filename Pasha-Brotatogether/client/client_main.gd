@@ -588,7 +588,9 @@ func on_gold_changed(gold:int)->void :
 			_last_gold_amount_used_to_reload_stats = (gold / 30.0) as int
 
 
-func _on_WaveTimer_timeout()->void :
+func _on_WaveTimer_timeout() -> void:
+	game_controller.send_complete_player_request()
+	
 	var is_last_wave = is_last_wave()
 	
 	ProgressData.update_mouse_cursor(true)
@@ -612,4 +614,4 @@ func _on_WaveTimer_timeout()->void :
 			yield (_upgrades_ui, "upgrade_selected")
 			_ui_upgrades_to_process.remove_element(upgrade_to_process)
 
-	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/waiting.tscn")
+	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")

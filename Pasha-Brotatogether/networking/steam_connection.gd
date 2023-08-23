@@ -338,10 +338,9 @@ func send_player_level_up(player_id:int, level:int) -> void:
 	send_data["level"] = level
 	send_data_to_all(send_data)
 	
-func send_complete_player_request(player_id:int) -> void:
+func send_complete_player_request() -> void:
 	var send_data = {}
 	send_data["type"] = "request_complete_player"
-	send_data["player_id"] = player_id
 	send_data_to_all(send_data)
 	
 func send_complete_player(player_id:int, player_dict:Dictionary) -> void:
