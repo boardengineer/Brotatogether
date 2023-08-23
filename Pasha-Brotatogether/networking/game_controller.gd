@@ -299,6 +299,61 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	else:
 		connection.send_upgrade_selection(upgrade_data.my_id)
 
+func send_complete_player_request() -> void:
+	connection.send_complete_player_request()
+	
+func send_complete_player(player_id:int) -> void:
+	var player_dict = tracked_players[player_id].duplicate()
+	player_dict.run_data = player_dict.run_data.duplicate()
+	
+	var new_items = []
+	
+	for item in player_dict.run_data.items:
+		var to_add = {}
+		to_add["my_id"] = item.my_id 
+		new_items.push_back(to_add)
+	player_dict.run_data["items"] = new_items
+
+	player_dict.run_data.current_character = player_dict.run_data.current_character.my_id
+	
+	var new_weapons = []
+	for weapon in player_dict.run_data.weapons:
+		var to_add = {}
+		to_add["my_id"] = weapon.my_id
+		new_weapons.push_back(to_add)
+	player_dict.run_data["weapons"] = new_weapons
+	
+	connection.send_complete_player(player_id, player_dict)
+	
+func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
+	if player_id == self_peer_id:
+		print_debug("This is where we parse our own player dict ", player_dict)
+		
+		tracked_players[player_id]["run_data"] = player_dict.run_data
+		
+		var new_items = []
+		
+		for item in player_dict.run_data.items:
+			for query_item in ItemService.items:
+				if query_item.my_id == item.my_id:
+					print_debug("duplicating ", item.my_id)
+					new_items.push_back(query_item.duplicate())
+					
+		tracked_players[player_id]["run_data"]["items"] = new_items
+		
+		for query_character in ItemService.characters:
+			if query_character.my_id == player_dict.run_data.current_character:
+				player_dict.run_data.current_character = query_character
+				break
+				
+		var new_weapons = []
+		
+		for weapon in player_dict.run_data.weapons:
+			for query_weapon in ItemService.weapons:
+				if query_weapon.my_id == weapon.my_id:
+					new_weapons.push_back(query_weapon.duplicate())
+		tracked_players[player_id]["run_data"]["weapons"] = new_weapons
+
 func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:
 	if is_host:
 		receive_item_box_take(item_data.my_id, self_peer_id)
@@ -455,10 +510,10 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 		else :
 			var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
 	
-			
-	#TODO there's more stuff
-			
-	shop._stats_container.update_stats()
+	
+	if player_id == self_peer_id:
+		shop._stats_container.update_stats()
+		
 	connection.send_tracked_players(tracked_players)
 
 func send_bought_item(shop_item:Resource) -> void:

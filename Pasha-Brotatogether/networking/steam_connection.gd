@@ -52,6 +52,10 @@ func read_p2p_packet() -> bool:
 			parent.receive_bought_item_by_id(data.item_id, sender, data.value)
 		elif type == "send_ready":
 			parent.update_ready_state(sender, data.is_ready)
+		elif type == "request_complete_player":
+			parent.send_complete_player(sender)
+		elif type == "complete_player":
+			parent.receive_complete_player(data.player_id, data.player_dict)
 		elif type == "handshake":
 			# completes the handshake?
 			established_p2p_connections[sender] = true
@@ -324,7 +328,7 @@ func get_lobby_host() -> String:
 func send_upgrade_selection(upgrade_data_id) -> void:
 	var send_data = {}
 	send_data["type"] = "select_upgrade"
-	send_data["upgrade_id"] = upgrade_data_id
+	send_data["upgrade_data_id"] = upgrade_data_id
 	send_data_to_all(send_data)
 
 func send_player_level_up(player_id:int, level:int) -> void:
@@ -332,4 +336,17 @@ func send_player_level_up(player_id:int, level:int) -> void:
 	send_data["type"] = "level_up"
 	send_data["player_id"] = player_id
 	send_data["level"] = level
+	send_data_to_all(send_data)
+	
+func send_complete_player_request(player_id:int) -> void:
+	var send_data = {}
+	send_data["type"] = "request_complete_player"
+	send_data["player_id"] = player_id
+	send_data_to_all(send_data)
+	
+func send_complete_player(player_id:int, player_dict:Dictionary) -> void:
+	var send_data = {}
+	send_data["type"] = "complete_player"
+	send_data["player_id"] = player_id
+	send_data["player_dict"] = player_dict
 	send_data_to_all(send_data)
