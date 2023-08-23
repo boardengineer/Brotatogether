@@ -204,7 +204,8 @@ func _ready()->void :
 	var current_xp = run_data.current_xp
 	var next_level_xp = RunData.get_xp_needed(current_level + 1)
 	_xp_bar.update_value(current_xp, next_level_xp)
-
+	
+	var _error_upg_select = _upgrades_ui.connect("upgrade_selected", self, "on_upgrade_selected")
 
 func _input(event:InputEvent)->void :
 	var is_right_stick_motion = event is InputEventJoypadMotion and (event.axis == JOY_AXIS_2 or event.axis == JOY_AXIS_3) and abs(event.axis_value) > 0.5
@@ -482,7 +483,7 @@ func on_focus_lost()->void :
 			_upgrades_ui.focus()
 
 func on_upgrade_selected(upgrade_data:UpgradeData)->void :
-	RunData.apply_item_effects(upgrade_data)
+	game_controller.on_upgrade_selected(upgrade_data)
 
 func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
 	RunData.add_item(item_data)
