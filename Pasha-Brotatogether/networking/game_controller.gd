@@ -36,6 +36,8 @@ var extra_enemies_next_wave = {}
 var effects_next_wave = {}
 var game_state_controller 
 
+signal complete_player_update
+
 func _init():
 	game_state_controller = GameStateController.new()
 	game_state_controller.parent = self
@@ -353,6 +355,8 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 				if query_weapon.my_id == weapon.my_id:
 					new_weapons.push_back(query_weapon.duplicate())
 		tracked_players[player_id]["run_data"]["weapons"] = new_weapons
+		
+		emit_signal("complete_player_update")
 
 func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:
 	if is_host:
@@ -514,7 +518,7 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 	if player_id == self_peer_id:
 		shop._stats_container.update_stats()
 		
-	connection.send_tracked_players(tracked_players)
+	send_complete_player(player_id)
 
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:
@@ -549,13 +553,15 @@ func update_tracked_players(updated_tracked_players: Dictionary) -> void:
 		else:
 			updated_tracked_players[player_id].erase("player")
 		
+	var scene_name = get_tree().get_current_scene().get_name()
+	
 	tracked_players = updated_tracked_players
-	if current_scene_name == "Shop":
+	if scene_name == "Shop":
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
-	elif current_scene_name == "Main":
+	elif scene_name == "Main":
 		update_health_ui()
 		check_win()
-	elif current_scene_name == "ClientMain":
+	elif scene_name == "ClientMain":
 		update_health_ui()
 
 func create_ready_toggle() -> Node:

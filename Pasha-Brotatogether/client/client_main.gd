@@ -590,6 +590,7 @@ func on_gold_changed(gold:int)->void :
 
 func _on_WaveTimer_timeout() -> void:
 	game_controller.send_complete_player_request()
+	yield(game_controller, "complete_player_update")
 	
 	var is_last_wave = is_last_wave()
 	
