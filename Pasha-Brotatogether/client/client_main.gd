@@ -604,5 +604,11 @@ func _on_WaveTimer_timeout()->void :
 	
 	_end_wave_timer.start()
 	InputService.hide_mouse = true
-	
+
+	if _upgrades_to_process.size() > 0:
+		for upgrade_to_process in _upgrades_to_process:
+			_upgrades_ui.show_upgrade_options(upgrade_to_process)
+			yield (_upgrades_ui, "upgrade_selected")
+			_ui_upgrades_to_process.remove_element(upgrade_to_process)
+
 	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/waiting.tscn")
