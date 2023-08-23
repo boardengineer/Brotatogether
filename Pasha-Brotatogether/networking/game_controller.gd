@@ -772,8 +772,8 @@ func receive_health_update(current_health:int, max_health:int, source_player_id:
 	tracked_players[source_player_id]["max_health"] = max_health
 	tracked_players[source_player_id]["current_health"] = current_health
 	
-	if is_host:
-		connection.send_tracked_players(tracked_players)
+#	if is_host:
+#		connection.send_tracked_players(tracked_players)
 	update_health_ui()
 
 func update_health_ui() -> void:
@@ -795,7 +795,7 @@ func update_health(current_health:int, max_health:int) -> void:
 				
 				tracked_players[player_id]["max_health"] = player.max_stats.health
 				tracked_players[player_id]["current_health"] = player.current_stats.health		
-		connection.send_tracked_players(tracked_players)
+#		connection.send_tracked_players(tracked_players)
 		update_health_ui()
 	else:
 		if is_host:
@@ -804,7 +804,10 @@ func update_health(current_health:int, max_health:int) -> void:
 			connection.send_health_update(current_health, max_health)
 
 func update_game_state(data: PoolByteArray) -> void:
+	if get_tree().get_current_scene().get_name() != "ClientMain":
+		return
 	game_state_controller.update_game_state(data)
+	update_health_ui()
 
 func enemy_death(enemy_id):
 	game_state_controller.enemy_death(enemy_id)

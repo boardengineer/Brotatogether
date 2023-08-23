@@ -790,6 +790,8 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 				main._life_bar.update_value(current_health, max_health)
 				main.set_life_label(current_health, max_health)
 				main._damage_vignette.update_from_hp(current_health, max_health)
+				tracked_players[player_id]["current_health"] = current_health
+				tracked_players[player_id]["max_health"] = max_health
 				
 				if run_data.gold != gold:
 					run_data.gold = gold
