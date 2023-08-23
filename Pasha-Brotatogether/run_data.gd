@@ -117,7 +117,6 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 	if not game_controller:
 		return null
 	
-	print_debug("setting path from place 2: ", weapon.get_path())
 	RunData.weapon_paths[weapon.my_id] = weapon.get_path()
 
 	var run_data = game_controller.tracked_players[player_id]["run_data"]

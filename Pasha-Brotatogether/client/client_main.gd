@@ -613,6 +613,10 @@ func _on_WaveTimer_timeout() -> void:
 		for upgrade_to_process in _upgrades_to_process:
 			_upgrades_ui.show_upgrade_options(upgrade_to_process)
 			yield (_upgrades_ui, "upgrade_selected")
+			
+			game_controller.send_complete_player_request()
+			yield(game_controller, "complete_player_update")
+			
 			_ui_upgrades_to_process.remove_element(upgrade_to_process)
 
 	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")

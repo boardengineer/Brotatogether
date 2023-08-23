@@ -329,8 +329,6 @@ func send_complete_player(player_id:int) -> void:
 	
 func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 	if player_id == self_peer_id:
-		print_debug("This is where we parse our own player dict ", player_dict)
-		
 		tracked_players[player_id]["run_data"] = player_dict.run_data
 		
 		var new_items = []
@@ -338,7 +336,6 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 		for item in player_dict.run_data.items:
 			for query_item in ItemService.items:
 				if query_item.my_id == item.my_id:
-					print_debug("duplicating ", item.my_id)
 					new_items.push_back(query_item.duplicate())
 					
 		tracked_players[player_id]["run_data"]["items"] = new_items
