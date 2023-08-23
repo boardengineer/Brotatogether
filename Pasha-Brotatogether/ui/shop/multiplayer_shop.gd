@@ -17,7 +17,10 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 	if  $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
 		game_controller.send_bought_item_by_id(shop_item.item_data.my_id, shop_item.value)
-
+	
+		if not game_controller.is_host:
+			game_controller.send_complete_player_request()
+			yield(game_controller, "complete_player_update")
 #		This lack of removal probably has some problems
 #		for item in _shop_items:
 #			if item[0].my_id == shop_item.item_data.my_id:
@@ -31,6 +34,8 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		_weapons_container.set_label(label_text)
 		
 		emit_signal("item_bought", shop_item.item_data)
+		RunData.emit_signal("gold_changed", run_data.gold)
+		_shop_items_container.update_buttons_color()
 	else:
 		.on_shop_item_bought(shop_item)
 

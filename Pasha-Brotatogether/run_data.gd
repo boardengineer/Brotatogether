@@ -83,7 +83,8 @@ func remove_gold(player_id, value:int) -> void:
 	
 	run_data.gold = max(0, run_data.gold - value) as int
 	
-	RunData.emit_signal("gold_changed", run_data.gold)
+	if player_id == game_controller.self_peer_id:
+		RunData.emit_signal("gold_changed", run_data.gold)
 
 	if tracked_players[player_id]["linked_stats"]["update_on_gold_chance"]:
 		reset_linked_stats(player_id)
