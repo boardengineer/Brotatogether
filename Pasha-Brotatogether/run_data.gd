@@ -191,11 +191,85 @@ func add_character(player_id: int, character:CharacterData) -> void:
 
 func apply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> void:
 	for effect in item_data.effects:
-		effect.multiplayer_apply(run_data)
+		multiplayer_apply(effect, run_data)
+
+func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is StructureEffect:
+		run_data.effects["structures"].erase(effect)
+		return
+
+	if effect is StatGainsModificationEffect:
+		for stat in effect.stats_modified:
+			run_data.effects["gain_" + stat] -= effect.value
+		return
+
+	if effect is ChanceStatDamageEffect:
+		run_data.effects[effect.custom_key].erase([effect.key, effect.value, effect.chance])
+		return
+
+	if effect is BurnChanceEffect:
+		run_data.effects["burn_chance"].remove(effect.burning_data)
+		return
+
+	if effect is NullEffect:
+		return
+	
+	if effect is ClassBonusEffect:
+		run_data.effects["weapon_class_bonus"].erase([effect.set_id, effect.stat_name, effect.value])
+		return
+	
+	# Default Effect
+	if effect.custom_key != "" or effect.storage_method == StorageMethod.KEY_VALUE:
+		run_data.effects[effect.custom_key].erase([effect.key, effect.value])
+	elif effect.storage_method == StorageMethod.REPLACE:
+		run_data.effects[effect.key] = effect.base_value
+	else :
+		run_data.effects[effect.key] -= effect.value
+	return
+
+func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is ClassBonusEffect:
+		run_data.effects["weapon_class_bonus"].push_back([effect.set_id, effect.stat_name, effect.value])
+		return
+	
+	if effect is GainStatEveryKilledEnemiesEffect:
+#		set player id here
+		pass
+	
+	if effect is BurnChanceEffect:
+		run_data.effects["burn_chance"].merge(effect.burning_data)
+		return
+	
+	if effect is ChanceStatDamageEffect:
+		run_data.effects[effect.custom_key].push_back([effect.key, effect.value, effect.chance])
+		return
+	
+	if effect is StatGainsModificationEffect:
+		for stat in effect.stats_modified:
+			run_data.effects["gain_" + stat] += effect.value
+		return
+			
+	if effect is StructureEffect:
+		# set player id here?
+		run_data.effects["structures"].push_back(effect)
+		return
+	
+	if effect is NullEffect:
+		return
+	
+	# Default effect.gd
+	if effect.custom_key != "" or effect.storage_method == StorageMethod.KEY_VALUE:
+		run_data.effects[effect.custom_key].push_back([effect.key, effect.value])
+	elif effect.storage_method == StorageMethod.REPLACE:
+		effect.base_value = run_data.effects[effect.key]
+		run_data.effects[effect.key] = effect.value
+	else:
+		run_data.effects[effect.key] += effect.value
+	return
 
 func unapply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> void:
 	for effect in item_data.effects:
-		effect.multiplayer_unapply(run_data)
+		multiplayer_unapply(effect, run_data)
 
 func update_sets(player_id: int) -> void:
 	var game_controller = get_game_controller()
@@ -207,7 +281,7 @@ func update_sets(player_id: int) -> void:
 	var run_data = tracked_players[player_id]["run_data"]
 	
 	for effect in run_data["active_set_effects"]:
-		effect[1].multiplayer_unapply(run_data)
+		multiplayer_unapply(effect[1], run_data)
 	
 	run_data["active_set_effects"] = []
 	run_data["active_sets"] = {}
@@ -225,7 +299,7 @@ func update_sets(player_id: int) -> void:
 			var set_effects = set.set_bonuses[min(run_data["active_sets"][key] - 2, set.set_bonuses.size() - 1)]
 			
 			for effect in set_effects:
-				effect.multiplayer_apply(run_data)
+				multiplayer_apply(effect, run_data)
 				run_data["active_set_effects"].push_back([key, effect])
 
 
