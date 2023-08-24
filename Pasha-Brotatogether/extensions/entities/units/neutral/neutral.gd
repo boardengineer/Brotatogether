@@ -25,7 +25,7 @@ func on_hurt()->void :
 
 func flash()->void :
 	var game_controller = $"/root/GameController"
-	if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+	if game_controller and game_controller.game_mode == "shared" and game_controller.is_source_of_truth:
 		game_controller.send_flash_neutral(get_network_id())
 	.flash()
 

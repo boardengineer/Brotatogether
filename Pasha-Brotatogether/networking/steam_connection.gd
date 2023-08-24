@@ -43,7 +43,7 @@ func read_p2p_packet() -> bool:
 		elif type == "flash_enemy":
 			parent.flash_enemy(data.enemy_id)
 		elif type == "flash_neutral":
-			parent.flash_enemy(data.neutral_id)
+			parent.flash_neutral(data.neutral_id)
 		elif type == "client_position_update":
 			parent.update_client_position(data.client_position)
 		elif type == "send_bought_item":
