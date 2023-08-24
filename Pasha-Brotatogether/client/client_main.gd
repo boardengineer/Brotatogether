@@ -100,6 +100,7 @@ onready var game_controller = $"/root/GameController"
 const refresh_time = 1.0 / 100.0
 var update_timer = refresh_time
 
+var health_tracker
 const HealthTracker = preload("res://mods-unpacked/Pasha-Brotatogether/ui/health_tracker/health_tracker.tscn")
 
 
@@ -194,7 +195,7 @@ func _ready()->void :
 	if $"/root".has_node("GameController"):
 		game_controller = $"/root/GameController"
 	
-	var health_tracker = HealthTracker.instance()
+	health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)
 	health_tracker.init(game_controller.tracked_players)
@@ -463,6 +464,15 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 			consumable.attracted_by = _player
 	
 	DebugService.log_data("clean_up other objects...")
+	
+	for entity in _entities_container.get_children():
+		if not entity is EntityBirth:
+			entity.die()
+
+	health_tracker.hide()
+	_wave_cleared_label.hide()
+	_wave_timer_label.hide()
+	
 	_wave_manager.clean_up_room()
 	
 	if is_instance_valid(_player):
