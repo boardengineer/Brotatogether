@@ -18,8 +18,6 @@ func set_shop_item(p_item_data:ItemParentData, p_wave_value:int = RunData.curren
 	activate()
 	
 	var run_data_node = $"/root/MultiplayerRunData"
-	var multiplayer_utils = $"/root/MultiplayerUtils"
-
 	var game_controller = $"/root/GameController"
 
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data

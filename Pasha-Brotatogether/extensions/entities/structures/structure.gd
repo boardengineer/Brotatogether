@@ -1,7 +1,7 @@
 extends Structure
 
 var network_id
-var player_id = -1
+var my_data
 
 func _ready():
 	if  $"/root".has_node("GameController"):
@@ -11,13 +11,20 @@ func _ready():
 			game_controller.id_count = network_id + 1
 
 func set_data(data:Resource) -> void :
-	if data.player_id == -1:
-		.set_data(data)
-		return
+	
+#	print_debug("maybe this will work? ", data)
+#	var practice_dict = {}
+#	practice_dict[data] = "hello"
+#	print_debug(practice_dict[data])
+#	.set_data(data)
+#	return
+#	if data.player_id == -1:
+#		.set_data(data)
+#		return
 		 
 	base_stats = data.stats
 	effects = data.effects
-	player_id = data.player_id
+	my_data = data
 	
 	make_fake_stats()
 	
@@ -31,11 +38,19 @@ func make_fake_stats() -> void:
 	stats.cooldown = 100
 
 func reload_data() -> void:
-	if player_id == -1:
+	if not $"/root".has_node("GameController"):
 		.reload_data()
 		return
 		
 	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	if not run_data_node.effect_to_owner_map.has(my_data):
+		.reload_data()
+		return
+	
+	var player_id = run_data_node.effect_to_owner_map[my_data]
+	
 	stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_id, base_stats, "", [], effects, true)
 	
 	for effect in effects:

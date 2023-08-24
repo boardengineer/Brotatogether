@@ -704,8 +704,6 @@ func get_players_state(buffer: StreamPeerBuffer) -> void:
 		for weapon in tracked_player.current_weapons:
 			if not is_instance_valid(weapon):
 				continue
-			var weapon_data = {}
-			
 			buffer.put_float(weapon.sprite.position.x)
 			buffer.put_float(weapon.sprite.position.y)
 			
@@ -905,8 +903,6 @@ func get_neutrals_state(buffer: StreamPeerBuffer) -> void:
 	
 	for neutral in main._entity_spawner.neutrals:
 		if is_instance_valid(neutral):
-			var neutral_data = {}
-			
 			buffer.put_32(neutral.get_network_id())
 			
 			buffer.put_float(neutral.global_position.x)

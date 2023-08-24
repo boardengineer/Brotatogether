@@ -116,7 +116,6 @@ func spawn_additional_players() -> void:
 func reload_stats()->void :
 	if  $"/root".has_node("GameController"):
 		print_debug("MP reload stats")
-		var game_controller = $"/root/GameController"
 		var run_data_node = $"/root/MultiplayerRunData"
 		
 		for player_id in game_controller.tracked_players:
@@ -218,7 +217,6 @@ func add_gold(player_id, value) -> void:
 	var run_data = game_controller.tracked_players[player_id].run_data
 	var linked_stats = game_controller.tracked_players[player_id].linked_stats
 	var run_data_node = $"/root/MultiplayerRunData"
-	var multiplayer_utils = $"/root/MultiplayerUtils"
 	
 	run_data.gold += value
 	
@@ -231,8 +229,6 @@ func add_gold(player_id, value) -> void:
 		
 func add_xp(player_id, value) -> void:
 	var run_data = game_controller.tracked_players[player_id].run_data
-	var linked_stats = game_controller.tracked_players[player_id].linked_stats
-	var run_data_node = $"/root/MultiplayerRunData"
 	var multiplayer_utils = $"/root/MultiplayerUtils"
 	
 	var xp_gained = value * (1 + multiplayer_utils.get_stat_multiplayer(player_id, "xp_gain") / 100)
@@ -268,9 +264,6 @@ func on_gold_picked_up(gold:Node) -> void:
 	var value = gold.value
 	var player_id = gold.attracted_by.player_network_id
 	var run_data = game_controller.tracked_players[player_id].run_data
-	var linked_stats = game_controller.tracked_players[player_id].linked_stats
-	var run_data_node = $"/root/MultiplayerRunData"
-	var multiplayer_utils = $"/root/MultiplayerUtils"
 	
 	if randf() < run_data.effects["chance_double_gold"] / 100.0:
 		run_data.tracked_item_effects["item_metal_detector"] += value
@@ -295,7 +288,6 @@ func on_gold_picked_up(gold:Node) -> void:
 #	ProgressData.add_data("materials_collected")
 
 func remove_gold(player_id, value:int) -> void:
-	var game_controller = $"/root/GameController"
 	var run_data_node = $"/root/MultiplayerRunData"
 			
 	var tracked_players = game_controller.tracked_players
@@ -342,8 +334,6 @@ func manage_harvesting() -> void:
 			add_xp(player_id, 0)
 		
 func remove_stat(player_id: int, stat_name:String, value:int)->void :
-	var game_controller = $"/root/GameController"
-			
 	var tracked_players = game_controller.tracked_players
 	var run_data = tracked_players[player_id]["run_data"]
 	
@@ -355,7 +345,6 @@ func set_level_label()->void :
 		.set_level_label()
 		return
 		
-	var game_controller = $"/root/GameController"
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	
 	_level_label.text = "LV." + str(run_data.current_level)
@@ -363,8 +352,6 @@ func set_level_label()->void :
 func on_levelled_up_multiplayer(player_id:int) -> void:
 	print_debug("running multiplayer level up")
 	
-	var game_controller = $"/root/GameController"
-
 	var run_data = game_controller.tracked_players[player_id].run_data
 	SoundManager.play(level_up_sound, 0, 0, true)
 	var level = run_data.current_level
@@ -494,7 +481,6 @@ func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
 		.on_item_box_take_button_pressed(item_data)
 		return
 		
-	var game_controller = $"/root/GameController"
 	game_controller.on_item_box_take_button_pressed(item_data)
 
 func on_upgrade_selected(upgrade_data:UpgradeData)->void :
@@ -502,7 +488,6 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 		.on_upgrade_selected(upgrade_data)
 		return
 		
-	var game_controller = $"/root/GameController"
 	game_controller.on_upgrade_selected(upgrade_data)
 
 func on_levelled_up()->void :

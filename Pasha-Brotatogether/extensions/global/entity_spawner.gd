@@ -17,7 +17,7 @@ func _on_StructureTimer_timeout()->void :
 		
 		var spawn_radius = min(600, 400 + (run_data.effects["structures"].size() * 10)) as int
 		var base_pos = ZoneService.get_rand_pos(600 + Utils.EDGE_MAP_DIST)
-		var nb_turrets = 0
+		var _nb_turrets = 0
 		var spawn_all = false
 		
 		if not _base_structures_spawned:
@@ -33,7 +33,7 @@ func _on_StructureTimer_timeout()->void :
 			if (spawn_cd != - 1 and cur_time % spawn_cd == 0) or spawn_all:
 				
 				if struct is TurretEffect:
-					nb_turrets += 1
+					_nb_turrets += 1
 				
 				for nb in struct.value:
 					var pos = get_spawn_pos_in_area(base_pos, spawn_radius) if run_data.effects["group_structures"] and struct.can_be_grouped else ZoneService.get_rand_pos((Utils.EDGE_MAP_DIST * 2.5) as int)

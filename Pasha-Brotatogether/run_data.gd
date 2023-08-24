@@ -1,5 +1,7 @@
 extends Node
 
+var effect_to_owner_map = {}
+
 func add_item(player_id: int, item:ItemData) -> void:
 	var game_controller = get_game_controller()
 
@@ -189,7 +191,7 @@ func add_character(player_id: int, character:CharacterData) -> void:
 	run_data["current_character"] = character
 	add_item(player_id, character)
 
-func apply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> void:
+func apply_item_effects(_player_id: int, item_data:ItemParentData, run_data) -> void:
 	for effect in item_data.effects:
 		multiplayer_apply(effect, run_data)
 
@@ -233,7 +235,7 @@ func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
 		return
 	
 	if effect is GainStatEveryKilledEnemiesEffect:
-#		set player id here
+		effect_to_owner_map[effect] = run_data.player_id
 		pass
 	
 	if effect is BurnChanceEffect:
@@ -250,7 +252,8 @@ func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
 		return
 			
 	if effect is StructureEffect:
-		# set player id here?
+		effect_to_owner_map[effect] = run_data.player_id
+		
 		run_data.effects["structures"].push_back(effect)
 		return
 	
@@ -267,7 +270,7 @@ func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
 		run_data.effects[effect.key] += effect.value
 	return
 
-func unapply_item_effects(player_id: int, item_data:ItemParentData, run_data) -> void:
+func unapply_item_effects(_player_id: int, item_data:ItemParentData, run_data) -> void:
 	for effect in item_data.effects:
 		multiplayer_unapply(effect, run_data)
 
@@ -303,7 +306,7 @@ func update_sets(player_id: int) -> void:
 				run_data["active_set_effects"].push_back([key, effect])
 
 
-func get_nb_item(player_id, item_id:String, use_cache:bool = true)->int:
+func get_nb_item(player_id, item_id:String, _use_cache:bool = true)->int:
 	var game_controller = get_game_controller()
 	
 	if not game_controller:
