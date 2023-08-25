@@ -291,9 +291,9 @@ func check_win() -> void:
 		var main = get_tree().get_current_scene()
 		main._is_run_won = game_mode == "async"
 		main._is_run_lost = not main._is_run_won
+			
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
-		main._end_wave_timer.start()
-		ProgressData.reset_run_state()
+		var _error = get_tree().change_scene("res://ui/menus/run/end_run.tscn")
 
 func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	if is_host:

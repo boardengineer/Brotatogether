@@ -106,7 +106,7 @@ const HealthTracker = preload("res://mods-unpacked/Pasha-Brotatogether/ui/health
 
 func _physics_process(delta:float)->void :
 	update_timer -= delta
-	if update_timer <= 0:
+	if update_timer <= 0 and not _cleaning_up:
 		send_player_position()
 		update_timer = refresh_time
 
