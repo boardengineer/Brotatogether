@@ -47,7 +47,6 @@ func read_p2p_packet() -> bool:
 		var type = data.type
 		
 		if type == "game_state":
-			last_update_time = OS.get_system_time_msecs()
 			parent.update_game_state(data.game_state)
 		return true
 	return false
