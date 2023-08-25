@@ -134,7 +134,6 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 	update_sets(player_id)
 	update_item_related_effects(player_id)
 	reset_linked_stats(player_id)
-	print_debug("done adding weapon")
 	
 	return new_weapon
 

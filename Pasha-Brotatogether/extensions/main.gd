@@ -1,6 +1,8 @@
 #extends MainMenu
 extends "res://main.gd"
 
+signal levelled_up_multiplayer(player_id)
+
 # must be g than 1024
 var SERVER_PORT = 11111
 var MAX_PLAYERS = 5
@@ -39,7 +41,7 @@ func _ready():
 	
 	# connnect multiplayer signals
 	var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
-	var _connect_error = RunData.connect("levelled_up", self, "on_levelled_up_multiplayer")
+	var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
 	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
@@ -161,9 +163,8 @@ func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) 
 	if at_wave_begin:
 		weapon._current_cooldown = current_stats.cooldown
 		
-		weapon._hitbox.disconnect("killed_something", weapon, "on_killed_something")
-#		print_debug("hopefully connecting?? ", weapon.get("data_node"))
-#		weapon._hitbox.connect("killed_something", weapon.get("data_node"), "on_killed_something")
+		if weapon.effects.size() > 0:
+			weapon._hitbox.disconnect("killed_something", weapon, "on_killed_something")
 	
 	weapon._range_shape.shape.radius = current_stats.max_range + 200
 
@@ -238,7 +239,7 @@ func add_xp(player_id, value) -> void:
 #		level_up
 		run_data.current_xp = max(0, run_data.current_xp - RunData.get_xp_needed(run_data.current_level + 1))
 		run_data.current_level += 1
-		RunData.emit_signal("levelled_up", player_id)
+		emit_signal("levelled_up_multiplayer", player_id)
 		
 		if player_id == game_controller.self_peer_id:
 			RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
@@ -340,8 +341,6 @@ func set_level_label()->void :
 	_level_label.text = "LV." + str(run_data.current_level)
 
 func on_levelled_up_multiplayer(player_id:int) -> void:
-	print_debug("running multiplayer level up")
-	
 	var run_data = game_controller.tracked_players[player_id].run_data
 	SoundManager.play(level_up_sound, 0, 0, true)
 	var level = run_data.current_level
@@ -356,8 +355,6 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 	
 	run_data.effects["stat_max_hp"] += 1
 	reload_stats()
-	
-	print_debug("new max health is ", run_data.effects["stat_max_hp"])
 	
 #	RunData.add_stat("stat_max_hp", 1)
 	
@@ -463,7 +460,6 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 	if not _cleaning_up:
 		RunData.handle_explosion("explode_on_consumable", consumable.global_position)
 		
-	var player = game_controller.tracked_players[player_id].player
 	var run_data = game_controller.tracked_players[player_id].run_data
 	
 	run_data_node.apply_item_effects(player_id, consumable.consumable_data, run_data)

@@ -14,8 +14,24 @@ func shoot(_distance:float)->void :
 	.shoot(_distance)
 	
 func shoot_projectile(rotation:float = _parent.rotation, knockback:Vector2 = Vector2.ZERO)->void :
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
-			return
-	.shoot_projectile(rotation, knockback)
+	if not $"/root".has_node("GameController"):
+		.shoot_projectile(rotation, knockback)
+		return
+	
+	var game_controller = $"/root/GameController"
+	if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+		return
+		
+	var projectile = WeaponService.spawn_projectile(rotation, 
+		_parent.current_stats, 
+		_parent.muzzle.global_position, 
+		knockback, 
+		false, 
+		_parent.effects, 
+		_parent
+	)
+	
+	if _parent.effects.size() > 0 and is_instance_valid(projectile):
+		var _killed_sthing = projectile._hitbox.connect("killed_something", _parent.get_node("data_node"), "on_killed_something")
+	
+	var _hit_sthing = projectile.connect("hit_something", _parent, "on_weapon_hit_something")

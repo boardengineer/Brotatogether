@@ -32,7 +32,7 @@ var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/
 # TODO sometimes clear these
 var sent_detail_ids = {}
 
-func _process(delta):
+func _process(_delta):
 	while read_p2p_packet():
 			pass
 
@@ -42,7 +42,6 @@ func read_p2p_packet() -> bool:
 	if packet_size > 0:
 		var packet = Steam.readP2PPacket(packet_size, 1)
 		
-		var sender = packet["steam_id_remote"]
 		var data = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
 		var type = data.type
 		

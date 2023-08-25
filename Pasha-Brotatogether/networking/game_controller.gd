@@ -497,7 +497,7 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 		var base_value = ItemService.get_value(RunData.current_wave, shop_item_data.value, false, shop_item_data is WeaponData, shop_item_data.my_id)
 		run_data.tracked_item_effects["item_coupon"] += (base_value * coupon_effect) as int
 		
-	emit_signal("item_bought", shop_item_data)
+#	emit_signal("item_bought", shop_item_data)
 	
 	if shop_item_data.get_category() == Category.ITEM:
 		run_data_node.add_item(player_id, shop_item_data)
