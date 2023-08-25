@@ -171,11 +171,12 @@ func send_state(game_state:PoolByteArray) -> void:
 	send_data["game_state"] = game_state
 	send_data["type"] = "game_state"
 	
-#	send_data_to_all(send_data)
 	for player_id in parent.tracked_players:
 		if player_id == parent.self_peer_id:
 			continue
 		var compressed_data = var2bytes(send_data).compress(File.COMPRESSION_GZIP)
+		
+		# State updates get their own channel
 		var _error = Steam.sendP2PPacket(player_id, compressed_data, Steam.P2P_SEND_RELIABLE, 1)
 
 func send_start_game(game_info:Dictionary) -> void:

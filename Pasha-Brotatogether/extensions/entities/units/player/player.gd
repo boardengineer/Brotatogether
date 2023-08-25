@@ -165,3 +165,9 @@ func _on_ItemAttractArea_area_entered(area:Area2D)->void :
 		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 			return
 	._on_ItemAttractArea_area_entered(area)
+
+func _on_ItemPickupArea_area_entered(area:Area2D) -> void:
+	area.pickup_multiplayer(player_network_id)
+	
+	if consumables_in_range.has(area):
+		consumables_in_range.erase(area)

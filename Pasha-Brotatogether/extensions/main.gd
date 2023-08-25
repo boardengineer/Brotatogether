@@ -115,7 +115,6 @@ func spawn_additional_players() -> void:
 	
 func reload_stats()->void :
 	if  $"/root".has_node("GameController"):
-		print_debug("MP reload stats")
 		var run_data_node = $"/root/MultiplayerRunData"
 		
 		for player_id in game_controller.tracked_players:
@@ -123,12 +122,8 @@ func reload_stats()->void :
 				if is_instance_valid(weapon):
 					init_weapon_stats(weapon, player_id, false)
 			
-			print_debug("player_id ", player_id)
-			
 			game_controller.tracked_players[player_id].player.update_player_stats_multiplayer()
 			run_data_node.reset_linked_stats(player_id)
-		
-		print_debug("multiplayer reload stats")
 		
 		for struct in _entity_spawner.structures:
 			if is_instance_valid(struct):
@@ -249,11 +244,7 @@ func add_xp(player_id, value) -> void:
 			RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
 		next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
 
-func on_gold_picked_up(gold:Node) -> void:
-	if not gold.attracted_by is Player or not $"/root".has_node("GameController"):
-		.on_gold_picked_up(gold)
-		return
-	
+func on_gold_picked_up_multiplayer(gold:Node, player_id:int) -> void:
 	_golds.erase(gold)
 	
 	if ProgressData.settings.alt_gold_sounds:
@@ -262,7 +253,6 @@ func on_gold_picked_up(gold:Node) -> void:
 		SoundManager.play(Utils.get_rand_element(gold_pickup_sounds), 0, 0.2)
 	
 	var value = gold.value
-	var player_id = gold.attracted_by.player_network_id
 	var run_data = game_controller.tracked_players[player_id].run_data
 	
 	if randf() < run_data.effects["chance_double_gold"] / 100.0:
@@ -428,7 +418,13 @@ func _on_EndWaveTimer_timeout()->void :
 		else:
 			var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
 
-func on_consumable_picked_up(consumable:Node)->void :
+func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
+	if not $"/root".has_node("GameController"):
+		.on_consumable_picked_up(consumable)
+		return
+	
+	var run_data_node = $"/root/MultiplayerRunData"
+	
 	RunData.consumables_picked_up_this_run += 1
 	_consumables.erase(consumable)
 	
@@ -466,15 +462,11 @@ func on_consumable_picked_up(consumable:Node)->void :
 	
 	if not _cleaning_up:
 		RunData.handle_explosion("explode_on_consumable", consumable.global_position)
+		
+	var player = game_controller.tracked_players[player_id].player
+	var run_data = game_controller.tracked_players[player_id].run_data
 	
-	for effect in consumable.consumable_data.effects:
-		if effect is HealingEffect:
-			var player = consumable.attracted_by
-			if player:
-				player.on_healing_effect(max(1, effect.value + RunData.effects["consumable_heal"]), "")
-		else:
-			effect.apply()
-	ChallengeService.check_stat_challenges()
+	run_data_node.apply_item_effects(player_id, consumable.consumable_data, run_data)
 
 func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
 	if not $"/root".has_node("GameController"):
@@ -514,3 +506,53 @@ func on_levelled_up()->void :
 						player.max_stats.health += 1
 						player.current_stats.health += 1
 			game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
+
+func spawn_gold(unit:Unit, entity_type:int)->void :
+	if not $"/root".has_node("GameController"):
+		.spawn_gold(unit, entity_type)
+		return
+		
+	var size_before = _golds.size()
+	.spawn_gold(unit, entity_type)
+	var size_after = _golds.size()
+	
+	var index = size_before
+	while index < size_after:
+		var gold = _golds[index]
+		
+		
+		var _disconnect_error = gold.disconnect("picked_up", self, "on_gold_picked_up")
+		var _connect_error = gold.connect("picked_up_multiplayer", self, "on_gold_picked_up_multiplayer")
+		
+		index += 1
+
+func spawn_consumables(unit:Unit) -> void:
+	if not $"/root".has_node("GameController"):
+		.spawn_consumables(unit)
+		return
+		
+	# TODO this isn't finished
+	var size_before = _consumables.size()
+	.spawn_consumables(unit)
+	var size_after = _consumables.size()
+	
+	var index = size_before
+	while index < size_after:
+		var consumable = _consumables[index]
+		
+		var _connect_error = consumable.disconnect("picked_up", self, "on_consumable_picked_up")
+		var _disconnect_error = consumable.connect("picked_up_multiplayer", self, "on_consumable_picked_up_multiplayer")
+		
+		index += 1
+
+func on_structure_wanted_to_spawn_fruit(pos:Vector2) -> void:
+	if not $"/root".has_node("GameController"):
+		.on_structure_wanted_to_spawn_fruit(pos)
+		return
+	
+	.on_structure_wanted_to_spawn_fruit(pos)
+	
+	var consumable = _consumables[_consumables.size() - 1]
+	
+	var _connect_error = consumable.disconnect("picked_up", self, "on_consumable_picked_up")
+	var _disconnect_error = consumable.connect("picked_up_multiplayer", self, "on_consumable_picked_up_multiplayer")

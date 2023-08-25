@@ -204,6 +204,9 @@ func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
 		for stat in effect.stats_modified:
 			run_data.effects["gain_" + stat] -= effect.value
 		return
+		
+	if effect is HealingEffect:
+		return
 
 	if effect is ChanceStatDamageEffect:
 		run_data.effects[effect.custom_key].erase([effect.key, effect.value, effect.chance])
@@ -238,6 +241,14 @@ func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
 		effect_to_owner_map[effect] = run_data.player_id
 		pass
 	
+	if effect is HealingEffect:
+		var game_controller = get_game_controller()
+		var player = game_controller.tracked_players[run_data.player_id].player
+		
+		var healing_value = max(1, effect.value + run_data.effects["consumable_heal"])
+		player.on_healing_effect(healing_value, "")
+		return
+		
 	if effect is BurnChanceEffect:
 		run_data.effects["burn_chance"].merge(effect.burning_data)
 		return
