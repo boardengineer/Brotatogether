@@ -167,6 +167,15 @@ func _on_ItemAttractArea_area_entered(area:Area2D)->void :
 	._on_ItemAttractArea_area_entered(area)
 
 func _on_ItemPickupArea_area_entered(area:Area2D) -> void:
+	if not $"/root".has_node("GameController"):
+		._on_ItemPickupArea_area_entered(area)
+		return
+		
+	var game_controller = $"/root/GameController"
+	
+	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+		return
+	
 	area.pickup_multiplayer(player_network_id)
 	
 	if consumables_in_range.has(area):
