@@ -26,9 +26,7 @@ func read_p2p_packet() -> bool:
 		var sender = packet["steam_id_remote"]
 		var data = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
 		var type = data.type
-		if type == "game_state":
-			parent.update_game_state(data.game_state)
-		elif type == "start_game":
+		if type == "start_game":
 			parent.start_game(data.game_info)
 		elif type == "floating_text":
 			parent.display_floating_text(data.text_info)
@@ -172,7 +170,13 @@ func send_state(game_state:PoolByteArray) -> void:
 	var send_data = {}
 	send_data["game_state"] = game_state
 	send_data["type"] = "game_state"
-	send_data_to_all(send_data)
+	
+#	send_data_to_all(send_data)
+	for player_id in parent.tracked_players:
+		if player_id == parent.self_peer_id:
+			continue
+		var compressed_data = var2bytes(send_data).compress(File.COMPRESSION_GZIP)
+		var _error = Steam.sendP2PPacket(player_id, compressed_data, Steam.P2P_SEND_RELIABLE, 1)
 
 func send_start_game(game_info:Dictionary) -> void:
 	var send_data = {}
