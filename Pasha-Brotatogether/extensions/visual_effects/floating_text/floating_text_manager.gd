@@ -20,3 +20,6 @@ func on_stat_added(stat:String, value:int, db_mod:float = 0.0, pos_sounds:Array 
 		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 			return
 	.on_stat_added(stat, value, db_mod, pos_sounds, neg_sounds)
+
+func on_gold_picked_up_multiplayer(gold:Node, player_id) -> void:
+	.on_gold_picked_up(gold)

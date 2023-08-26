@@ -254,6 +254,12 @@ func on_gold_picked_up_multiplayer(gold:Node, player_id:int) -> void:
 		SoundManager.play(Utils.get_rand_element(gold_pickup_sounds), 0, 0.2)
 	
 	var value = gold.value
+	
+	# The gold was picked up by the gold bag
+	if player_id == -1:
+		RunData.add_bonus_gold(value)
+		return
+	
 	var run_data = game_controller.tracked_players[player_id].run_data
 	
 	if randf() < run_data.effects["chance_double_gold"] / 100.0:
@@ -542,6 +548,9 @@ func spawn_gold(unit:Unit, entity_type:int)->void :
 		
 		var _disconnect_error = gold.disconnect("picked_up", self, "on_gold_picked_up")
 		var _connect_error = gold.connect("picked_up_multiplayer", self, "on_gold_picked_up_multiplayer")
+		
+		_disconnect_error = gold.disconnect("picked_up", _floating_text_manager, "on_gold_picked_up")
+		_connect_error = gold.connect("picked_up_multiplayer", _floating_text_manager, "on_gold_picked_up_multiplayer")
 		
 		index += 1
 
