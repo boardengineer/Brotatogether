@@ -319,11 +319,34 @@ func manage_harvesting() -> void:
 		
 			_floating_text_manager.on_harvested(val)
 		
-			if multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") > 0:
-				_harvesting_timer.start()
-		
 			add_xp(player_id, 0)
-		
+	_harvesting_timer.start()
+
+func _on_HarvestingTimer_timeout() -> void:
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id].run_data
+	
+		if RunData.current_wave > RunData.nb_of_waves:
+			var val = ceil(multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") * (RunData.ENDLESS_HARVESTING_DECREASE / 100.0))
+			run_data_node.remove_stat(player_id, "stat_harvesting", val)
+		else :
+			var val = ceil(multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") * (run_data.effects["harvesting_growth"] / 100.0))
+			
+			var has_crown = false
+			var crown_value = 0
+			
+			for item in RunData.items:
+				if item.my_id == "item_crown":
+					has_crown = true
+					crown_value = item.effects[0].value
+					break
+			
+			if val > 0:
+				run_data_node.add_stat(player_id, "stat_harvesting", val)
+
 func remove_stat(player_id: int, stat_name:String, value:int)->void :
 	var tracked_players = game_controller.tracked_players
 	var run_data = tracked_players[player_id]["run_data"]
