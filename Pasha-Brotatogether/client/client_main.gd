@@ -207,6 +207,8 @@ func _ready()->void :
 	_xp_bar.update_value(current_xp, next_level_xp)
 	
 	var _error_upg_select = _upgrades_ui.connect("upgrade_selected", self, "on_upgrade_selected")
+	var _error_consumable_added = connect("consumable_to_process_added", _ui_consumables_to_process, "add_element")
+	var _error_take_button = _item_box_ui.connect("item_take_button_pressed", self, "on_item_box_take_button_pressed")
 
 func _input(event:InputEvent)->void :
 	var is_right_stick_motion = event is InputEventJoypadMotion and (event.axis == JOY_AXIS_2 or event.axis == JOY_AXIS_3) and abs(event.axis_value) > 0.5
@@ -496,7 +498,7 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	game_controller.on_upgrade_selected(upgrade_data)
 
 func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
-	RunData.add_item(item_data)
+	game_controller.on_item_box_take_button_pressed(item_data)
 
 func on_item_box_discard_button_pressed(item_data:ItemParentData)->void :
 	RunData.add_gold(ItemService.get_recycling_value(RunData.current_wave, item_data.value))
@@ -618,6 +620,23 @@ func _on_WaveTimer_timeout() -> void:
 	
 	_end_wave_timer.start()
 	InputService.hide_mouse = true
+
+	var consumables = game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process
+	if consumables.size() > 0:
+		for consumable in consumables:
+			var fixed_tier = - 1
+			
+			if consumable.my_id == "consumable_legendary_item_box":
+				fixed_tier = Tier.LEGENDARY
+			
+			var item_data = ItemService.process_item_box(RunData.current_wave, consumable, fixed_tier)
+			_item_box_ui.set_item_data(item_data)
+			yield (_item_box_ui, "item_box_processed")
+			
+			game_controller.send_complete_player_request()
+			yield(game_controller, "complete_player_update")
+			
+			_ui_consumables_to_process.remove_element(consumable)
 
 	if _upgrades_to_process.size() > 0:
 		for upgrade_to_process in _upgrades_to_process:

@@ -32,8 +32,10 @@ func read_p2p_packet() -> bool:
 			parent.display_floating_text(data.text_info)
 		elif type == "hit_effect":
 			parent.display_hit_effect(data.effect_info)
+		elif type == "send_take_item_box":
+			parent.receive_item_box_take(data.item_id, data.player_id)
 		elif type == "add_consumable_to_process":
-			parent.receive_add_consumable_to_process(sender, data.consumable_data_path)
+			parent.receive_add_consumable_to_process(data.player_id, data.consumable_data_path)
 		elif type == "enemy_death":
 			parent.enemy_death(data.enemy_id)
 		elif type == "end_wave":
@@ -362,4 +364,11 @@ func send_add_consumable_to_process(player_id:int, consumable_data_path) -> void
 	send_data["type"] = "add_consumable_to_process"
 	send_data["player_id"] = player_id
 	send_data["consumable_data_path"] = consumable_data_path
+	send_data_to_all(send_data)
+
+func send_take_item_box(player_id:int, item_id) -> void:
+	var send_data = {}
+	send_data["type"] = "send_take_item_box"
+	send_data["player_id"] = player_id
+	send_data["item_id"] = item_id
 	send_data_to_all(send_data)

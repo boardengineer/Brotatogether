@@ -372,7 +372,7 @@ func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:
 	if is_host:
 		receive_item_box_take(item_data.my_id, self_peer_id)
 	else:
-		pass
+		connection.send_take_item_box(self_peer_id, item_data.my_id)
 
 func receive_item_box_take(item_id, player_id) -> void:
 	var run_data_node = $"/root/MultiplayerRunData"

@@ -831,9 +831,10 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 			for weapon_data_index in player.current_weapons.size():
 				var weapon_data = weapons[weapon_data_index]
 				var weapon = player.current_weapons[weapon_data_index]
-				weapon.sprite.position = weapon_data.position
-				weapon.sprite.rotation = weapon_data.rotation
-				weapon._is_shooting = weapon_data.is_shooting
+				if is_instance_valid(weapon):
+					weapon.sprite.position = weapon_data.position
+					weapon.sprite.rotation = weapon_data.rotation
+					weapon._is_shooting = weapon_data.is_shooting
 
 func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array, appeareances_filenames: Array):
 	var spawned_player = player_scene.instance()
