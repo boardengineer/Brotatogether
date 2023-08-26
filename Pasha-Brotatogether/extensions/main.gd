@@ -460,12 +460,7 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 		RunData.tracked_item_effects["item_bag"] += RunData.effects["item_box_gold"]
 	
 	if consumable.consumable_data.to_be_processed_at_end_of_wave:
-		game_controller.tracked_players[player_id].consumables_to_process.push_back(consumable.consumable_data)
-		if player_id == game_controller.self_peer_id:
-			emit_signal("consumable_to_process_added", consumable.consumable_data)
-	
-	if RunData.consumables_picked_up_this_run >= RunData.chal_hungry_value:
-		ChallengeService.complete_challenge("chal_hungry")
+		game_controller.on_consumable_to_process_added(player_id, consumable.consumable_data)
 	
 	if RunData.effects["consumable_stats_while_max"].size() > 0 and _player.current_stats.health >= _player.max_stats.health:
 		for i in RunData.effects["consumable_stats_while_max"].size():

@@ -296,6 +296,18 @@ func check_win() -> void:
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
 		var _error = get_tree().change_scene("res://ui/menus/run/end_run.tscn")
 
+func on_consumable_to_process_added(player_id, consumable_data) -> void:
+	if player_id == self_peer_id:
+		receive_add_consumable_to_process(player_id, consumable_data.get_path())
+	else:
+		connection.send_add_consumable_to_process(player_id, consumable_data.get_path())
+
+func receive_add_consumable_to_process(player_id, consumable_data_path) -> void:
+	if player_id == self_peer_id:
+		var consumable_data = load(consumable_data_path)
+		tracked_players[self_peer_id].consumables_to_process.push_back(consumable_data)
+		get_tree().get_current_scene().emit_signal("consumable_to_process_added", consumable_data)
+
 func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 	if is_host:
 		receive_uprade_selected(upgrade_data.my_id, self_peer_id)
