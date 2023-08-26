@@ -417,8 +417,9 @@ func _on_EndWaveTimer_timeout()->void :
 	else :
 		DebugService.log_data("process consumables and upgrades...")
 		MusicManager.tween( - 8)
-		if _consumables_to_process.size() > 0:
-			for consumable in _consumables_to_process:
+		var consumables = game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process
+		if consumables.size() > 0:
+			for consumable in consumables:
 				var fixed_tier = - 1
 				
 				if consumable.my_id == "consumable_legendary_item_box":
@@ -459,8 +460,9 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 		RunData.tracked_item_effects["item_bag"] += RunData.effects["item_box_gold"]
 	
 	if consumable.consumable_data.to_be_processed_at_end_of_wave:
-		_consumables_to_process.push_back(consumable.consumable_data)
-		emit_signal("consumable_to_process_added", consumable.consumable_data)
+		game_controller.tracked_players[player_id].consumables_to_process.push_back(consumable.consumable_data)
+		if player_id == game_controller.self_peer_id:
+			emit_signal("consumable_to_process_added", consumable.consumable_data)
 	
 	if RunData.consumables_picked_up_this_run >= RunData.chal_hungry_value:
 		ChallengeService.complete_challenge("chal_hungry")

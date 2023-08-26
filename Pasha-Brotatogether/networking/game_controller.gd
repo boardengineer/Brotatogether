@@ -149,6 +149,7 @@ func init_player_data(player:Dictionary, player_id) -> void:
 	run_data["tracked_item_effects"] = RunData.init_tracked_effects()
 		
 	player["linked_stats"] = {}
+	player["consumables_to_process"] = []
 	player["linked_stats"]["stats"] = RunData.init_stats(true)
 	player["linked_stats"]["update_on_gold_chance"] = false
 		
