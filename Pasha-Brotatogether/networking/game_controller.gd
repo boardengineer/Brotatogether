@@ -417,13 +417,13 @@ func receive_item_discard(weapon_id, player_id) -> void:
 	shop._reroll_button.set_color_from_currency(run_data.gold)
 	SoundManager.play(Utils.get_rand_element(shop.recycle_sounds), 0, 0.1, true)
 
-func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false)->void :
+func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false) -> void:
 	if is_host:
 		receive_item_combine(weapon_data.my_id, is_upgrade, self_peer_id)
 	else:
-		pass
+		connection.send_combine_item(weapon_data.my_id, is_upgrade, self_peer_id)
 
-func receive_item_combine(weapon_id, is_upgrade, player_id)->void :
+func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 	var run_data_node = $"/root/MultiplayerRunData"
 	var shop = $"/root/Shop"
 	

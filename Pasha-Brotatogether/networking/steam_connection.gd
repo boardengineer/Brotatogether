@@ -32,6 +32,8 @@ func read_p2p_packet() -> bool:
 			parent.display_floating_text(data.text_info)
 		elif type == "hit_effect":
 			parent.display_hit_effect(data.effect_info)
+		elif type == "send_combine_item":
+			parent.receive_item_combine(data.weapon_data_id, data.is_upgrade, data.player_id)
 		elif type == "send_take_item_box":
 			parent.receive_item_box_take(data.item_id, data.player_id)
 		elif type == "add_consumable_to_process":
@@ -371,4 +373,12 @@ func send_take_item_box(player_id:int, item_id) -> void:
 	send_data["type"] = "send_take_item_box"
 	send_data["player_id"] = player_id
 	send_data["item_id"] = item_id
+	send_data_to_all(send_data)
+
+func send_combine_item(weapon_data_id, is_upgrade, player_id) -> void:
+	var send_data = {}
+	send_data["type"] = "send_combine_item"
+	send_data["player_id"] = player_id
+	send_data["is_upgrade"] = is_upgrade
+	send_data["weapon_data_id"] = weapon_data_id
 	send_data_to_all(send_data)

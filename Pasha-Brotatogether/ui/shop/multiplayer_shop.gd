@@ -48,6 +48,9 @@ func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = fa
 	
 	var game_controller = $"/root/GameController"
 	game_controller.on_item_combine_button_pressed(weapon_data, is_upgrade)
+	
+	game_controller.send_complete_player_request()
+	yield(game_controller, "complete_player_update")
 
 func on_item_discard_button_pressed(weapon_data:WeaponData)->void :
 	if not $"/root".has_node("GameController"):
