@@ -63,6 +63,8 @@ func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = fa
 		
 		_weapons_container._elements.add_element(new_weapon)
 		
+		reset_item_popup_focus()
+		
 	_focus_manager.reset_focus()
 
 func on_item_discard_button_pressed(weapon_data:WeaponData)->void :
