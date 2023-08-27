@@ -440,7 +440,6 @@ func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 		if weapon.my_id == weapon_id:
 			weapon_data = weapon
 			
-	shop._weapons_container._elements.remove_element(weapon_data, nb_to_remove)
 	removed_weapons_tracked_value += run_data_node.remove_weapon(player_id, weapon_data)
 
 	if not is_upgrade:
@@ -454,6 +453,7 @@ func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 		new_weapon.dmg_dealt_last_wave = weapon_data.dmg_dealt_last_wave
 
 	if player_id == self_peer_id:
+		shop._weapons_container._elements.remove_element(weapon_data, nb_to_remove)
 		shop.reset_item_popup_focus()
 		shop._stats_container.update_stats()
 		shop._weapons_container._elements.add_element(new_weapon)

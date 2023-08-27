@@ -120,7 +120,8 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 	if not game_controller:
 		return null
 	
-	RunData.weapon_paths[weapon.my_id] = weapon.get_path()
+	if not RunData.weapon_paths.has(weapon.my_id):
+		RunData.weapon_paths[weapon.my_id] = weapon.get_path()
 
 	var run_data = game_controller.tracked_players[player_id]["run_data"]
 	
@@ -143,9 +144,6 @@ func remove_weapon(player_id:int, weapon:WeaponData) -> int:
 	if not game_controller:
 		return -1
 	
-	print_debug("What is this? ", weapon.get_path())
-	RunData.weapon_paths[weapon.my_id] = weapon.get_path()
-
 	var run_data = game_controller.tracked_players[player_id]["run_data"]
 	
 	var removed_weapon_tracked_value = 0
