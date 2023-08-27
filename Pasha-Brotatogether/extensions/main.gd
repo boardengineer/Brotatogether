@@ -392,7 +392,6 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 	
 	for stat_level_up in run_data.effects["stats_on_level_up"]:
 		run_data.effects[stat_level_up[0]] += stat_level_up[1]
-#		RunData.add_stat(stat_level_up[0], stat_level_up[1])
 
 func _on_EndWaveTimer_timeout()->void :
 	DebugService.log_data("_on_EndWaveTimer_timeout")

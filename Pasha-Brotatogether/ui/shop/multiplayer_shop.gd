@@ -43,14 +43,27 @@ func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = fa
 	if not $"/root".has_node("GameController"):
 		.on_item_combine_button_pressed(weapon_data, is_upgrade)
 		return
-
-	_focus_manager.reset_focus()
-	
+		
 	var game_controller = $"/root/GameController"
 	game_controller.on_item_combine_button_pressed(weapon_data, is_upgrade)
 	
-	game_controller.send_complete_player_request()
-	yield(game_controller, "complete_player_update")
+	if not game_controller.is_host:
+		game_controller.send_complete_player_request()
+		yield(game_controller, "complete_player_update")
+		
+		var nb_to_remove = 2
+		
+		if is_upgrade:
+			nb_to_remove = 1
+		
+		_weapons_container._elements.remove_element(weapon_data, nb_to_remove)
+		
+		var weapons = game_controller.tracked_players[game_controller.self_peer_id].run_data.weapons
+		var new_weapon = weapons[weapons.size() - 1]
+		
+		_weapons_container._elements.add_element(new_weapon)
+		
+	_focus_manager.reset_focus()
 
 func on_item_discard_button_pressed(weapon_data:WeaponData)->void :
 	if not $"/root".has_node("GameController"):
