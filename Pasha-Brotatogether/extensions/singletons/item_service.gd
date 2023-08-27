@@ -59,7 +59,39 @@ func get_shop_items(wave:int, number:int = NB_SHOP_ITEMS, shop_items:Array = [],
 		new_items.push_back([new_item, wave])
 	
 	return new_items
+
+func get_recycling_value(wave:int, from_value:int, is_weapon:bool = false, affected_by_items_price_stat:bool = true)->int:
+	if not $"/root".has_node("GameController"):
+		return .get_recycling_value(wave, from_value, is_weapon, affected_by_items_price_stat)
+
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+
+	var actually_affected = affected_by_items_price_stat and RunData.current_wave <= RunData.nb_of_waves
+	return max(1.0, (get_value(wave, from_value, actually_affected, is_weapon) * clamp((0.25 + (run_data.effects["recycling_gains"] / 100.0)), 0.01, 1.0))) as int
+
+
+func get_value(wave:int, base_value:int, affected_by_items_price_stat:bool = true, is_weapon:bool = false, item_id:String = "") -> int:
+	if not $"/root".has_node("GameController"):
+		return .get_value(wave, base_value, affected_by_items_price_stat, is_weapon, item_id)
 	
+	var value_after_weapon_price = base_value if not is_weapon or not affected_by_items_price_stat else base_value * (1.0 + (RunData.effects["weapons_price"] / 100.0))
+	
+	var specific_item_price_factor = 0
+	
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	
+	for specific_item_price in run_data.effects["specific_items_price"]:
+		if specific_item_price[0] == item_id:
+			specific_item_price_factor = specific_item_price[1]
+			break
+			
+	var items_price_factor = (1.0 + ((run_data.effects["items_price"] + specific_item_price_factor) / 100.0)) if affected_by_items_price_stat else 1.0
+	var diff_factor = (run_data.effects["inflation"] / 100.0) if affected_by_items_price_stat else 0.0
+	var endless_factor = (RunData.get_endless_factor(wave) / 5.0) if affected_by_items_price_stat else 0.0
+	return max(1.0, ((value_after_weapon_price + wave + (value_after_weapon_price * wave * (0.1 + diff_factor))) * items_price_factor * (1 + endless_factor))) as int
+
 func get_rand_item_from_wave(wave:int, type:int, shop_items:Array = [], prev_shop_items:Array = [], fixed_tier:int = - 1)->ItemParentData:
 	if not $"/root".has_node("GameController"):
 		return .get_rand_item_from_wave(wave, type, shop_items, prev_shop_items, fixed_tier)

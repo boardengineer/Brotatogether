@@ -439,10 +439,15 @@ func _on_EndWaveTimer_timeout()->void :
 		if _is_chal_ui_displayed:
 			yield (_challenge_completed_ui, "finished")
 		
+		game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process = []
+		
 		if $"/root/GameController":
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
 		else:
 			var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
+
+func on_item_box_discard_button_pressed(item_data:ItemParentData) -> void:
+	game_controller.discard_item_box(item_data)
 
 func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 	if not $"/root".has_node("GameController"):

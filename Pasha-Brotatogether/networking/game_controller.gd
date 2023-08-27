@@ -382,6 +382,22 @@ func receive_item_box_take(item_id, player_id) -> void:
 			run_data_node.add_item(player_id, item)
 			return
 
+func reroll_upgrades() -> void:
+	if is_host:
+		receive_reroll_upgrades(self_peer_id)
+	pass
+
+func receive_reroll_upgrades(player_id:int) -> void:
+	if not is_host:
+		return
+
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	var upgrades_ui = get_tree().get_current_scene()._upgrades_ui
+	run_data_node.remove_gold(player_id, upgrades_ui._reroll_price)
+	upgrades_ui._reroll_price = ItemService.get_reroll_price(RunData.current_wave, upgrades_ui._reroll_price)
+	upgrades_ui.show_upgrade_options(upgrades_ui._level)
+
 func on_item_discard_button_pressed(weapon_data:WeaponData) -> void:
 	if is_host:
 		receive_item_discard(weapon_data.my_id, self_peer_id)
@@ -457,12 +473,12 @@ func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 		shop.reset_item_popup_focus()
 		shop._stats_container.update_stats()
 		shop._weapons_container._elements.add_element(new_weapon)
+		SoundManager.play(Utils.get_rand_element(shop.combine_sounds), 0, 0.1, true)
+		shop._weapons_container.set_label(shop.get_weapons_label_text())
+		if Input.get_mouse_mode() == Input.MOUSE_MODE_HIDDEN:
+			shop._weapons_container._elements.focus_element(new_weapon)
 
-	if Input.get_mouse_mode() == Input.MOUSE_MODE_HIDDEN:
-		shop._weapons_container._elements.focus_element(new_weapon)
 
-	SoundManager.play(Utils.get_rand_element(shop.combine_sounds), 0, 0.1, true)
-	shop._weapons_container.set_label(shop.get_weapons_label_text())
 
 func receive_uprade_selected(upgrade_data_id, player_id):
 	for upgrade in ItemService.upgrades:
@@ -590,6 +606,19 @@ func display_hit_effect(effect_info: Dictionary):
 		effects_manager.play_hit_particles(effect_info.position, effect_info.direction, effect_info.scale)
 		effects_manager.play_hit_effect(effect_info.position, effect_info.direction, effect_info.scale)
 
+func discard_item_box(item_data:ItemParentData) -> void:
+	if is_host:
+		receive_discard_item_box(self_peer_id, item_data.my_id)
+	else:
+		connection.send_discard_item_box(item_data.my_id)
+	
+func receive_discard_item_box(player_id:int, item_id:String) -> void:
+	var run_data_node = $"/root/MultiplayerRunData"
+	for query_item in ItemService.items:
+		if query_item.my_id == item_id:
+			var actual_value = ItemService.get_recycling_value(RunData.current_wave, query_item.value)
+			run_data_node.add_gold(player_id, actual_value)
+	
 func end_wave():
 	run_updates = false
 	game_state_controller.reset_client_items()

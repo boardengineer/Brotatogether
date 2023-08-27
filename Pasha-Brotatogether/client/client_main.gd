@@ -208,7 +208,9 @@ func _ready()->void :
 	
 	var _error_upg_select = _upgrades_ui.connect("upgrade_selected", self, "on_upgrade_selected")
 	var _error_consumable_added = connect("consumable_to_process_added", _ui_consumables_to_process, "add_element")
+	
 	var _error_take_button = _item_box_ui.connect("item_take_button_pressed", self, "on_item_box_take_button_pressed")
+	var _error_discard_button = _item_box_ui.connect("item_discard_button_pressed", self, "on_item_box_discard_button_pressed")
 
 func _input(event:InputEvent)->void :
 	var is_right_stick_motion = event is InputEventJoypadMotion and (event.axis == JOY_AXIS_2 or event.axis == JOY_AXIS_3) and abs(event.axis_value) > 0.5
@@ -500,8 +502,8 @@ func on_upgrade_selected(upgrade_data:UpgradeData)->void :
 func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
 	game_controller.on_item_box_take_button_pressed(item_data)
 
-func on_item_box_discard_button_pressed(item_data:ItemParentData)->void :
-	RunData.add_gold(ItemService.get_recycling_value(RunData.current_wave, item_data.value))
+func on_item_box_discard_button_pressed(item_data:ItemParentData) -> void:
+	game_controller.discard_item_box(item_data)
 
 func _on_PauseMenu_paused()->void :
 	reload_stats()
@@ -637,6 +639,7 @@ func _on_WaveTimer_timeout() -> void:
 			yield(game_controller, "complete_player_update")
 			
 			_ui_consumables_to_process.remove_element(consumable)
+	game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process = []
 
 	if _upgrades_to_process.size() > 0:
 		for upgrade_to_process in _upgrades_to_process:
