@@ -342,6 +342,10 @@ func manage_harvesting() -> void:
 	_harvesting_timer.start()
 
 func _on_HarvestingTimer_timeout() -> void:
+	if not $"/root".has_node("GameController"):
+		._on_HarvestingTimer_timeout()
+		return
+
 	var multiplayer_utils = $"/root/MultiplayerUtils"
 	var run_data_node = $"/root/MultiplayerRunData"
 	
@@ -397,7 +401,11 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 	for stat_level_up in run_data.effects["stats_on_level_up"]:
 		run_data.effects[stat_level_up[0]] += stat_level_up[1]
 
-func _on_EndWaveTimer_timeout()->void :
+func _on_EndWaveTimer_timeout() -> void:
+	if not $"/root".has_node("GameController"):
+		.set_level_label()
+		return
+	
 	DebugService.log_data("_on_EndWaveTimer_timeout")
 	_end_wave_timer_timedout = true
 	_ui_dim_screen.dim()
@@ -559,7 +567,7 @@ func spawn_consumables(unit:Unit) -> void:
 	if not $"/root".has_node("GameController"):
 		.spawn_consumables(unit)
 		return
-		
+	
 	var size_before = _consumables.size()
 	.spawn_consumables(unit)
 	var size_after = _consumables.size()

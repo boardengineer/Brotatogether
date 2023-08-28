@@ -11,6 +11,5 @@ func get_stat(stat_name:String) -> float:
 		
 		for player_id in game_controller.tracked_players:
 			sum += multiplayer_utils.get_stat_multiplayer(player_id, stat_name)
-			
-	print_debug("returning sum ", sum)
+
 	return sum
