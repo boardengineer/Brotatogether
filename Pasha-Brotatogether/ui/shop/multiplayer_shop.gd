@@ -12,34 +12,58 @@ func _ready():
 		_items_container.set_data("ITEMS", Category.ITEM, run_data.items, true, true)
 		
 		_gold_label.update_gold(run_data.gold)
+		_initial_free_rerolls = run_data.effects["free_rerolls"]
+		_free_rerolls = _initial_free_rerolls
+		set_reroll_button_price()
 
 func on_shop_item_bought(shop_item:ShopItem) -> void:
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		game_controller.send_bought_item_by_id(shop_item.item_data.my_id, shop_item.value)
-	
-		if not game_controller.is_host:
-			game_controller.send_complete_player_request()
-			yield(game_controller, "complete_player_update")
-			
-		_stats_container.update_stats()
-		_shop_items_container.reload_shop_items_descriptions()
-#		This lack of removal probably has some problems
-#		for item in _shop_items:
-#			if item[0].my_id == shop_item.item_data.my_id:
-#				_shop_items.erase(item)
-#				break
-		
-		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
-		var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
-		
-		_weapons_container.set_label(label_text)
-		
-		emit_signal("item_bought", shop_item.item_data)
-		RunData.emit_signal("gold_changed", run_data.gold)
-		_shop_items_container.update_buttons_color()
-	else:
+	if not $"/root".has_node("GameController"):
 		.on_shop_item_bought(shop_item)
+
+	var game_controller = $"/root/GameController"
+	game_controller.send_bought_item_by_id(shop_item.item_data.my_id, shop_item.value)
+	
+	if not game_controller.is_host:
+		game_controller.send_complete_player_request()
+		yield(game_controller, "complete_player_update")
+			
+	_stats_container.update_stats()
+	_shop_items_container.reload_shop_items_descriptions()
+#	This lack of removal probably has some problems
+#	for item in _shop_items:
+#		if item[0].my_id == shop_item.item_data.my_id:
+#			_shop_items.erase(item)
+#			break
+		
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
+		
+	_weapons_container.set_label(label_text)
+		
+	emit_signal("item_bought", shop_item.item_data)
+	RunData.emit_signal("gold_changed", run_data.gold)
+	_shop_items_container.update_buttons_color()
+	
+	var has_new_rerolls = false
+	
+	if run_data.effects["free_rerolls"] > _initial_free_rerolls:
+		var new_rerolls = run_data.effects["free_rerolls"] - _initial_free_rerolls
+		_initial_free_rerolls = run_data.effects["free_rerolls"]
+		_free_rerolls += new_rerolls
+		has_new_rerolls = true
+	
+	if _shop_items.size() == 0:
+		
+		if _reroll_price == 0:
+			_free_rerolls += 1
+		
+		_free_rerolls += 1
+		has_new_rerolls = true
+		
+	if has_new_rerolls:
+		set_reroll_button_price()
+	else :
+		_reroll_button.set_color_from_currency(run_data.gold)
 
 func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false)->void :
 	if not $"/root".has_node("GameController"):
