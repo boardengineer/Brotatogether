@@ -42,3 +42,25 @@ func _on_StructureTimer_timeout()->void :
 						pos = get_spawn_pos_in_area(_player.global_position, struct.spawn_around_player)
 					
 					queue_to_spawn_structures.push_back([EntityType.STRUCTURE, struct.scene, pos, struct])
+					
+					
+func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool) -> void:
+	if not $"/root".has_node("GameController"):
+		.on_group_spawn_timing_reached(group_data, _is_elite_wave)
+		return
+	
+#	Cheat Spawn increases for trees and enemies by adding them up before the spawner function
+	var trees = 0
+	var number_of_enemies = 0
+	
+	var game_controller = $"/root/GameController"
+	
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id].run_data
+		trees += run_data.effects.trees
+		number_of_enemies += run_data.effects.number_of_enemies
+		
+	RunData.effects["trees"] = trees
+	RunData.effects["number_of_enemies"] = number_of_enemies
+	
+	.on_group_spawn_timing_reached(group_data, _is_elite_wave)

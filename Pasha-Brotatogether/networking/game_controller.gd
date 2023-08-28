@@ -413,7 +413,6 @@ func on_item_discard_button_pressed(weapon_data:WeaponData) -> void:
 
 func receive_item_discard(weapon_id, player_id) -> void:
 	var run_data_node = $"/root/MultiplayerRunData"
-	var shop = $"/root/Shop"
 	
 	var run_data = tracked_players[player_id].run_data
 	var weapon_data = null
@@ -533,11 +532,8 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 		else :
 			var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
 	
-	
-	if player_id == self_peer_id:
-		shop._stats_container.update_stats()
-		
-	send_complete_player(player_id)
+	if player_id != self_peer_id:
+		send_complete_player(player_id)
 
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:

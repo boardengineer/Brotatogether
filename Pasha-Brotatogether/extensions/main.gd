@@ -343,15 +343,6 @@ func _on_HarvestingTimer_timeout() -> void:
 		else :
 			var val = ceil(multiplayer_utils.get_stat_multiplayer(player_id, "stat_harvesting") * (run_data.effects["harvesting_growth"] / 100.0))
 			
-			var has_crown = false
-			var crown_value = 0
-			
-			for item in RunData.items:
-				if item.my_id == "item_crown":
-					has_crown = true
-					crown_value = item.effects[0].value
-					break
-			
 			if val > 0:
 				run_data_node.add_stat(player_id, "stat_harvesting", val)
 

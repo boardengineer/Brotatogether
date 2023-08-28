@@ -18,10 +18,21 @@ func _on_Hurtbox_area_entered(hitbox:Area2D)->void :
 	._on_Hurtbox_area_entered(hitbox)
 	
 func on_hurt()->void :
-	var game_controller = $"/root/GameController"
-	if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+	if not $"/root".has_node("GameController"):
+		.on_hurt()
 		return
+	
+	var game_controller = $"/root/GameController"
+	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+		return
+		
 	.on_hurt()
+	
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id].run_data
+		if run_data.effects["one_shot_trees"]:
+			die()
+			break
 
 func flash()->void :
 	var game_controller = $"/root/GameController"

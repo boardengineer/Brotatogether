@@ -21,6 +21,9 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		if not game_controller.is_host:
 			game_controller.send_complete_player_request()
 			yield(game_controller, "complete_player_update")
+			
+		_stats_container.update_stats()
+		_shop_items_container.reload_shop_items_descriptions()
 #		This lack of removal probably has some problems
 #		for item in _shop_items:
 #			if item[0].my_id == shop_item.item_data.my_id:
@@ -28,7 +31,6 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 #				break
 		
 		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
-		
 		var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
 		
 		_weapons_container.set_label(label_text)
