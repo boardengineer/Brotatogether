@@ -650,7 +650,8 @@ func receive_shot(player_id:int, weapon_index:int) -> void:
 			
 			if is_instance_valid(player):
 				var weapon = player.current_weapons[weapon_index]
-				SoundManager.play(Utils.get_rand_element(weapon.current_stats.shooting_sounds), weapon.current_stats.sound_db_mod, 0.2)
+				if is_instance_valid(weapon):
+					SoundManager.play(Utils.get_rand_element(weapon.current_stats.shooting_sounds), weapon.current_stats.sound_db_mod, 0.2)
 
 
 func send_explosion(pos: Vector2, scale: float) -> void:
