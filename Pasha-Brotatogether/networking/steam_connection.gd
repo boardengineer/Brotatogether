@@ -28,6 +28,10 @@ func read_p2p_packet() -> bool:
 		var type = data.type
 		if type == "start_game":
 			parent.start_game(data.game_info)
+		elif type == "reroll_upgrades":
+			parent.receive_reroll_upgrades(sender, data.reroll_price)
+		elif type == "weapon_discard":
+			parent.receive_item_discard(data.weapon_id, sender)
 		elif type == "floating_text":
 			parent.display_floating_text(data.text_info)
 		elif type == "hit_effect":
@@ -389,4 +393,16 @@ func send_discard_item_box(item_id) -> void:
 	var send_data = {}
 	send_data["type"] = "discard_item_box"
 	send_data["item_id"] = item_id
+	send_data_to_all(send_data)
+
+func send_reroll_upgrades(reroll_price) -> void:
+	var send_data = {}
+	send_data["type"] = "reroll_upgrades"
+	send_data["reroll_price"] = reroll_price
+	send_data_to_all(send_data)
+
+func send_weapon_discard(weapon_id) -> void:
+	var send_data = {}
+	send_data["type"] = "weapon_discard"
+	send_data["weapon_id"] = weapon_id
 	send_data_to_all(send_data)

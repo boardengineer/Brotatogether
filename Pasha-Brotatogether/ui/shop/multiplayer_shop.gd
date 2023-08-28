@@ -76,6 +76,18 @@ func on_item_discard_button_pressed(weapon_data:WeaponData)->void :
 	
 	var game_controller = $"/root/GameController"
 	game_controller.on_item_discard_button_pressed(weapon_data)
+	
+	
+	if not game_controller.is_host:
+		yield(game_controller, "complete_player_update")
+	
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+		
+	_weapons_container._elements.remove_element(weapon_data)
+	reset_item_popup_focus()
+	_shop_items_container.update_buttons_color()
+	_reroll_button.set_color_from_currency(run_data.gold)
+	SoundManager.play(Utils.get_rand_element(recycle_sounds), 0, 0.1, true)
 
 func _on_RerollButton_pressed()->void :
 	if not $"/root".has_node("GameController"):

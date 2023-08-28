@@ -206,6 +206,8 @@ func _ready()->void :
 	var next_level_xp = RunData.get_xp_needed(current_level + 1)
 	_xp_bar.update_value(current_xp, next_level_xp)
 	
+	var _error_gold_ui = RunData.connect("gold_changed", _ui_gold, "on_gold_changed")
+	
 	var _error_upg_select = _upgrades_ui.connect("upgrade_selected", self, "on_upgrade_selected")
 	var _error_consumable_added = connect("consumable_to_process_added", _ui_consumables_to_process, "add_element")
 	

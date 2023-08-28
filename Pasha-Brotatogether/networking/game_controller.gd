@@ -366,6 +366,7 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 					new_weapons.push_back(query_weapon.duplicate())
 		tracked_players[player_id]["run_data"]["weapons"] = new_weapons
 		
+		RunData.emit_signal("gold_changed", tracked_players[player_id]["run_data"].gold)
 		emit_signal("complete_player_update")
 
 func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:
@@ -383,26 +384,32 @@ func receive_item_box_take(item_id, player_id) -> void:
 			return
 
 func reroll_upgrades() -> void:
+	var upgrades_ui = get_tree().get_current_scene()._upgrades_ui
+	var reroll_price = upgrades_ui._reroll_price
 	if is_host:
-		receive_reroll_upgrades(self_peer_id)
-	pass
+		receive_reroll_upgrades(self_peer_id, reroll_price)
+	else:
+		connection.send_reroll_upgrades(reroll_price)
 
-func receive_reroll_upgrades(player_id:int) -> void:
+func receive_reroll_upgrades(player_id:int, reroll_price:int) -> void:
 	if not is_host:
 		return
 
 	var run_data_node = $"/root/MultiplayerRunData"
+	run_data_node.remove_gold(player_id, reroll_price)
 	
-	var upgrades_ui = get_tree().get_current_scene()._upgrades_ui
-	run_data_node.remove_gold(player_id, upgrades_ui._reroll_price)
-	upgrades_ui._reroll_price = ItemService.get_reroll_price(RunData.current_wave, upgrades_ui._reroll_price)
-	upgrades_ui.show_upgrade_options(upgrades_ui._level)
+	if player_id == self_peer_id:
+		var upgrades_ui = get_tree().get_current_scene()._upgrades_ui
+		upgrades_ui._reroll_price = ItemService.get_reroll_price(RunData.current_wave, reroll_price)
+		upgrades_ui.show_upgrade_options(upgrades_ui._level)
+	else:
+		send_complete_player(player_id)
 
 func on_item_discard_button_pressed(weapon_data:WeaponData) -> void:
 	if is_host:
 		receive_item_discard(weapon_data.my_id, self_peer_id)
 	else:
-		pass
+		connection.send_weapon_discard(weapon_data.my_id)
 
 func receive_item_discard(weapon_id, player_id) -> void:
 	var run_data_node = $"/root/MultiplayerRunData"
@@ -414,24 +421,12 @@ func receive_item_discard(weapon_id, player_id) -> void:
 	for weapon in run_data.weapons:
 		if weapon.my_id == weapon_id:
 			weapon_data = weapon
-	
-	shop._weapons_container._elements.remove_element(weapon_data)
-	var _weapon = RunData.remove_weapon(weapon_data)
+		
+	var _weapon = run_data_node.remove_weapon(player_id, weapon_data)
 	run_data_node.add_gold(player_id, ItemService.get_recycling_value(RunData.current_wave, weapon_data.value, true))
 	
-#	RunData.update_recycling_tracking_value(weapon_data)
-	
-	var nb_coupons = run_data_node.get_nb_item(player_id, "item_coupon")
-	
-	if nb_coupons > 0:
-		var base_value = ItemService.get_recycling_value(RunData.current_wave, weapon_data.value, true, false)
-		var actual_value = ItemService.get_recycling_value(RunData.current_wave, weapon_data.value, true)
-		run_data.tracked_item_effects["item_coupon"] -= (base_value - actual_value) as int
-	
-	shop.reset_item_popup_focus()
-	shop._shop_items_container.update_buttons_color()
-	shop._reroll_button.set_color_from_currency(run_data.gold)
-	SoundManager.play(Utils.get_rand_element(shop.recycle_sounds), 0, 0.1, true)
+	if player_id != self_peer_id:
+		send_complete_player(player_id)
 
 func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false) -> void:
 	if is_host:

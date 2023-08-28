@@ -7,3 +7,9 @@ func _on_RerollButton_pressed()->void :
 	
 	var game_controller = $"/root/GameController"
 	game_controller.reroll_upgrades()
+	
+	if not game_controller.is_host:
+		yield(game_controller, "complete_player_update")
+		
+		_reroll_price = ItemService.get_reroll_price(RunData.current_wave, _reroll_price)
+		show_upgrade_options(_level)
