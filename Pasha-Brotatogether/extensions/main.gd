@@ -280,8 +280,8 @@ func on_gold_picked_up_multiplayer(gold:Node, player_id:int) -> void:
 		gold.boosted *= 2
 	
 #	TODO cute monkey
-#	if randf() < run_data.effects["heal_when_pickup_gold"] / 100.0:
-#		RunData.emit_signal("healing_effect", 1, "item_cute_monkey")
+	if randf() < run_data.effects["heal_when_pickup_gold"] / 100.0:
+		RunData.emit_signal("healing_effect", 1, "item_cute_monkey")
 	
 	# NOTE: this is the only difference in this function, changing it from 
 	# THE player to ANY player, in the future there may be separate inventories.
@@ -609,3 +609,40 @@ func _on_neutral_died(neutral:Neutral) -> void:
 					run_data_node.effect_to_owner_map[cloned_turret_effect] = player_id
 					var pos = _entity_spawner.get_spawn_pos_in_area(neutral.global_position, 200)
 					_entity_spawner.queue_to_spawn_structures.push_back([EntityType.STRUCTURE, cloned_turret_effect.scene, pos, cloned_turret_effect])
+
+
+func _on_enemy_died(enemy:Enemy) -> void:
+	if not $"/root".has_node("GameController"):
+		._on_enemy_died(enemy)
+		return
+		
+	._on_enemy_died(enemy)
+	
+	if not _cleaning_up:
+		for player_id in game_controller.tracked_players:
+			var run_data = game_controller.tracked_players[player_id].run_data
+			
+			if run_data.effects["dmg_when_death"].size() > 0:
+				var dmg_taken = handle_stat_damages(run_data.effects["dmg_when_death"])
+			
+			if run_data.effects["projectiles_on_death"].size() > 0:
+				for proj_on_death_effect in run_data.effects["projectiles_on_death"]:
+					for i in proj_on_death_effect[0]:
+						var stats = proj_on_death_effect[1]
+						
+						if _proj_on_death_stat_cache.has(i):
+							stats = _proj_on_death_stat_cache[i]
+						else :
+							stats = WeaponService.init_ranged_stats(proj_on_death_effect[1])
+							_proj_on_death_stat_cache[i] = stats
+						
+						var _projectile = WeaponService.manage_special_spawn_projectile(
+							enemy, 
+							stats, 
+							proj_on_death_effect[2], 
+							_entity_spawner, 
+							rand_range( - PI, PI), 
+							"item_baby_with_a_beard"
+						)
+			
+			RunData.handle_explosion("explode_on_death", enemy.global_position)

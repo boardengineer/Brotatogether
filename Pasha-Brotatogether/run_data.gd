@@ -602,3 +602,25 @@ func has_weapon_slot_available(player_id: int, weapon_type:int = -1) -> bool:
 		var max_slots = run_data["effects"]["max_melee_weapons"] if weapon_type == WeaponType.MELEE else run_data["effects"]["max_ranged_weapons"]
 		
 		return run_data["weapons"].size() < run_data["effects"]["weapon_slot"] and count < min(run_data["effects"]["weapon_slot"], max_slots)
+
+func handle_explosion_multiplayer(player_id:int, key:String, pos:Vector2) -> void :
+	var game_controller = get_game_controller()
+	var run_data = game_controller.tracked_players[player_id].run_data
+	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+	
+	if run_data.effects[key].size() > 0:
+		var explosion_chance = 0.0
+
+		for explosion in run_data.effects[key]:
+			explosion_chance += explosion.chance
+
+		if randf() <= explosion_chance:
+			var dmg = 0
+			var first = run_data.effects[key][0]
+			var exploding_effect = ExplodingEffect.new()
+
+			for explosion in run_data.effects[key]:
+				var explosion_stats = multiplayer_weapon_service.init_base_stats_multiplayer(player_id, explosion.stats, "", [], [exploding_effect])
+				dmg += explosion_stats.damage
+
+			var _inst = WeaponService.explode(first, pos, dmg, first.stats.accuracy, first.stats.crit_chance, first.stats.crit_damage, first.stats.burning_data, false, [], first.tracking_text)
