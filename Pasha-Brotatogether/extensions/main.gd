@@ -81,7 +81,6 @@ func spawn_additional_players() -> void:
 	# The first player was created on at startup, create the rest manually
 	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
 	_player.player_network_id = game_controller.self_peer_id
-	
 	_player.apply_items_effects()
 	
 	# re-init the weapons after we set the network id

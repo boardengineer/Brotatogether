@@ -17,11 +17,65 @@ func add_weapon(weapon_data:WeaponData, pos:int)->void :
 		run_data_node.effect_to_owner_map[effect] = player_network_id
 
 func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0, bypass_invincibility:bool = false)->Array:
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+	if not $"/root".has_node("GameController"):
+		return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale, bypass_invincibility)
+	
+	var game_controller = $"/root/GameController"
+	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 			return [0, 0 ,0]
-	return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale, bypass_invincibility)
+			
+	var run_data = game_controller.tracked_players[player_network_id].run_data
+	if hitbox and hitbox.is_healing:
+		var _healed = on_healing_effect(value)
+	elif _invincibility_timer.is_stopped() or bypass_invincibility:
+		var dmg_taken = .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
+		
+		
+		if dmg_taken[2]:
+			if run_data.effects["dmg_on_dodge"].size() > 0 and hitbox != null and hitbox.from != null and is_instance_valid(hitbox.from):
+				var total_dmg_to_deal = 0
+				for dmg_on_dodge in run_data.effects["dmg_on_dodge"]:
+					if randf() >= dmg_on_dodge[2] / 100.0:
+						continue
+					var dmg_from_stat = max(1, (dmg_on_dodge[1] / 100.0) * Utils.get_stat(dmg_on_dodge[0]))
+					var dmg = RunData.get_dmg(dmg_from_stat) as int
+					total_dmg_to_deal += dmg
+				var _dmg_dealt = hitbox.from.take_damage(total_dmg_to_deal)
+			
+			if run_data.effects["heal_on_dodge"].size() > 0:
+				var total_to_heal = 0
+				for heal_on_dodge in run_data.effects["heal_on_dodge"]:
+					if randf() < heal_on_dodge[2] / 100.0:
+						total_to_heal += heal_on_dodge[1]
+				var _healed = on_healing_effect(total_to_heal, "item_adrenaline", false)
+			
+			if run_data.effects["temp_stats_on_dodge"].size() > 0:
+				for temp_stat_on_hit in run_data.effects["temp_stats_on_dodge"]:
+					TempStats.add_stat(temp_stat_on_hit[0], temp_stat_on_hit[1])
+		
+		if dmg_taken[1] > 0 and consumables_in_range.size() > 0:
+			for cons in consumables_in_range:
+				cons.attracted_by = self
+		
+		if dodgeable:
+			disable_hurtbox()
+			_invincibility_timer.start(get_iframes(dmg_taken[1]))
+		
+		if dmg_taken[1] > 0:
+			if run_data.effects["explode_on_hit"].size() > 0:
+				var effect = run_data.effects["explode_on_hit"][0]
+				var stats = _explode_on_hit_stats
+				var _inst = WeaponService.explode(effect, global_position, stats.damage, stats.accuracy, stats.crit_chance, stats.crit_damage, stats.burning_data)
+			
+			if run_data.effects["temp_stats_on_hit"].size() > 0:
+				for temp_stat_on_hit in run_data.effects["temp_stats_on_hit"]:
+					TempStats.add_stat(temp_stat_on_hit[0], temp_stat_on_hit[1])
+			
+			check_hp_regen()
+		
+		return dmg_taken
+	
+	return [0, 0]
 
 func remove_weapon_behaviors():
 	for weapon in current_weapons:
@@ -41,10 +95,16 @@ func apply_items_effects() -> void:
 		return
 		
 	var game_controller = $"/root/GameController"
-
 	var run_data = game_controller.tracked_players[player_network_id].run_data
 	
 	var animation_node = $Animation
+	
+	if run_data.effects["alien_eyes"].size() > 0:
+		_alien_eyes_timer = Timer.new()
+		_alien_eyes_timer.wait_time = run_data.effects["alien_eyes"][0][3]
+		var _alien_eyes = _alien_eyes_timer.connect("timeout", self, "on_alien_eyes_timeout")
+		add_child(_alien_eyes_timer)
+		_alien_eyes_timer.start()
 	
 	for i in run_data.weapons.size():
 		add_weapon(run_data.weapons[i], i)
@@ -180,3 +240,30 @@ func _on_ItemPickupArea_area_entered(area:Area2D) -> void:
 	
 	if consumables_in_range.has(area):
 		consumables_in_range.erase(area)
+
+func check_hp_regen() -> void:
+	if not $"/root".has_node("GameController") or not player_network_id:
+		.check_hp_regen()
+		return
+		
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[player_network_id].run_data
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+		
+	set_hp_regen_timer_value()
+	if (run_data.effects["torture"] > 0 or multiplayer_utils.get_stat_multiplayer(player_network_id, "stat_hp_regeneration") > 0) and _health_regen_timer.is_stopped() and current_stats.health < max_stats.health and not cleaning_up:
+		_health_regen_timer.start()
+
+
+func set_hp_regen_timer_value()->void :
+	if not $"/root".has_node("GameController") or not player_network_id:
+		.set_hp_regen_timer_value()
+		return
+
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[player_network_id].run_data
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	_health_regen_timer.wait_time = RunData.get_hp_regeneration_timer(multiplayer_utils.get_stat_multiplayer(player_network_id,"stat_hp_regeneration") as int)
+	
+	if run_data.effects["torture"] > 0:
+		_health_regen_timer.wait_time = 1
