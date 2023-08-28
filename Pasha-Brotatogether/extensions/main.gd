@@ -28,6 +28,7 @@ func _ready():
 	if not $"/root".has_node("GameController"):
 		return
 	game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	send_updates = true
 	
 	if game_controller and game_controller.is_source_of_truth:
@@ -42,6 +43,7 @@ func _ready():
 	# connnect multiplayer signals
 	var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 	var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
+	RunData.emit_signal("gold_changed", run_data.gold)
 	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
