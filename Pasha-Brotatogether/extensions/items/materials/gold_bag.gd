@@ -5,4 +5,4 @@ func _on_GoldBag_area_entered(area:Area2D) -> void:
 		._on_GoldBag_area_entered(area)
 		return
 		
-	area.pickup_multiplayer(-1)
+	get_tree().get_current_scene().emit_signal("picked_up_multiplayer", area, -1)

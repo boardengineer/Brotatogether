@@ -2,6 +2,7 @@
 extends "res://main.gd"
 
 signal levelled_up_multiplayer(player_id)
+signal picked_up_multiplayer(item, player_id)
 
 # must be g than 1024
 var SERVER_PORT = 11111
@@ -44,6 +45,8 @@ func _ready():
 	var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 	var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
 	RunData.emit_signal("gold_changed", run_data.gold)
+	
+	_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
 	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
@@ -246,6 +249,14 @@ func add_xp(player_id, value) -> void:
 		if player_id == game_controller.self_peer_id:
 			RunData.emit_signal("xp_added", run_data.current_xp, next_level_xp)
 		next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+
+func on_item_picked_up_multiplayer(item:Area2D, player_id:int) -> void:
+	if item is Consumable:
+		on_consumable_picked_up_multiplayer(item, player_id)
+	else:
+		_floating_text_manager.on_gold_picked_up(item)
+		on_gold_picked_up_multiplayer(item,player_id)
+	item.queue_free()
 
 func on_gold_picked_up_multiplayer(gold:Node, player_id:int) -> void:
 	_golds.erase(gold)
@@ -539,12 +550,8 @@ func spawn_gold(unit:Unit, entity_type:int)->void :
 	while index < size_after:
 		var gold = _golds[index]
 		
-		
 		var _disconnect_error = gold.disconnect("picked_up", self, "on_gold_picked_up")
-		var _connect_error = gold.connect("picked_up_multiplayer", self, "on_gold_picked_up_multiplayer")
-		
 		_disconnect_error = gold.disconnect("picked_up", _floating_text_manager, "on_gold_picked_up")
-		_connect_error = gold.connect("picked_up_multiplayer", _floating_text_manager, "on_gold_picked_up_multiplayer")
 		
 		index += 1
 
@@ -553,7 +560,6 @@ func spawn_consumables(unit:Unit) -> void:
 		.spawn_consumables(unit)
 		return
 		
-	# TODO this isn't finished
 	var size_before = _consumables.size()
 	.spawn_consumables(unit)
 	var size_after = _consumables.size()
@@ -563,7 +569,6 @@ func spawn_consumables(unit:Unit) -> void:
 		var consumable = _consumables[index]
 		
 		var _connect_error = consumable.disconnect("picked_up", self, "on_consumable_picked_up")
-		var _disconnect_error = consumable.connect("picked_up_multiplayer", self, "on_consumable_picked_up_multiplayer")
 		
 		index += 1
 

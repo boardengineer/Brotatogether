@@ -491,8 +491,6 @@ func send_bought_item_by_id(item_id:String, value:int) -> void:
 func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void:
 	var run_data_node = $"/root/MultiplayerRunData"
 	var run_data = tracked_players[player_id].run_data
-	var shop = $"/root/Shop"
-	
 	run_data_node.remove_currency(player_id, value)
 	var nb_coupons = run_data_node.get_nb_item(player_id, "item_coupon")
 	
