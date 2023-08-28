@@ -591,3 +591,22 @@ func on_structure_wanted_to_spawn_fruit(pos:Vector2) -> void:
 	
 	var _connect_error = consumable.disconnect("picked_up", self, "on_consumable_picked_up")
 	var _disconnect_error = consumable.connect("picked_up_multiplayer", self, "on_consumable_picked_up_multiplayer")
+
+func _on_neutral_died(neutral:Neutral) -> void:
+	if not $"/root".has_node("GameController"):
+		._on_neutral_died(neutral)
+		return
+	
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	._on_neutral_died(neutral)
+	if not _cleaning_up:
+		for player_id in game_controller.tracked_players:
+			var run_data = game_controller.tracked_players[player_id].run_data
+			
+			if run_data.effects["tree_turrets"] > 0:
+				for _i in run_data.effects["tree_turrets"]:
+					var cloned_turret_effect = turret_effect.duplicate()
+					run_data_node.effect_to_owner_map[cloned_turret_effect] = player_id
+					var pos = _entity_spawner.get_spawn_pos_in_area(neutral.global_position, 200)
+					_entity_spawner.queue_to_spawn_structures.push_back([EntityType.STRUCTURE, cloned_turret_effect.scene, pos, cloned_turret_effect])
