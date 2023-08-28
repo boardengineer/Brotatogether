@@ -61,6 +61,9 @@ func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool
 		number_of_enemies += run_data.effects.number_of_enemies
 		
 	RunData.effects["trees"] = trees
-	RunData.effects["number_of_enemies"] = number_of_enemies
+	
+	var additinonal_enemies_multipliler = (game_controller.tracked_players.size() - 1) * 75
+	
+	RunData.effects["number_of_enemies"] = number_of_enemies + additinonal_enemies_multipliler
 	
 	.on_group_spawn_timing_reached(group_data, _is_elite_wave)
