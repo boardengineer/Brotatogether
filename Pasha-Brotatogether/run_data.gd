@@ -1,6 +1,7 @@
 extends Node
 
 var effect_to_owner_map = {}
+var hitbox_to_owner_map = {}
 
 func add_item(player_id: int, item:ItemData) -> void:
 	var game_controller = get_game_controller()

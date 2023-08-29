@@ -237,6 +237,7 @@ func spawn_projectile(
 		damage_tracking_key:String = ""
 	)->Node:
 	
+	print_debug("this is our spawn projectile")
 	var projectile
 	
 	var duplicated_effects = []

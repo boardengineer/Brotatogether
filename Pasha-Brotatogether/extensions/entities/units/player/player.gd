@@ -3,6 +3,10 @@ extends "res://entities/units/player/player.gd"
 var player_network_id
 
 func add_weapon(weapon_data:WeaponData, pos:int)->void :
+	if not $"/root".has_node("GameController"):
+		.add_weapon(weapon_data, pos)
+		return
+		
 	.add_weapon(weapon_data, pos)
 	var weapon = current_weapons[current_weapons.size() - 1]
 	
@@ -13,6 +17,7 @@ func add_weapon(weapon_data:WeaponData, pos:int)->void :
 	data_node.weapon = weapon
 	data_node.set_name("data_node")
 	weapon.call_deferred("add_child", data_node)
+	run_data_node.hitbox_to_owner_map[weapon._hitbox] = player_network_id
 	for effect in weapon.effects:
 		run_data_node.effect_to_owner_map[effect] = player_network_id
 

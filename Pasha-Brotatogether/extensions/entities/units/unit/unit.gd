@@ -16,3 +16,10 @@ func init(zone_min_pos:Vector2, zone_max_pos:Vector2, p_player_ref:Node2D = null
 		reduction_sum += run_data.effects["burning_cooldown_reduction"]
 	
 	_burning_timer.wait_time = max(0.1, _burning_timer.wait_time * (1.0 - (reduction_sum / 100.0)))
+
+func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0)->Array:
+	if not $"/root".has_node("GameController"):
+		return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
+	
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	return multiplayer_utils.take_damage(self, value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)

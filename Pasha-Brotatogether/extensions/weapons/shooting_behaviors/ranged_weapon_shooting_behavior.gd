@@ -1,17 +1,22 @@
 extends RangedWeaponShootingBehavior
 
-func shoot(_distance:float)->void :
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
-			return
-		elif game_controller and game_controller.game_mode == "shared":
-			for player_id in game_controller.tracked_players:
-				var player = game_controller.tracked_players[player_id]["player"]
-				for weapon_index in player.current_weapons.size():
-					if player.current_weapons[weapon_index] == _parent:
-						game_controller.send_shot(player_id, weapon_index)
-	.shoot(_distance)
+func shoot(distance:float) -> void:
+	if not $"/root".has_node("GameController"):
+		.shoot(distance)
+		return
+	
+	var game_controller = $"/root/GameController"
+	
+	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+		return
+	
+	if game_controller.game_mode == "shared":
+		for player_id in game_controller.tracked_players:
+			var player = game_controller.tracked_players[player_id]["player"]
+			for weapon_index in player.current_weapons.size():
+				if player.current_weapons[weapon_index] == _parent:
+					game_controller.send_shot(player_id, weapon_index)
+	.shoot(distance)
 	
 func shoot_projectile(rotation:float = _parent.rotation, knockback:Vector2 = Vector2.ZERO)->void :
 	if not $"/root".has_node("GameController"):
@@ -19,7 +24,9 @@ func shoot_projectile(rotation:float = _parent.rotation, knockback:Vector2 = Vec
 		return
 	
 	var game_controller = $"/root/GameController"
-	if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
 		return
 		
 	var projectile = WeaponService.spawn_projectile(rotation, 
@@ -30,6 +37,12 @@ func shoot_projectile(rotation:float = _parent.rotation, knockback:Vector2 = Vec
 		_parent.effects, 
 		_parent
 	)
+	
+	for player_id in game_controller.tracked_players:
+		var player = game_controller.tracked_players[player_id]["player"]
+		for weapon_index in player.current_weapons.size():
+			if player.current_weapons[weapon_index] == _parent:
+				run_data_node.hitbox_to_owner_map[projectile._hitbox] = player_id
 	
 	if _parent.effects.size() > 0 and is_instance_valid(projectile):
 		var _killed_sthing = projectile._hitbox.connect("killed_something", _parent.get_node("data_node"), "on_killed_something")

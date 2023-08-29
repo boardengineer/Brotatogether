@@ -39,6 +39,9 @@ func take_damage(unit:Unit, value:int, hitbox:Hitbox = null, dodgeable:bool = tr
 	if unit.dead:
 		return [0, 0]
 	
+	var run_data_node = $"/root/MultiplayerRunData"
+	var game_controller = $"/root/GameController"
+	
 	var crit_damage = 0.0
 	var crit_chance = 0.0
 	var knockback_direction = Vector2.ZERO
@@ -104,32 +107,37 @@ func take_damage(unit:Unit, value:int, hitbox:Hitbox = null, dodgeable:bool = tr
 		if hitbox:
 			hitbox.killed_something(unit)
 		unit.die(knockback_direction * max(knockback_amount, unit.MIN_DEATH_KNOCKBACK_AMOUNT))
+
+	
+		if hitbox:
+			if run_data_node.hitbox_to_owner_map.has(hitbox):
+				var player_id = run_data_node.hitbox_to_owner_map[hitbox]
+				var run_data = game_controller.tracked_players[player_id].run_data
+				var player = game_controller.tracked_players[player_id].player
 		
-		if is_crit:
-			var gold_added = 0
+				if is_crit:
+					var gold_added = 0
+					
+					for effect in run_data.effects["gold_on_crit_kill"]:
+						if randf() <= effect[1] / 100.0:
+							gold_added += 1
 			
-			# TODO figure this out
-			for effect in RunData.effects["gold_on_crit_kill"]:
-				if randf() <= effect[1] / 100.0:
-					gold_added += 1
-					RunData.tracked_item_effects["item_hunting_trophy"] += 1
-			
-			if RunData.effects["heal_on_crit_kill"] > 0:
-				if randf() <= RunData.effects["heal_on_crit_kill"] / 100.0:
-					RunData.emit_signal("healing_effect", 1, "item_tentacle")
-			
-			for effect in hitbox.effects:
-				if effect.key == "gold_on_crit_kill" and randf() <= effect.value / 100.0:
-					gold_added += 1
-					hitbox.added_gold_on_crit(gold_added)
-			
-			if gold_added > 0:
-				RunData.add_gold(gold_added)
-				hit_type = HitType.GOLD_ON_CRIT_KILL
+					if run_data.effects["heal_on_crit_kill"] > 0:
+						if randf() <= run_data.effects["heal_on_crit_kill"] / 100.0:
+							player.on_healing_effect(1, "item_tentacle")
+					
+					for effect in hitbox.effects:
+						if effect.key == "gold_on_crit_kill" and randf() <= effect.value / 100.0:
+							gold_added += 1
+							hitbox.added_gold_on_crit(gold_added)
+					
+					if gold_added > 0:
+						run_data_node.add_gold(player_id, gold_added)
+						hit_type = HitType.GOLD_ON_CRIT_KILL
 	
 	unit.emit_signal(
 		"took_damage", 
-		self, 
+		unit, 
 		full_dmg_value, 
 		knockback_direction, 
 		knockback_amount, 
