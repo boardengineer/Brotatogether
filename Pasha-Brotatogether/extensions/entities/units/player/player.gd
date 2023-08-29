@@ -105,6 +105,9 @@ func apply_items_effects() -> void:
 		var _alien_eyes = _alien_eyes_timer.connect("timeout", self, "on_alien_eyes_timeout")
 		add_child(_alien_eyes_timer)
 		_alien_eyes_timer.start()
+		
+	if run_data.effects["lose_hp_per_second"] > 0:
+		_lose_health_timer.start()
 	
 	for i in run_data.weapons.size():
 		add_weapon(run_data.weapons[i], i)
@@ -273,7 +276,7 @@ func on_alien_eyes_timeout() -> void:
 		.on_alien_eyes_timeout()
 		return
 	
-	print_debug("on alien timeout")
+	
 	var game_controller = $"/root/GameController"
 	var run_data = game_controller.tracked_players[player_network_id].run_data
 	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
@@ -298,3 +301,13 @@ func on_alien_eyes_timeout() -> void:
 			direction, 
 			"item_alien_eyes"
 		)
+
+func _on_LoseHealthTimer_timeout()->void :
+	if not $"/root".has_node("GameController") or not player_network_id:
+		.on_alien_eyes_timeout()
+		return
+		
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[player_network_id].run_data
+	
+	var _dmg_taken = take_damage(run_data.effects["lose_hp_per_second"], null, false, false, null, 1.0, true)
