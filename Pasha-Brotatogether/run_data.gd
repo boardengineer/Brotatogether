@@ -193,8 +193,12 @@ func apply_item_effects(_player_id: int, item_data:ItemParentData, run_data) -> 
 		multiplayer_apply(effect, run_data)
 
 func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is ItemExplodingEffect:
+		run_data.effects[effect.key].erase(effect)
+		return
+	
 	if effect is ProjectileEffect:
-		run_data.effects[effect.key].push_back([effect.value, effect.weapon_stats, effect.auto_target_enemy, effect.cooldown])
+		run_data.effects[effect.key].erase([effect.value, effect.weapon_stats, effect.auto_target_enemy, effect.cooldown])
 		return
 	
 	if effect is StructureEffect:
@@ -234,8 +238,12 @@ func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
 	return
 
 func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is ItemExplodingEffect:
+		run_data.effects[effect.key].push_back(effect)
+		return
+	
 	if effect is ProjectileEffect:
-		run_data.effects[effect.key].erase([effect.value, effect.weapon_stats, effect.auto_target_enemy, effect.cooldown])
+		run_data.effects[effect.key].push_back([effect.value, effect.weapon_stats, effect.auto_target_enemy, effect.cooldown])
 		return
 	
 	if effect is ClassBonusEffect:

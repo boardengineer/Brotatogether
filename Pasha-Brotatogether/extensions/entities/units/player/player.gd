@@ -267,3 +267,34 @@ func set_hp_regen_timer_value()->void :
 	
 	if run_data.effects["torture"] > 0:
 		_health_regen_timer.wait_time = 1
+
+func on_alien_eyes_timeout() -> void:
+	if not $"/root".has_node("GameController") or not player_network_id:
+		.on_alien_eyes_timeout()
+		return
+	
+	print_debug("on alien timeout")
+	var game_controller = $"/root/GameController"
+	var run_data = game_controller.tracked_players[player_network_id].run_data
+	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+	
+	var projectiles = []
+	var alien_stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_network_id, run_data.effects["alien_eyes"][0][1])
+	
+	SoundManager.play(Utils.get_rand_element(alien_sounds), 0, 0.1)
+	
+	for projectile in run_data.effects["alien_eyes"]:
+		for i in projectile[0]:
+			projectiles.push_back(projectile)
+	
+	for i in projectiles.size():
+		var direction = (2 * PI / projectiles.size()) * i
+		
+		var _projectile = WeaponService.manage_special_spawn_projectile(
+			self, 
+			alien_stats, 
+			projectiles[i][2], 
+			_entity_spawner_ref, 
+			direction, 
+			"item_alien_eyes"
+		)

@@ -18,6 +18,7 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/neutral/neutral.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/enemy.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "entities/units/unit/unit.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/structures/structure.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/follow_player_movement_behavior.gd")
 	

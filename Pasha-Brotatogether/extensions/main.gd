@@ -471,7 +471,7 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 	RunData.consumables_picked_up_this_run += 1
 	_consumables.erase(consumable)
 	
-	if (consumable.consumable_data.my_id == "consumable_item_box" or consumable.consumable_data.my_id == "consumable_legendary_item_box") and RunData.effects["item_box_gold"] != 0:
+	if (consumable.consumable_data.my_id == "consumable_item_box" or consumable.consumable_data.my_id == "consumable_legendary_item_box") and run_data.effects["item_box_gold"] != 0:
 		run_data_node.add_gold(player_id, run_data.effects["item_box_gold"])
 	
 	if consumable.consumable_data.to_be_processed_at_end_of_wave:
@@ -584,7 +584,6 @@ func on_structure_wanted_to_spawn_fruit(pos:Vector2) -> void:
 	var consumable = _consumables[_consumables.size() - 1]
 	
 	var _connect_error = consumable.disconnect("picked_up", self, "on_consumable_picked_up")
-	var _disconnect_error = consumable.connect("picked_up_multiplayer", self, "on_consumable_picked_up_multiplayer")
 
 func _on_neutral_died(neutral:Neutral) -> void:
 	if not $"/root".has_node("GameController"):
