@@ -25,11 +25,12 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 			return [0, 0 ,0]
 			
 	var run_data = game_controller.tracked_players[player_network_id].run_data
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
 	if hitbox and hitbox.is_healing:
 		var _healed = on_healing_effect(value)
 	elif _invincibility_timer.is_stopped() or bypass_invincibility:
-		var dmg_taken = .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
-		
+		var dmg_taken = multiplayer_utils.take_damage(self, value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
 		
 		if dmg_taken[2]:
 			if run_data.effects["dmg_on_dodge"].size() > 0 and hitbox != null and hitbox.from != null and is_instance_valid(hitbox.from):
