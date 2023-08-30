@@ -28,6 +28,8 @@ var send_updates = true
 func _ready():
 	if not $"/root".has_node("GameController"):
 		return
+		
+	var run_data_node = $"/root/MultiplayerRunData"
 	game_controller = $"/root/GameController"
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	send_updates = true
@@ -47,6 +49,7 @@ func _ready():
 	RunData.emit_signal("gold_changed", run_data.gold)
 	
 	_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
+	run_data_node.reset_cache()
 	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
@@ -281,7 +284,8 @@ func on_gold_picked_up_multiplayer(gold:Node, player_id:int) -> void:
 	
 #	TODO cute monkey
 	if randf() < run_data.effects["heal_when_pickup_gold"] / 100.0:
-		RunData.emit_signal("healing_effect", 1, "item_cute_monkey")
+		var player = game_controller.tracked_players[player_id].player
+		player.on_healing_effect(1, "item_cute_monkey")
 	
 	# NOTE: this is the only difference in this function, changing it from 
 	# THE player to ANY player, in the future there may be separate inventories.
@@ -481,19 +485,19 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 		for i in run_data.effects["consumable_stats_while_max"].size():
 			var stat = run_data.effects["consumable_stats_while_max"][i]
 			var has_max = (stat.size() > 2
-				 and RunData.max_consumable_stats_gained_this_wave.size() > i
-				 and RunData.max_consumable_stats_gained_this_wave[i].size() > 2)
+				 and run_data.max_consumable_stats_gained_this_wave.size() > i
+				 and run_data.max_consumable_stats_gained_this_wave[i].size() > 2)
 			
 			var reached_max = false
 			
 			if has_max:
-				reached_max = RunData.max_consumable_stats_gained_this_wave[i][2] >= stat[2]
+				reached_max = run_data.max_consumable_stats_gained_this_wave[i][2] >= stat[2]
 			
 			if not has_max or not reached_max:
 				run_data_node.add_stat(player_id, stat[0], stat[1])
 								
 				if has_max:
-					RunData.max_consumable_stats_gained_this_wave[i][2] += stat[1]
+					run_data.max_consumable_stats_gained_this_wave[i][2] += stat[1]
 	
 	if not _cleaning_up:
 		run_data_node.handle_explosion_multiplayer(player_id, "explode_on_consumable", consumable.global_position)

@@ -194,6 +194,10 @@ func apply_item_effects(_player_id: int, item_data:ItemParentData, run_data) -> 
 		multiplayer_apply(effect, run_data)
 
 func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is StatWithMaxEffect:
+		run_data.effects[effect.custom_key].erase([effect.key, effect.value, effect.max_value])
+		return
+	
 	if effect is ItemExplodingEffect:
 		run_data.effects[effect.key].erase(effect)
 		return
@@ -239,6 +243,10 @@ func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
 	return
 
 func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is StatWithMaxEffect:
+		run_data.effects[effect.custom_key].push_back([effect.key, effect.value, effect.max_value])
+		return
+	
 	if effect is ItemExplodingEffect:
 		run_data.effects[effect.key].push_back(effect)
 		return
@@ -633,3 +641,28 @@ func handle_explosion_multiplayer(player_id:int, key:String, pos:Vector2) -> voi
 				dmg += explosion_stats.damage
 
 			var _inst = WeaponService.explode(first, pos, dmg, first.stats.accuracy, first.stats.crit_chance, first.stats.crit_damage, first.stats.burning_data, false, [], first.tracking_text)
+
+func reset_cache()->void :
+	var game_controller = get_game_controller()
+	
+	var speed_data = {"value":0, "max_value":0}
+	
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id].run_data
+		
+		var copied_array = []
+		for stat in run_data.effects["consumable_stats_while_max"]:
+			copied_array.push_back(stat.duplicate())
+			
+		run_data.max_consumable_stats_gained_this_wave = copied_array
+		
+		for stat in run_data.max_consumable_stats_gained_this_wave:
+			if stat.size() > 2:
+				stat[2] = 0
+		
+		if run_data.effects["remove_speed"].size() > 0:
+			for remove_speed_data in run_data.effects["remove_speed"]:
+				speed_data.value += remove_speed_data[1]
+				speed_data.max_value = max(speed_data.max_value, remove_speed_data[2])
+				
+	RunData.remove_speed_effect_cache = speed_data
