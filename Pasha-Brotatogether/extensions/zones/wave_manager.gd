@@ -2,22 +2,45 @@ extends WaveManager
 
 #var test_group = preload("res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/elite_enemy_spawn.tres")
 
-func init(p_wave_timer:Timer, wave_data:Resource)->void :
-	.init(p_wave_timer, wave_data)
+func init(p_wave_timer:Timer, wave_data:Resource) -> void:
+	if not $"/root".has_node("GameController"):
+		.init(p_wave_timer, wave_data)
+		return
 	
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		var extra_enemies_next_wave = game_controller.extra_enemies_next_wave
+	.init(p_wave_timer, wave_data)
+	var game_controller = $"/root/GameController"
+	
+	# Normal Game effects translated for co-op
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id].run_data
 		
-		if extra_enemies_next_wave.has(game_controller.self_peer_id):
-			add_extra_enemies(extra_enemies_next_wave[game_controller.self_peer_id])
+		if run_data.effects["extra_enemies_next_wave"] > 0:
+			for i in run_data.effects["extra_enemies_next_wave"]:
+				for group in extra_groups:
+					current_wave_data.groups_data.push_back(group)
+			run_data.effects["extra_enemies_next_wave"] = 0
 			
-		var effects = game_controller.effects_next_wave
-		if effects.has(game_controller.self_peer_id):
-			var my_effects = effects[game_controller.self_peer_id]
-			for effect_path in my_effects:
-				for i in my_effects[effect_path]:
-					load(effect_path).apply()
+		if run_data.effects["extra_loot_aliens_next_wave"] > 0:
+			for i in run_data.effects["extra_loot_aliens_next_wave"]:
+				for group in loot_alien_groups:
+					var new_group = group.duplicate()
+					new_group.spawn_timing = rand_range(5, wave_timer.time_left - 10)
+					current_wave_data.groups_data.push_back(new_group)
+			
+			run_data.effects["extra_loot_aliens_next_wave"] = 0
+	
+	# Versus Mode Shop Options
+	var extra_enemies_next_wave = game_controller.extra_enemies_next_wave
+	
+	if extra_enemies_next_wave.has(game_controller.self_peer_id):
+		add_extra_enemies(extra_enemies_next_wave[game_controller.self_peer_id])
+	
+	var effects = game_controller.effects_next_wave
+	if effects.has(game_controller.self_peer_id):
+		var my_effects = effects[game_controller.self_peer_id]
+		for effect_path in my_effects:
+			for i in my_effects[effect_path]:
+				load(effect_path).apply()
 				
 func add_extra_enemies(extra_enemies:Dictionary) -> void:
 	for resource_path in extra_enemies:
