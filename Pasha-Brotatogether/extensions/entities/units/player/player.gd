@@ -142,6 +142,14 @@ func apply_items_effects() -> void:
 	update_player_stats_multiplayer()
 	current_stats.copy(max_stats)
 	
+	current_stats.health = max(1, max_stats.health * (run_data.effects["hp_start_wave"] / 100.0)) as int
+	
+	if run_data.effects["hp_start_next_wave"] != 100:
+		current_stats.health = max(1, max_stats.health * (run_data.effects["hp_start_next_wave"] / 100.0)) as int
+		run_data.effects["hp_start_next_wave"] = 100
+	
+	check_hp_regen()
+	
 	emit_signal("health_updated", current_stats.health, max_stats.health)
 
 func on_healing_effect_multiplayer(value:int, tracking_text:String = "", from_torture:bool = false)->int:

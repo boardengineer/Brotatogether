@@ -53,21 +53,63 @@ func _ready():
 	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
-	._on_EntitySpawner_player_spawned(player)
+	if not $"/root".has_node("GameController"):
+		print_debug("this shouldn't happen in multiplayer")
+		._on_EntitySpawner_player_spawned(player)
+		return
 	
-	# This happens before ready()
 	if not game_controller:
-		if $"/root".has_node("GameController"):
-			game_controller = $"/root/GameController"
-			
-	if game_controller:	
-		game_controller.update_health(player.current_stats.health, player.max_stats.health)
-		var _error = player.connect("health_updated", self, "on_health_update")
-		set_life_label(player.current_stats.health, player.max_stats.health)
+		game_controller = $"/root/GameController"
+	
+	_player = player
+	TempStats.player = player
+	_floating_text_manager.player = player
+	var player_id = player.player_network_id
+	
+	player.get_remote_transform().remote_path = _camera.get_path()
+	player.get_life_bar_remote_transform().remote_path = _player_life_bar_container.get_path()
+	player.current_stats.health = max(1, player.max_stats.health * (RunData.effects["hp_start_wave"] / 100.0)) as int
+	
+	if RunData.effects["hp_start_next_wave"] != 100:
+		player.current_stats.health = max(1, player.max_stats.health * (RunData.effects["hp_start_next_wave"] / 100.0)) as int
+		on_player_health_updated(player.current_stats.health, player.max_stats.health)
+		RunData.effects["hp_start_next_wave"] = 100
+	
+	player.check_hp_regen()
+	_damage_vignette.update_from_hp(player.current_stats.health, player.max_stats.health)
+	_life_bar.update_value(player.current_stats.health, player.max_stats.health)
+	
+	if ProgressData.settings.hp_bar_on_character:
+		_player_life_bar.update_value(player.current_stats.health, player.max_stats.health)
+	
+	var _error_player_hp = player.connect("health_updated", self, "on_player_health_updated")
+	set_life_label(player.current_stats.health, player.max_stats.health)
+	_xp_bar.update_value(RunData.current_xp, RunData.get_next_level_xp_needed())
+	var _error_hp_vignette = player.connect("health_updated", _damage_vignette, "update_from_hp")
+	var _error_hp_lifebar = player.connect("health_updated", _life_bar, "update_value")
+	var _error_hp_text = player.connect("healed", _floating_text_manager, "_on_player_healed")
+	var _error_hp = player.connect("health_updated", self, "set_life_label")
+	var _error_died = player.connect("died", self, "_on_player_died")
+	var _error_took_damage = player.connect("took_damage", _screenshaker, "_on_player_took_damage")
+	var _error_healing_effect = RunData.connect("healing_effect", player, "on_healing_effect")
+	var _error_on_healed = player.connect("healed", self, "on_player_healed")
+	var _error_lifesteal_effect = RunData.connect("lifesteal_effect", player, "on_lifesteal_effect")
+	connect_visual_effects(player)
+	
+	for stat_next_wave in RunData.effects["stats_next_wave"]:
+		TempStats.add_stat(stat_next_wave[0], stat_next_wave[1])
+	
+	RunData.effects["stats_next_wave"] = []
+	
+	check_half_health_stats(player.current_stats.health, player.max_stats.health)
+	
+	game_controller.update_health(player.current_stats.health, player.max_stats.health)
+	var _error = player.connect("health_updated", self, "on_health_update")
+	set_life_label(player.current_stats.health, player.max_stats.health)
 		
-		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
-		var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
-		_xp_bar.update_value(run_data.current_xp, next_level_xp)
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
+	_xp_bar.update_value(run_data.current_xp, next_level_xp)
 
 func _on_player_died(_p_player:Player)->void :
 	if game_controller:
@@ -376,6 +418,7 @@ func set_level_label()->void :
 		.set_level_label()
 		return
 		
+	game_controller = $"/root/GameController"
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	
 	_level_label.text = "LV." + str(run_data.current_level)
