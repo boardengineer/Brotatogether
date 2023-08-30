@@ -64,7 +64,6 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 	_player = player
 	TempStats.player = player
 	_floating_text_manager.player = player
-	var player_id = player.player_network_id
 	
 	player.get_remote_transform().remote_path = _camera.get_path()
 	player.get_life_bar_remote_transform().remote_path = _player_life_bar_container.get_path()
