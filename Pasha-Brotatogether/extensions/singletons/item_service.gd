@@ -161,7 +161,7 @@ func get_rand_item_from_wave(wave:int, type:int, shop_items:Array = [], prev_sho
 				var player_sets = []
 				var nb_potential_same_classes = 0
 				
-				for weapon in RunData.weapons:
+				for weapon in run_data.weapons:
 					for set in weapon.sets:
 						if not player_sets.has(set.my_id):
 							player_sets.push_back(set.my_id)
@@ -187,7 +187,6 @@ func get_rand_item_from_wave(wave:int, type:int, shop_items:Array = [], prev_sho
 						items_to_remove.push_back(item)
 	
 	elif type == TierData.ITEMS and randf() < CHANCE_WANTED_ITEM_TAG and run_data.current_character.wanted_tags.size() > 0:
-
 		for item in pool:
 			var has_wanted_tag = false
 			
