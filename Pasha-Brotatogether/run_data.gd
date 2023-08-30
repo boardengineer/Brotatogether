@@ -194,6 +194,10 @@ func apply_item_effects(_player_id: int, item_data:ItemParentData, run_data) -> 
 		multiplayer_apply(effect, run_data)
 
 func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is StatCapEffect:
+		run_data.effects[effect.key] = 999999
+		return
+	
 	if effect is StatWithMaxEffect:
 		run_data.effects[effect.custom_key].erase([effect.key, effect.value, effect.max_value])
 		return
@@ -243,6 +247,15 @@ func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
 	return
 
 func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	if effect is StatCapEffect:
+		if effect.set_cap_to_current_stat != "":
+			run_data.effects[effect.key] = multiplayer_utils.get_stat_multiplayer(run_data.player_id, effect.set_cap_to_current_stat)
+		else:
+			run_data.effects[effect.key] = effect.value
+		return
+	
 	if effect is StatWithMaxEffect:
 		run_data.effects[effect.custom_key].push_back([effect.key, effect.value, effect.max_value])
 		return
