@@ -19,8 +19,10 @@ func _ready():
 func on_shop_item_bought(shop_item:ShopItem) -> void:
 	if not $"/root".has_node("GameController"):
 		.on_shop_item_bought(shop_item)
-
+	
 	var game_controller = $"/root/GameController"
+	
+	emit_signal("item_bought", shop_item.item_data)
 	game_controller.send_bought_item_by_id(shop_item.item_data.my_id, shop_item.value)
 	
 	if not game_controller.is_host:
@@ -40,7 +42,7 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		
 	_weapons_container.set_label(label_text)
 		
-	emit_signal("item_bought", shop_item.item_data)
+	print_debug("emitting signal")
 	RunData.emit_signal("gold_changed", run_data.gold)
 	_shop_items_container.update_buttons_color()
 	

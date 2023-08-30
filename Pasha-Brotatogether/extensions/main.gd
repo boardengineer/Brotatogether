@@ -230,12 +230,24 @@ func send_player_position():
 				game_controller.send_state()
 
 func _on_WaveTimer_timeout()->void :
-	if  $"/root".has_node("GameController"):
-		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth:
-			send_updates = false
-			game_controller.send_end_wave()
+	if not $"/root".has_node("GameController"):
+		._on_WaveTimer_timeout()
+		return 
+		
+	game_controller = $"/root/GameController"
+	if game_controller and game_controller.is_source_of_truth:
+		send_updates = false
+		game_controller.send_end_wave()
+	
 	._on_WaveTimer_timeout()
+	
+	var run_data_node = $"/root/MultiplayerRunData"
+	for player_id in game_controller.tracked_players:
+		var run_data = game_controller.tracked_players[player_id].run_data
+
+		if run_data.effects["stats_end_of_wave"].size() > 0:
+			for stat_end_of_wave in run_data.effects["stats_end_of_wave"]:
+				run_data_node.add_stat(player_id, stat_end_of_wave[0], stat_end_of_wave[1])
 
 func _clear_movement_behavior(player:Player) -> void:
 	# Players will only move via client calls, locally make them do
@@ -658,6 +670,8 @@ func _on_enemy_died(enemy:Enemy) -> void:
 		
 	._on_enemy_died(enemy)
 	
+	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+	
 	if not _cleaning_up:
 		for player_id in game_controller.tracked_players:
 			var run_data = game_controller.tracked_players[player_id].run_data
@@ -673,7 +687,7 @@ func _on_enemy_died(enemy:Enemy) -> void:
 						if _proj_on_death_stat_cache.has(i):
 							stats = _proj_on_death_stat_cache[i]
 						else :
-							stats = WeaponService.init_ranged_stats(proj_on_death_effect[1])
+							stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_id, proj_on_death_effect[1])
 							_proj_on_death_stat_cache[i] = stats
 						
 						var _projectile = WeaponService.manage_special_spawn_projectile(
