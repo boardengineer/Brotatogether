@@ -48,10 +48,11 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/upgrades_ui.gd")
 	
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/item_description.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/item_popup.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/stat_container.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_item.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_items_container.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/stat_container.gd")
 		
 	ModLoaderMod.install_script_extension(ext_dir + "zones/wave_manager.gd")
 	
