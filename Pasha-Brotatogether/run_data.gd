@@ -1,5 +1,7 @@
 extends Node
 
+var  multiplayer_shop_effects_checked = false
+
 var effect_to_owner_map = {}
 var hitbox_to_owner_map = {}
 
@@ -138,6 +140,18 @@ func add_weapon(player_id: int, weapon:WeaponData, is_starting:bool = false)->We
 	reset_linked_stats(player_id)
 	
 	return new_weapon
+
+func remove_all_weapons(player_id)->void :
+	var game_controller = get_game_controller()
+	var run_data = game_controller.tracked_players[player_id].run_data
+	
+	for weapon in run_data.weapons:
+		unapply_item_effects(player_id, weapon, run_data)
+	
+	run_data.weapons = []
+	update_sets(player_id)
+	update_item_related_effects(player_id)
+	reset_linked_stats(player_id)
 
 func remove_weapon(player_id:int, weapon:WeaponData) -> int:
 	var game_controller = get_game_controller()

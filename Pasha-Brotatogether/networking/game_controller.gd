@@ -197,6 +197,8 @@ func start_game(game_info: Dictionary):
 				
 	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
+				
+#				run_data_node.add_item(player_id, load("res://items/all/anvil/anvil_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
@@ -426,6 +428,28 @@ func receive_item_discard(weapon_id, player_id) -> void:
 	
 	if player_id != self_peer_id:
 		send_complete_player(player_id)
+
+func receive_player_enter_shop(player_id:int) -> void:
+	var run_data = tracked_players[player_id].run_data
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	if run_data.effects["destroy_weapons"]:
+		run_data_node.remove_all_weapons(player_id)
+	
+	if run_data.effects["upgrade_random_weapon"].size() > 0:
+		for effect in run_data.effects["upgrade_random_weapon"]:
+			
+			var possible_upgrades = []
+			
+			for weapon in run_data.weapons:
+				if weapon.upgrades_into != null and weapon.tier < run_data.effects["max_weapon_tier"]:
+					possible_upgrades.push_back(weapon)
+			
+			if possible_upgrades.size() > 0:
+				var weapon_to_upgrade = Utils.get_rand_element(possible_upgrades)
+				receive_item_combine(weapon_to_upgrade.my_id, true, player_id)
+			else :
+				run_data_node.add_stat(player_id, effect[0], effect[1])
 
 func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false) -> void:
 	if is_host:

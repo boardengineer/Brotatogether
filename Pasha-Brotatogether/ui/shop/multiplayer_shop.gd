@@ -1,20 +1,24 @@
 extends Shop
 
 func _ready():
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
+	var game_controller = $"/root/GameController"
+	
+	if game_controller.is_host:
+		game_controller.receive_player_enter_shop(game_controller.self_peer_id)
+	else:
+		game_controller.send_client_entered_shop()
 		
-		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
-		
-		var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
-		
-		_weapons_container.set_data(label_text, Category.WEAPON, run_data.weapons)
-		_items_container.set_data("ITEMS", Category.ITEM, run_data.items, true, true)
-		
-		_gold_label.update_gold(run_data.gold)
-		_initial_free_rerolls = run_data.effects["free_rerolls"]
-		_free_rerolls = _initial_free_rerolls
-		set_reroll_button_price()
+	
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
+
+	_stats_container.update_stats()	
+	_weapons_container.set_data(label_text, Category.WEAPON, run_data.weapons)
+	_items_container.set_data("ITEMS", Category.ITEM, run_data.items, true, true)
+	_gold_label.update_gold(run_data.gold)
+	_initial_free_rerolls = run_data.effects["free_rerolls"]
+	_free_rerolls = _initial_free_rerolls
+	set_reroll_button_price()
 
 func on_shop_item_bought(shop_item:ShopItem) -> void:
 	if not $"/root".has_node("GameController"):
