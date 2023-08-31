@@ -614,6 +614,16 @@ func spawn_gold(unit:Unit, entity_type:int)->void :
 		_disconnect_error = gold.disconnect("picked_up", _floating_text_manager, "on_gold_picked_up")
 		
 		index += 1
+		
+		var instant_players = []
+		
+		for player_id in game_controller.tracked_players:
+			var run_data = game_controller.tracked_players[player_id].run_data
+			if randf() < (run_data.effects["instant_gold_attracting"] / 100.0):
+				instant_players.push_back(game_controller.tracked_players[player_id].player)
+		
+		if instant_players.size() > 0:
+			gold.attracted_by = Utils.get_rand_element(instant_players)
 
 func spawn_consumables(unit:Unit) -> void:
 	if not $"/root".has_node("GameController"):
