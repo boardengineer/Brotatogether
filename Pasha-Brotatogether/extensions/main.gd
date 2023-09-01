@@ -681,6 +681,7 @@ func _on_enemy_died(enemy:Enemy) -> void:
 	._on_enemy_died(enemy)
 	
 	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+	var run_data_node = $"/root/MultiplayerRunData"
 	
 	if not _cleaning_up:
 		for player_id in game_controller.tracked_players:
@@ -709,4 +710,4 @@ func _on_enemy_died(enemy:Enemy) -> void:
 							"item_baby_with_a_beard"
 						)
 			
-			RunData.handle_explosion("explode_on_death", enemy.global_position)
+			run_data_node.handle_explosion_multiplayer(player_id, "explode_on_death", enemy.global_position)
