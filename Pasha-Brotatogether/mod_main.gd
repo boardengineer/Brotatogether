@@ -32,7 +32,7 @@ func _init(_modLoader = ModLoader):
 	
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/item_service.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/run_data.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "singletons/utils.gd")	
+	ModLoaderMod.install_script_extension(ext_dir + "singletons/utils.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/weapon_service.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_projectile.gd")
@@ -42,7 +42,9 @@ func _init(_modLoader = ModLoader):
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/end_run.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")

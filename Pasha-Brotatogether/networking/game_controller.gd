@@ -90,8 +90,6 @@ func init_shop_go_button() -> void:
 	button.disconnect("pressed", shop, "_on_GoButton_pressed")
 	button.connect("pressed", self, "_on_GoButton_pressed")
 	
-	print_debug("updating go button")
-	
 	update_go_button()
 
 func _on_GoButton_pressed()-> void:
@@ -198,7 +196,7 @@ func start_game(game_info: Dictionary):
 	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
 				
-#				run_data_node.add_item(player_id, load("res://items/all/anvil/anvil_data.tres"))
+#				run_data_node.add_item(player_id, load("res://items/all/fairy/fairy_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
