@@ -105,6 +105,8 @@ func apply_items_effects() -> void:
 	
 	var animation_node = $Animation
 	
+	_hit_protection = run_data.effects["hit_protection"]
+	
 	if run_data.effects["alien_eyes"].size() > 0:
 		_alien_eyes_timer = Timer.new()
 		_alien_eyes_timer.wait_time = run_data.effects["alien_eyes"][0][3]
