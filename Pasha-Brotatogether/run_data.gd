@@ -208,6 +208,11 @@ func apply_item_effects(_player_id: int, item_data:ItemParentData, run_data) -> 
 		multiplayer_apply(effect, run_data)
 
 func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
+	if effect is GainStatForEveryStatEffect:
+		var perm_only = effect.text_key.to_upper() == "EFFECT_GAIN_STAT_FOR_EVERY_PERM_STAT"
+		run_data.effects["stat_links"].erase([effect.key, effect.value, effect.stat_scaled, effect.nb_stat_scaled, perm_only])
+		return
+	
 	if effect is StatCapEffect:
 		run_data.effects[effect.key] = 999999
 		return
@@ -262,6 +267,11 @@ func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
 
 func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
 	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	if effect is GainStatForEveryStatEffect:
+		var perm_only = effect.text_key.to_upper() == "EFFECT_GAIN_STAT_FOR_EVERY_PERM_STAT"
+		run_data.effects["stat_links"].push_back([effect.key, effect.value, effect.stat_scaled, effect.nb_stat_scaled, perm_only])
+		return
 	
 	if effect is StatCapEffect:
 		if effect.set_cap_to_current_stat != "":
@@ -456,7 +466,7 @@ func reset_linked_stats(player_id: int) -> void:
 		
 		var amount_to_add = linked_stat[1] * (stat_scaled / linked_stat[3])
 		
-		linked_stats[stat_to_tweak] = linked_stat[stat_to_tweak] + amount_to_add
+		linked_stats[stat_to_tweak] = linked_stats[stat_to_tweak] + amount_to_add
 	
 	tracked_players[player_id]["linked_stats"]["update_on_gold_chance"]  = update_on_gold_chance
 	tracked_players[player_id]["linked_stats"]["stats"] = linked_stats

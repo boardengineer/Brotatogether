@@ -4,8 +4,6 @@ func get_shop_items(wave:int, number:int = NB_SHOP_ITEMS, shop_items:Array = [],
 	if not $"/root".has_node("GameController"):
 		return .get_shop_items(wave, number, shop_items, locked_items)
 		
-	print_debug("getting shop items override")
-	
 	var game_controller = $"/root/GameController"
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	
@@ -239,7 +237,7 @@ func get_rand_item_from_wave(wave:int, type:int, shop_items:Array = [], prev_sho
 func get_tier_from_wave(wave:int)->int:
 	if not $"/root".has_node("GameController"):
 		return .get_tier_from_wave(wave)
-		
+	
 	var multiplayer_utils = $"/root/MultiplayerUtils"
 	var game_controller = $"/root/GameController"
 	
