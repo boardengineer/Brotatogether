@@ -62,8 +62,10 @@ func _process(_delta):
 func enter_async_shop() -> void:
 	if $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer":
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
+		
 	if is_host:
 		init_shop_go_button()
+		
 	else:
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton".hide()
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2".add_child(create_ready_toggle())
@@ -196,7 +198,7 @@ func start_game(game_info: Dictionary):
 	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
 				
-#				run_data_node.add_item(player_id, load("res://items/all/fairy/fairy_data.tres"))
+#				run_data_node.add_item(player_id, load("res://items/all/ricochet/ricochet_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
@@ -294,6 +296,9 @@ func check_win() -> void:
 		main._is_run_lost = not main._is_run_won
 			
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
+		
+		send_complete_player_request()
+		yield(self, "complete_player_update")
 		var _error = get_tree().change_scene("res://ui/menus/run/end_run.tscn")
 
 func on_consumable_to_process_added(player_id, consumable_data) -> void:
@@ -337,6 +342,12 @@ func send_complete_player(player_id:int) -> void:
 		to_add["my_id"] = weapon.my_id
 		new_weapons.push_back(to_add)
 	player_dict.run_data["weapons"] = new_weapons
+	
+	var burn_chance = {}
+	burn_chance.chance = player_dict.run_data.effects.burn_chance.chance
+	burn_chance.damage = player_dict.run_data.effects.burn_chance.damage
+	burn_chance.duration = player_dict.run_data.effects.burn_chance.duration
+	player_dict.run_data.effects.burn_chance = burn_chance
 	
 	connection.send_complete_player(player_id, player_dict)
 	
@@ -448,6 +459,9 @@ func receive_player_enter_shop(player_id:int) -> void:
 				receive_item_combine(weapon_to_upgrade.my_id, true, player_id)
 			else :
 				run_data_node.add_stat(player_id, effect[0], effect[1])
+	
+	if player_id != self_peer_id:
+		send_complete_player(player_id)
 
 func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false) -> void:
 	if is_host:
@@ -560,7 +574,10 @@ func send_bought_item(shop_item:Resource) -> void:
 		receive_bought_item(shop_item, self_peer_id)
 	else:
 		connection.send_bought_item(shop_item)
-	
+
+func send_client_entered_shop() -> void:
+	connection.send_client_entered_shop()
+
 func receive_bought_item(shop_item:Resource, source_player_id:int) -> void:
 	var effect_path = shop_item.effect.get_path()
 	for player_id in tracked_players:
@@ -765,12 +782,14 @@ func reset_extra_creatures():
 
 func update_go_button():
 	var should_enable = true
-#	print_debug("tracked players: ", tracked_players)
+	
 	for player_id in tracked_players:
 		if player_id != self_peer_id and not tracked_players[player_id]["is_ready"]:
 			should_enable = false
 			break
+	
 	var shop_button = $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/GoButton"
+	
 	if not should_enable:
 		shop_button.disabled = true
 	else:

@@ -7,7 +7,7 @@ func _ready():
 		game_controller.receive_player_enter_shop(game_controller.self_peer_id)
 	else:
 		game_controller.send_client_entered_shop()
-		
+		yield(game_controller, "complete_player_update")
 	
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"

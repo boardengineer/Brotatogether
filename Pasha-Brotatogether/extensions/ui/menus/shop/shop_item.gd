@@ -12,7 +12,7 @@ func update_color()->void :
 
 func set_shop_item(p_item_data:ItemParentData, p_wave_value:int = RunData.current_wave)->void :
 	if not $"/root".has_node("GameController"):
-		set_shop_item(p_item_data, p_wave_value)
+		.set_shop_item(p_item_data, p_wave_value)
 		return
 	
 	activate()
