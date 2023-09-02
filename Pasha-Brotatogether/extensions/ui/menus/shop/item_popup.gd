@@ -1,7 +1,7 @@
 extends "res://ui/menus/shop/item_popup.gd"
 
-func display_element(element:InventoryElement) -> void :
-	if not $"/root".has_node("GameController"):
+func display_element(element:InventoryElement) -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.display_element(element)
 		return
 		

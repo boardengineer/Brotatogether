@@ -1,7 +1,7 @@
 extends "res://global/entity_spawner.gd"
 
-func _on_StructureTimer_timeout()->void :
-	if not $"/root".has_node("GameController"):
+func _on_StructureTimer_timeout() -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_StructureTimer_timeout()
 		return
 		
@@ -45,7 +45,7 @@ func _on_StructureTimer_timeout()->void :
 					
 					
 func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_group_spawn_timing_reached(group_data, _is_elite_wave)
 		return
 	

@@ -3,7 +3,7 @@ extends WaveManager
 #var test_group = preload("res://mods-unpacked/Pasha-Brotatogether/opponents_shop/data/elite_enemy_spawn.tres")
 
 func init(p_wave_timer:Timer, wave_data:Resource) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.init(p_wave_timer, wave_data)
 		return
 	

@@ -1,7 +1,7 @@
 extends "res://singletons/item_service.gd"
 
 func get_shop_items(wave:int, number:int = NB_SHOP_ITEMS, shop_items:Array = [], locked_items:Array = [])->Array:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .get_shop_items(wave, number, shop_items, locked_items)
 		
 	var game_controller = $"/root/GameController"
@@ -59,7 +59,7 @@ func get_shop_items(wave:int, number:int = NB_SHOP_ITEMS, shop_items:Array = [],
 	return new_items
 
 func get_recycling_value(wave:int, from_value:int, is_weapon:bool = false, affected_by_items_price_stat:bool = true)->int:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .get_recycling_value(wave, from_value, is_weapon, affected_by_items_price_stat)
 
 	var game_controller = $"/root/GameController"
@@ -70,7 +70,7 @@ func get_recycling_value(wave:int, from_value:int, is_weapon:bool = false, affec
 
 
 func get_value(wave:int, base_value:int, affected_by_items_price_stat:bool = true, is_weapon:bool = false, item_id:String = "") -> int:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .get_value(wave, base_value, affected_by_items_price_stat, is_weapon, item_id)
 	
 	var value_after_weapon_price = base_value if not is_weapon or not affected_by_items_price_stat else base_value * (1.0 + (RunData.effects["weapons_price"] / 100.0))
@@ -91,7 +91,7 @@ func get_value(wave:int, base_value:int, affected_by_items_price_stat:bool = tru
 	return max(1.0, ((value_after_weapon_price + wave + (value_after_weapon_price * wave * (0.1 + diff_factor))) * items_price_factor * (1 + endless_factor))) as int
 
 func get_rand_item_from_wave(wave:int, type:int, shop_items:Array = [], prev_shop_items:Array = [], fixed_tier:int = - 1)->ItemParentData:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .get_rand_item_from_wave(wave, type, shop_items, prev_shop_items, fixed_tier)
 	
 	var game_controller = $"/root/GameController"
@@ -235,7 +235,7 @@ func get_rand_item_from_wave(wave:int, type:int, shop_items:Array = [], prev_sho
 	return elt
 
 func get_tier_from_wave(wave:int)->int:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .get_tier_from_wave(wave)
 	
 	var multiplayer_utils = $"/root/MultiplayerUtils"

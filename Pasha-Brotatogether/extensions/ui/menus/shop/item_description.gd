@@ -1,7 +1,7 @@
 extends "res://ui/menus/shop/item_description.gd"
 
 func set_item(item_data:ItemParentData) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.set_item(item_data)
 		return
 		

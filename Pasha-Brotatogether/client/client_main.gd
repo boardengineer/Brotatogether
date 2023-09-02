@@ -192,8 +192,7 @@ func _ready()->void :
 	RunData.reset_weapons_dmg_dealt()
 	RunData.reset_cache()
 	
-	if $"/root".has_node("GameController"):
-		game_controller = $"/root/GameController"
+	game_controller = $"/root/GameController"
 	
 	health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")

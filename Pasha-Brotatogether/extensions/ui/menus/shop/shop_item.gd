@@ -1,7 +1,7 @@
 extends "res://ui/menus/shop/shop_item.gd"
 
 func update_color()->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.update_color()
 		return
 	
@@ -11,7 +11,7 @@ func update_color()->void :
 	_button.set_color_from_currency(run_data_node.get_currency(game_controller.self_peer_id))
 
 func set_shop_item(p_item_data:ItemParentData, p_wave_value:int = RunData.current_wave)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.set_shop_item(p_item_data, p_wave_value)
 		return
 	

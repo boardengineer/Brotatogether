@@ -1,7 +1,7 @@
 extends "res://ui/menus/ingame/upgrades_ui.gd"
 
 func _on_RerollButton_pressed()->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_RerollButton_pressed()
 		return
 	

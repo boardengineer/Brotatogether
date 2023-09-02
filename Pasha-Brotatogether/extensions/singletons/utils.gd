@@ -1,7 +1,7 @@
 extends "res://singletons/utils.gd"
 
 func get_stat(stat_name:String) -> float:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .get_stat(stat_name)
 	
 	if stat_name.begins_with("enemy"):

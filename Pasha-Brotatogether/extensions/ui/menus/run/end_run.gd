@@ -1,7 +1,7 @@
 extends "res://ui/menus/run/end_run.gd"
 
 func _ready():
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return
 	
 	var game_controller = $"/root/GameController"

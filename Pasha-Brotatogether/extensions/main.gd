@@ -26,7 +26,7 @@ var game_controller
 var send_updates = true
 
 func _ready():
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return
 		
 	var run_data_node = $"/root/MultiplayerRunData"
@@ -50,11 +50,9 @@ func _ready():
 	
 	_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
 	run_data_node.reset_cache()
-	
 
 func _on_EntitySpawner_player_spawned(player:Player)->void :
-	if not $"/root".has_node("GameController"):
-		print_debug("this shouldn't happen in multiplayer")
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_EntitySpawner_player_spawned(player)
 		return
 	
@@ -164,24 +162,24 @@ func spawn_additional_players() -> void:
 			spawn_x_pos += 200
 	
 func reload_stats()->void :
-	if  $"/root".has_node("GameController"):
-		var run_data_node = $"/root/MultiplayerRunData"
-		
-		for player_id in game_controller.tracked_players:
-			for weapon in game_controller.tracked_players[player_id].player.current_weapons:
-				if is_instance_valid(weapon):
-					init_weapon_stats(weapon, player_id, false)
-			
-			game_controller.tracked_players[player_id].player.update_player_stats_multiplayer()
-			run_data_node.reset_linked_stats(player_id)
-		
-		for struct in _entity_spawner.structures:
-			if is_instance_valid(struct):
-				struct.reload_data()
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		reload_stats()
+		return
 	
-		_proj_on_death_stat_cache.clear()
-	else:
-		.reload_stats()
+	var run_data_node = $"/root/MultiplayerRunData"		
+	for player_id in game_controller.tracked_players:
+		for weapon in game_controller.tracked_players[player_id].player.current_weapons:
+			if is_instance_valid(weapon):
+				init_weapon_stats(weapon, player_id, false)
+			
+		game_controller.tracked_players[player_id].player.update_player_stats_multiplayer()
+		run_data_node.reset_linked_stats(player_id)
+		
+	for struct in _entity_spawner.structures:
+		if is_instance_valid(struct):
+			struct.reload_data()
+	
+	_proj_on_death_stat_cache.clear()
 
 func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) -> void:
 	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
@@ -217,25 +215,29 @@ func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) 
 	weapon._range_shape.shape.radius = current_stats.max_range + 200
 
 func _process(_delta):
-	if  $"/root".has_node("GameController"):
-		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth and send_updates:
-			game_controller.send_game_state()
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		return
+	
+	game_controller = $"/root/GameController"
+	if game_controller.is_host and send_updates:
+		game_controller.send_game_state()
 
 func send_player_position():
-	if  $"/root".has_node("GameController"):
-		game_controller = $"/root/GameController"
-		if get_tree().is_network_server():
-			if not _end_wave_timer_timedout:
-				game_controller.send_state()
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		return
+	
+	game_controller = $"/root/GameController"
+	if get_tree().is_network_server():
+		if not _end_wave_timer_timedout:
+			game_controller.send_state()
 
-func _on_WaveTimer_timeout()->void :
-	if not $"/root".has_node("GameController"):
+func _on_WaveTimer_timeout() -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_WaveTimer_timeout()
 		return 
 		
 	game_controller = $"/root/GameController"
-	if game_controller and game_controller.is_source_of_truth:
+	if game_controller.is_host:
 		send_updates = false
 		game_controller.send_end_wave()
 	
@@ -368,7 +370,7 @@ func remove_gold(player_id, value:int) -> void:
 		run_data_node.reset_linked_stats(player_id)
 
 func manage_harvesting() -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.manage_harvesting()
 		return
 	
@@ -398,7 +400,7 @@ func manage_harvesting() -> void:
 	_harvesting_timer.start()
 
 func _on_HarvestingTimer_timeout() -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_HarvestingTimer_timeout()
 		return
 
@@ -425,7 +427,7 @@ func remove_stat(player_id: int, stat_name:String, value:int)->void :
 
 
 func set_level_label()->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.set_level_label()
 		return
 		
@@ -459,7 +461,7 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 		run_data.effects[stat_level_up[0]] += stat_level_up[1]
 
 func _on_EndWaveTimer_timeout() -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.set_level_label()
 		return
 	
@@ -519,7 +521,7 @@ func on_item_box_discard_button_pressed(item_data:ItemParentData) -> void:
 	game_controller.discard_item_box(item_data)
 
 func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_consumable_picked_up(consumable)
 		return
 	
@@ -559,20 +561,24 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 	run_data_node.apply_item_effects(player_id, consumable.consumable_data, run_data)
 
 func on_item_box_take_button_pressed(item_data:ItemParentData)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_item_box_take_button_pressed(item_data)
 		return
 		
 	game_controller.on_item_box_take_button_pressed(item_data)
 
 func on_upgrade_selected(upgrade_data:UpgradeData)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_upgrade_selected(upgrade_data)
 		return
 		
 	game_controller.on_upgrade_selected(upgrade_data)
 
-func on_levelled_up()->void :
+func on_levelled_up() -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		.on_levelled_up()
+		return
+	
 	SoundManager.play(level_up_sound, 0, 0, true)
 	var level = RunData.current_level
 	emit_signal("upgrade_to_process_added", ItemService.upgrade_to_process_icon, level)
@@ -584,21 +590,20 @@ func on_levelled_up()->void :
 	for stat_level_up in RunData.effects["stats_on_level_up"]:
 		RunData.add_stat(stat_level_up[0], stat_level_up[1])
 	
-	if  $"/root".has_node("GameController"):
-		game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth:
-			for player_id in game_controller.tracked_players:
-				if player_id == game_controller.self_peer_id:
-					continue
-				if game_controller.tracked_players[player_id].has("player"):
-					var player = game_controller.tracked_players[player_id]["player"]
-					if player and is_instance_valid(player):
-						player.max_stats.health += 1
-						player.current_stats.health += 1
-			game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
+	game_controller = $"/root/GameController"
+	if game_controller and game_controller.is_host:
+		for player_id in game_controller.tracked_players:
+			if player_id == game_controller.self_peer_id:
+				continue
+			if game_controller.tracked_players[player_id].has("player"):
+				var player = game_controller.tracked_players[player_id]["player"]
+				if player and is_instance_valid(player):
+					player.max_stats.health += 1
+					player.current_stats.health += 1
+		game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
 
 func spawn_gold(unit:Unit, entity_type:int)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.spawn_gold(unit, entity_type)
 		return
 		
@@ -626,7 +631,7 @@ func spawn_gold(unit:Unit, entity_type:int)->void :
 			gold.attracted_by = Utils.get_rand_element(instant_players)
 
 func spawn_consumables(unit:Unit) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.spawn_consumables(unit)
 		return
 	
@@ -643,7 +648,7 @@ func spawn_consumables(unit:Unit) -> void:
 		index += 1
 
 func on_structure_wanted_to_spawn_fruit(pos:Vector2) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_structure_wanted_to_spawn_fruit(pos)
 		return
 	
@@ -654,7 +659,7 @@ func on_structure_wanted_to_spawn_fruit(pos:Vector2) -> void:
 	var _connect_error = consumable.disconnect("picked_up", self, "on_consumable_picked_up")
 
 func _on_neutral_died(neutral:Neutral) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_neutral_died(neutral)
 		return
 	
@@ -674,7 +679,7 @@ func _on_neutral_died(neutral:Neutral) -> void:
 
 
 func _on_enemy_died(enemy:Enemy) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_enemy_died(enemy)
 		return
 		

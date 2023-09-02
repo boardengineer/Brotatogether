@@ -1,7 +1,7 @@
 extends "res://projectiles/projectile.gd"
 
 func set_to_be_destroyed() -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.set_to_be_destroyed()
 		return
 	

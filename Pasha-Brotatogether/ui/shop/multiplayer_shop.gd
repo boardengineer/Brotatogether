@@ -21,7 +21,7 @@ func _ready():
 	set_reroll_button_price()
 
 func on_shop_item_bought(shop_item:ShopItem) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_shop_item_bought(shop_item)
 	
 	var game_controller = $"/root/GameController"
@@ -72,7 +72,7 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		_reroll_button.set_color_from_currency(run_data.gold)
 
 func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = false)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_item_combine_button_pressed(weapon_data, is_upgrade)
 		return
 		
@@ -100,7 +100,7 @@ func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = fa
 	_focus_manager.reset_focus()
 
 func on_item_discard_button_pressed(weapon_data:WeaponData)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_item_discard_button_pressed(weapon_data)
 		return
 
@@ -122,7 +122,7 @@ func on_item_discard_button_pressed(weapon_data:WeaponData)->void :
 	SoundManager.play(Utils.get_rand_element(recycle_sounds), 0, 0.1, true)
 
 func _on_RerollButton_pressed()->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_RerollButton_pressed()
 		return
 		

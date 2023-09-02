@@ -13,7 +13,12 @@ var self_peer_id
 var is_host = false
 
 var is_source_of_truth = true
-var game_mode = ""
+var game_mode = GameMode.VERSUS
+
+enum GameMode {
+	VERSUS, 
+	COOP, 
+}
 
 # A counter user to assign ids for game components
 var id_count = 0
@@ -45,7 +50,7 @@ func _init():
 
 func _process(_delta):
 	var scene_name = get_tree().get_current_scene().get_name()
-	if game_mode == "shared" and is_source_of_truth:
+	if is_coop() and is_host:
 		# TODO i can't seem to override Shop.gd because it errors trying to get
 		# a RunData field, we'll do this gargbage instead.
 		if scene_name != current_scene_name:
@@ -166,7 +171,7 @@ func start_game(game_info: Dictionary):
 		is_source_of_truth = false
 	
 	game_mode = game_info.mode
-	if game_mode == "shared":
+	if is_coop():
 		if game_info.current_wave == 1:
 			var run_data_node = $"/root/MultiplayerRunData"
 			init_all_player_data()
@@ -292,7 +297,7 @@ func check_win() -> void:
 	if all_others_dead:
 		disable_pause = false
 		var main = get_tree().get_current_scene()
-		main._is_run_won = game_mode == "async"
+		main._is_run_won = not is_coop()
 		main._is_run_lost = not main._is_run_won
 			
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
@@ -771,9 +776,8 @@ func update_ready_state(sender_id, is_ready):
 		update_go_button()
 
 func reset_ready_map():
-	var need_readies = game_mode == "async"
 	for player_id in tracked_players:
-		tracked_players[player_id]["is_ready"] = not need_readies
+		tracked_players[player_id]["is_ready"] = false
 		
 func reset_extra_creatures():
 	for player_id in tracked_players:
@@ -885,3 +889,6 @@ func flash_enemy(enemy_id):
 
 func flash_neutral(neutral_id):
 	game_state_controller.flash_neutral(neutral_id)
+
+func is_coop() -> bool:
+	return game_mode == GameMode.COOP

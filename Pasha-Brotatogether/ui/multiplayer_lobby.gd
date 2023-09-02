@@ -95,7 +95,7 @@ func _on_StartButton_pressed():
 		return
 		
 	game_controller.is_source_of_truth = false
-	var game_mode = "async"
+	var game_mode = game_controller.GameMode.VERSUS
 	
 	var game_info = {"current_wave":1, "mode":game_mode}
 	
@@ -200,7 +200,7 @@ func _on_StartButton2_pressed():
 		return
 		
 	game_controller.is_source_of_truth = true
-	var game_mode = "shared"
+	var game_mode = game_controller.GameMode.COOP
 	
 	var game_info = {"current_wave":1, "mode":game_mode}
 	

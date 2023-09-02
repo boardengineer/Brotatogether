@@ -4,24 +4,15 @@ var network_id
 var my_data
 
 func _ready():
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		if game_controller and game_controller.is_source_of_truth:
-			network_id = game_controller.id_count
-			game_controller.id_count = network_id + 1
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		return
+	
+	var game_controller = $"/root/GameController"
+	if game_controller and game_controller.is_source_of_truth:
+		network_id = game_controller.id_count
+		game_controller.id_count = network_id + 1
 
 func set_data(data:Resource) -> void :
-	
-#	print_debug("maybe this will work? ", data)
-#	var practice_dict = {}
-#	practice_dict[data] = "hello"
-#	print_debug(practice_dict[data])
-#	.set_data(data)
-#	return
-#	if data.player_id == -1:
-#		.set_data(data)
-#		return
-		 
 	base_stats = data.stats
 	effects = data.effects
 	my_data = data
@@ -38,7 +29,7 @@ func make_fake_stats() -> void:
 	stats.cooldown = 100
 
 func reload_data() -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.reload_data()
 		return
 		

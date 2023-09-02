@@ -98,7 +98,7 @@ func _on_ClientButton_pressed():
 func _on_StartButton_pressed():
 	if game_controller.is_host:
 		game_controller.is_source_of_truth = true
-	var game_mode = "shared"
+	var game_mode = game_controller.GameMode.VERSUS
 	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
 	game_controller.game_mode = game_mode
 	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
@@ -116,7 +116,7 @@ func _on_StartButton2_pressed():
 	if game_controller.is_host:
 		game_controller.is_source_of_truth = false
 		
-	var game_mode = "async"
+	var game_mode = game_controller.GameMode.VERSUS
 	
 	var lobby_info = {}
 	

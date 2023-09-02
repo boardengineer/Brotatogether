@@ -3,7 +3,7 @@ extends "res://entities/units/player/player.gd"
 var player_network_id
 
 func add_weapon(weapon_data:WeaponData, pos:int)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.add_weapon(weapon_data, pos)
 		return
 		
@@ -22,11 +22,11 @@ func add_weapon(weapon_data:WeaponData, pos:int)->void :
 		run_data_node.effect_to_owner_map[effect] = player_network_id
 
 func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0, bypass_invincibility:bool = false)->Array:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale, bypass_invincibility)
 	
 	var game_controller = $"/root/GameController"
-	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+	if not game_controller.is_host:
 			return [0, 0 ,0]
 			
 	var run_data = game_controller.tracked_players[player_network_id].run_data
@@ -92,7 +92,11 @@ func remove_weapon_behaviors():
 		weapon.add_child(client_shooting_behavior)
 		weapon._shooting_behavior = client_shooting_behavior
 		
-func update_animation(movement:Vector2)->void :
+func update_animation(movement:Vector2) -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		.update_animation(movement)
+		return
+		
 	maybe_update_animation(movement, false)
 
 func apply_items_effects() -> void:
@@ -170,7 +174,7 @@ func on_healing_effect_multiplayer(value:int, tracking_text:String = "", from_to
 	return value_healed
 
 func update_player_stats_multiplayer()->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.update_player_stats()
 		return
 	
@@ -213,12 +217,13 @@ func update_player_stats_multiplayer()->void :
 		_health_regen_timer.start()
 
 func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		if (not game_controller) or force_animation or game_controller.game_mode != "shared" or (game_controller.tracked_players.has(game_controller.self_peer_id) and game_controller.tracked_players[game_controller.self_peer_id].has("player") and game_controller.tracked_players[game_controller.self_peer_id]["player"] == self) or not game_controller.run_updates:
-			pass
-		else:
-			return
+	var game_controller = $"/root/GameController"
+	
+	if force_animation or (game_controller.tracked_players.has(game_controller.self_peer_id) and game_controller.tracked_players[game_controller.self_peer_id].has("player") and game_controller.tracked_players[game_controller.self_peer_id]["player"] == self) or not game_controller.run_updates:
+		pass
+	else:
+		return
+	
 	check_not_moving_stats(movement)
 	check_moving_stats(movement)
 	
@@ -238,21 +243,22 @@ func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 		_animation_player.play("idle")
 		_running_smoke.stop()
 	
-func _on_ItemAttractArea_area_entered(area:Area2D)->void :
-	if  $"/root".has_node("GameController"):
-		var game_controller = $"/root/GameController"
-		if game_controller and game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
-			return
-	._on_ItemAttractArea_area_entered(area)
+func _on_ItemAttractArea_area_entered(area:Area2D) -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		._on_ItemAttractArea_area_entered(area)
+	
+	var game_controller = $"/root/GameController"
+	if game_controller.is_host:
+			._on_ItemAttractArea_area_entered(area)
+	
 
 func _on_ItemPickupArea_area_entered(area:Area2D) -> void:
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_ItemPickupArea_area_entered(area)
 		return
 		
 	var game_controller = $"/root/GameController"
-	
-	if game_controller.game_mode == "shared" and not game_controller.is_source_of_truth:
+	if not game_controller.is_host:
 		return
 	
 	get_tree().get_current_scene().emit_signal("picked_up_multiplayer", area, player_network_id)

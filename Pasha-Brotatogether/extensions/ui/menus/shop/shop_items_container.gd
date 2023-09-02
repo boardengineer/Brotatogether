@@ -1,7 +1,7 @@
 extends "res://ui/menus/shop/shop_items_container.gd"
 
 func on_shop_item_buy_button_pressed(shop_item:ShopItem)->void :
-	if not $"/root".has_node("GameController"):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_shop_item_buy_button_pressed(shop_item)
 		return
 	
