@@ -108,9 +108,9 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 	var next_level_xp = RunData.get_xp_needed(run_data.current_level + 1)
 	_xp_bar.update_value(run_data.current_xp, next_level_xp)
 
-func _on_player_died(_p_player:Player)->void :
-	if game_controller:
-		game_controller.send_death()
+func _on_player_died(_p_player:Player) -> void:
+	if $"/root".has_node("GameController"):
+		$"/root/GameController".send_death()
 	._on_player_died(_p_player)
 
 func on_health_update(current_health:int, max_health:int) -> void:

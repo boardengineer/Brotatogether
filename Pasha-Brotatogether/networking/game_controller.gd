@@ -297,13 +297,16 @@ func check_win() -> void:
 	if all_others_dead:
 		disable_pause = false
 		var main = get_tree().get_current_scene()
-		main._is_run_won = not is_coop()
-		main._is_run_lost = not main._is_run_won
+		var did_win = not is_coop()
+		main._is_run_won = did_win
+		main._is_run_lost = not did_win
+		RunData.run_won = did_win
 			
 		main.clean_up_room(false, main._is_run_lost, main._is_run_won)
 		
-		send_complete_player_request()
-		yield(self, "complete_player_update")
+		if not is_host:
+			send_complete_player_request()
+			yield(self, "complete_player_update")
 		var _error = get_tree().change_scene("res://ui/menus/run/end_run.tscn")
 
 func on_consumable_to_process_added(player_id, consumable_data) -> void:
