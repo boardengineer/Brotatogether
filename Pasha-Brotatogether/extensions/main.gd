@@ -163,7 +163,7 @@ func spawn_additional_players() -> void:
 	
 func reload_stats()->void :
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
-		reload_stats()
+		.reload_stats()
 		return
 	
 	var run_data_node = $"/root/MultiplayerRunData"		
@@ -461,9 +461,13 @@ func on_levelled_up_multiplayer(player_id:int) -> void:
 		run_data.effects[stat_level_up[0]] += stat_level_up[1]
 
 func _on_EndWaveTimer_timeout() -> void:
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
-		.set_level_label()
+	# Not only coop since both game types go to the multiplayer shop
+	if not $"/root".has_node("GameController"):
+		._on_EndWaveTimer_timeout()
 		return
+	
+	if not game_controller:
+		game_controller = $"/root/GameController"
 	
 	DebugService.log_data("_on_EndWaveTimer_timeout")
 	_end_wave_timer_timedout = true
@@ -487,7 +491,9 @@ func _on_EndWaveTimer_timeout() -> void:
 	else :
 		DebugService.log_data("process consumables and upgrades...")
 		MusicManager.tween( - 8)
-		var consumables = game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process
+		var consumables = _consumables_to_process
+		if game_controller.is_coop():
+			consumables = game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process
 		if consumables.size() > 0:
 			for consumable in consumables:
 				var fixed_tier = - 1
@@ -510,12 +516,10 @@ func _on_EndWaveTimer_timeout() -> void:
 		if _is_chal_ui_displayed:
 			yield (_challenge_completed_ui, "finished")
 		
-		game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process = []
+		if game_controller.is_coop():
+			game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process = []
 		
-		if $"/root/GameController":
-			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
-		else:
-			var _error = get_tree().change_scene("res://ui/menus/shop/shop.tscn")
+		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
 
 func on_item_box_discard_button_pressed(item_data:ItemParentData) -> void:
 	game_controller.discard_item_box(item_data)

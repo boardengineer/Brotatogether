@@ -1,6 +1,9 @@
 extends Shop
 
 func _ready():
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		return
+		
 	var game_controller = $"/root/GameController"
 	
 	if game_controller.is_host:
@@ -23,6 +26,7 @@ func _ready():
 func on_shop_item_bought(shop_item:ShopItem) -> void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.on_shop_item_bought(shop_item)
+		return
 	
 	var game_controller = $"/root/GameController"
 	

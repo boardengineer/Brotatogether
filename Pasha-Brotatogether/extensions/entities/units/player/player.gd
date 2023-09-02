@@ -100,7 +100,7 @@ func update_animation(movement:Vector2) -> void:
 	maybe_update_animation(movement, false)
 
 func apply_items_effects() -> void:
-	if not $"/root".has_node("GameController") or player_network_id == null:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop() or player_network_id == null:
 		.apply_items_effects()
 		return
 		
@@ -246,6 +246,7 @@ func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 func _on_ItemAttractArea_area_entered(area:Area2D) -> void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_ItemAttractArea_area_entered(area)
+		return
 	
 	var game_controller = $"/root/GameController"
 	if game_controller.is_host:

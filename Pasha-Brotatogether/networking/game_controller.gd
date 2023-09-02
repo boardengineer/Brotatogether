@@ -233,7 +233,7 @@ func start_game(game_info: Dictionary):
 		else:
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/client_main.tscn")
 		
-	elif game_mode == "async":
+	elif game_mode == GameMode.VERSUS:
 		if game_info.current_wave == 1:
 			RunData.weapons = []
 			RunData.items = []
