@@ -173,7 +173,8 @@ func update_tracked_players() -> void:
 		if not established_p2p_connections.has(member_steam_id) or not established_p2p_connections[member_steam_id]:
 			if member_steam_id != parent.self_peer_id:
 				all_players_ready = false
-				member_username = member_username + " (loading)"
+				if parent.is_host:
+					member_username = member_username + " (loading)"
 		
 		parent.tracked_players[member_steam_id] = {"username": member_username}
 	
