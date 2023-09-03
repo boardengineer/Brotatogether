@@ -26,33 +26,39 @@ var game_controller
 var send_updates = true
 
 func _ready():
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+	if not $"/root".has_node("GameController"):
 		return
-		
-	var run_data_node = $"/root/MultiplayerRunData"
+	
 	game_controller = $"/root/GameController"
-	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
-	send_updates = true
+	if $"/root/GameController".is_coop():
+		var run_data_node = $"/root/MultiplayerRunData"
+		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+		send_updates = true
+		var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
+		var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
+		RunData.emit_signal("gold_changed", run_data.gold)
+		
+		if game_controller.is_host:
+			spawn_additional_players()
+			
+		# connnect multiplayer signals
+		_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
+		run_data_node.reset_cache()
 	
-	if game_controller and game_controller.is_source_of_truth:
-		spawn_additional_players()
-		game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
-	
+	game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
 	var health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)
 	health_tracker.init(game_controller.tracked_players)
 	
-	# connnect multiplayer signals
-	var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
-	var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
-	RunData.emit_signal("gold_changed", run_data.gold)
-	
-	_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
-	run_data_node.reset_cache()
-
 func _on_EntitySpawner_player_spawned(player:Player)->void :
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+	if not $"/root".has_node("GameController"):
+		._on_EntitySpawner_player_spawned(player)
+		return
+	
+	var _error = player.connect("health_updated", self, "on_health_update")
+	
+	if not $"/root/GameController".is_coop():
 		._on_EntitySpawner_player_spawned(player)
 		return
 	
@@ -101,7 +107,6 @@ func _on_EntitySpawner_player_spawned(player:Player)->void :
 	check_half_health_stats(player.current_stats.health, player.max_stats.health)
 	
 	game_controller.update_health(player.current_stats.health, player.max_stats.health)
-	var _error = player.connect("health_updated", self, "on_health_update")
 	set_life_label(player.current_stats.health, player.max_stats.health)
 		
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data

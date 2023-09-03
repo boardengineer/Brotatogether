@@ -862,7 +862,7 @@ func update_health_ui() -> void:
 func update_health(current_health:int, max_health:int) -> void:
 	# If this player owns all the players, all the updates will come through
 	# here.
-	if is_source_of_truth:
+	if is_host:
 		for player_id in tracked_players:
 			var player_dict = tracked_players[player_id]
 			if player_dict.has("player") and is_instance_valid(player_dict.player):
@@ -871,12 +871,10 @@ func update_health(current_health:int, max_health:int) -> void:
 				tracked_players[player_id]["max_health"] = player.max_stats.health
 				tracked_players[player_id]["current_health"] = player.current_stats.health		
 #		connection.send_tracked_players(tracked_players)
-		update_health_ui()
+
+		receive_health_update(current_health, max_health, self_peer_id)
 	else:
-		if is_host:
-			receive_health_update(current_health, max_health, self_peer_id)
-		else:
-			connection.send_health_update(current_health, max_health)
+		connection.send_health_update(current_health, max_health)
 
 func update_game_state(data: PoolByteArray) -> void:
 	if get_tree().get_current_scene().get_name() != "ClientMain":
