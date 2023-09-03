@@ -24,6 +24,7 @@ var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/clien
 
 var game_controller
 var send_updates = true
+var health_tracker
 
 func _ready():
 	if not $"/root".has_node("GameController"):
@@ -46,7 +47,7 @@ func _ready():
 		run_data_node.reset_cache()
 	
 	game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
-	var health_tracker = HealthTracker.instance()
+	health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)
 	health_tracker.init(game_controller.tracked_players)
@@ -237,6 +238,9 @@ func send_player_position():
 			game_controller.send_state()
 
 func _on_WaveTimer_timeout() -> void:
+	if health_tracker:
+		health_tracker.hide()
+	
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_WaveTimer_timeout()
 		return 
