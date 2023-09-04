@@ -47,8 +47,6 @@ var _update_stats_on_gold_changed: = false
 var _update_stats_on_enemies_changed: = false
 var _update_stats_on_enemies_changed_timer:Timer = null
 var _last_gold_amount_used_to_reload_stats: = 0
-var _is_horde_wave: = false
-var _is_elite_wave: = false
 var _elite_killed_bonus: = 0
 var _elite_killed: = false
 
@@ -150,43 +148,6 @@ func _ready()->void :
 	init_camera()
 	set_level_label()
 	_ui_dim_screen.color.a = 0
-	
-	var pct_val = RunData.effects["gain_pct_gold_start_wave"]
-	var apply_pct_gold_wave = (pct_val > 0 and RunData.current_wave <= RunData.nb_of_waves) or pct_val < 0
-	
-	
-	
-	if pct_val < 0 and RunData.current_wave > RunData.nb_of_waves:
-		pct_val = - 100.0
-	
-	if apply_pct_gold_wave:
-		var val = RunData.gold * (pct_val / 100.0)
-		RunData.add_gold(val)
-		
-		if RunData.effects["gain_pct_gold_start_wave"] > 0:
-			RunData.tracked_item_effects["item_piggy_bank"] += val
-	
-	for stat_link in RunData.effects["stat_links"]:
-		if stat_link[2] == "materials":
-			_update_stats_on_gold_changed = true
-		elif stat_link[2] == "living_enemy":
-			_update_stats_on_enemies_changed = true
-			_update_stats_on_enemies_changed_timer = Timer.new()
-			_update_stats_on_enemies_changed_timer.wait_time = 1.0
-			_update_stats_on_enemies_changed_timer.one_shot = true
-			add_child(_update_stats_on_enemies_changed_timer)
-	
-	if RunData.effects["temp_pct_stats_start_wave"].size() > 0:
-		for pct_temp_stat_stacked in RunData.effects["temp_pct_stats_start_wave"]:
-			var stat = (RunData.get_stat(pct_temp_stat_stacked[0]) * (pct_temp_stat_stacked[1] / 100.0)) as int
-			TempStats.add_stat(pct_temp_stat_stacked[0], stat)
-	
-	if ProgressData.is_manual_aim():
-		ProgressData.update_mouse_cursor()
-		InputService.hide_mouse = false
-	
-	_is_horde_wave = RunData.is_elite_wave(EliteType.HORDE)
-	_is_elite_wave = RunData.is_elite_wave(EliteType.ELITE)
 	
 	DebugService.log_run_info()
 	RunData.reset_weapons_dmg_dealt()
@@ -297,80 +258,6 @@ func _on_player_died(_p_player:Player)->void :
 	ProgressData.reset_run_state()
 	ChallengeService.complete_challenge("chal_rookie")
 
-func on_consumable_picked_up(consumable:Node)->void :
-	RunData.consumables_picked_up_this_run += 1
-	_consumables.erase(consumable)
-	
-	if (consumable.consumable_data.my_id == "consumable_item_box" or consumable.consumable_data.my_id == "consumable_legendary_item_box") and RunData.effects["item_box_gold"] != 0:
-		RunData.add_gold(RunData.effects["item_box_gold"])
-		RunData.tracked_item_effects["item_bag"] += RunData.effects["item_box_gold"]
-	
-	if consumable.consumable_data.to_be_processed_at_end_of_wave:
-		_consumables_to_process.push_back(consumable.consumable_data)
-		emit_signal("consumable_to_process_added", consumable.consumable_data)
-	
-	if RunData.consumables_picked_up_this_run >= RunData.chal_hungry_value:
-		ChallengeService.complete_challenge("chal_hungry")
-	
-	if RunData.effects["consumable_stats_while_max"].size() > 0 and _player.current_stats.health >= _player.max_stats.health:
-		for i in RunData.effects["consumable_stats_while_max"].size():
-			var stat = RunData.effects["consumable_stats_while_max"][i]
-			var has_max = (stat.size() > 2
-				 and RunData.max_consumable_stats_gained_this_wave.size() > i
-				 and RunData.max_consumable_stats_gained_this_wave[i].size() > 2)
-			
-			var reached_max = false
-			
-			if has_max:
-				reached_max = RunData.max_consumable_stats_gained_this_wave[i][2] >= stat[2]
-			
-			if not has_max or not reached_max:
-				RunData.add_stat(stat[0], stat[1])
-				
-				if stat[0] == "stat_max_hp":
-					RunData.tracked_item_effects["item_extra_stomach"] += stat[1]
-				
-				if has_max:
-					RunData.max_consumable_stats_gained_this_wave[i][2] += stat[1]
-	
-	if not _cleaning_up:
-		RunData.handle_explosion("explode_on_consumable", consumable.global_position)
-	
-	RunData.apply_item_effects(consumable.consumable_data)
-
-func spawn_gold(unit:Unit, entity_type:int)->void :
-	var pos = unit.global_position
-	var value = unit.stats.value
-	
-	if entity_type == EntityType.NEUTRAL:
-		value += (value * round(RunData.effects["neutral_gold_drops"] / 100.0))
-	elif entity_type == EntityType.ENEMY and RunData.effects["enemy_gold_drops"] > 1.0:
-		value += (value * round(RunData.effects["enemy_gold_drops"] / 100.0))
-
-	for i in value:
-		var dist = rand_range(50, 100 + unit.stats.gold_spread)
-		var gold = gold_scene.instance()
-		
-		if RunData.bonus_gold > 0:
-			var gold_value = gold.value
-			gold.value += min(gold.value, RunData.bonus_gold)
-			gold.boosted = 2
-			gold.scale.x = 1.25
-			gold.scale.y = 1.25
-			RunData.remove_bonus_gold(gold_value)
-		
-		gold.global_position = pos
-		gold.rotation = rand_range(0, 2 * PI)
-		_items_container.call_deferred("add_child", gold)
-		gold.call_deferred("set_texture", gold_sprites[randi() % 11])
-		var _error_effects = gold.connect("picked_up", _effects_manager, "on_gold_picked_up")
-		var _error_floating_text = gold.connect("picked_up", _floating_text_manager, "on_gold_picked_up")
-		gold.push_back_destination = Vector2(rand_range(pos.x - dist, pos.x + dist), rand_range(pos.y - dist, pos.y + dist))
-		_golds.push_back(gold)
-		
-		if randf() < (RunData.effects["instant_gold_attracting"] / 100.0):
-			gold.attracted_by = _player
-
 func on_levelled_up()->void :
 	SoundManager.play(level_up_sound, 0, 0, true)
 	var level = RunData.current_level
@@ -380,19 +267,15 @@ func on_levelled_up()->void :
 	RunData.add_stat("stat_max_hp", 1)
 	RunData.emit_signal("healing_effect", 1)
 
-
 func set_level_label()->void :
 	_level_label.text = "LV." + str(RunData.current_level)
-
 
 func set_life_label(current_health:int, max_health:int)->void :
 	_life_label.text = str(max(current_health, 0.0)) + " / " + str(max_health)
 
-
 func connect_visual_effects(unit:Unit)->void :
 	var _error_effects = unit.connect("took_damage", _effects_manager, "_on_unit_took_damage")
 	var _error_floating_text = unit.connect("took_damage", _floating_text_manager, "_on_unit_took_damage")
-
 
 func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_won:bool = false)->void :
 	
@@ -428,47 +311,11 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 				true
 			)
 	
-	if not RunData.is_testing:
-		ProgressData.save()
-		
 	# TODO maybe replace
 #	SoundManager.play(Utils.get_rand_element(end_wave_sounds))
 	_cleaning_up = true
 	_effects_manager.clean_up_room()
 	_floating_text_manager.clean_up_room()
-	
-	DebugService.log_data("attract bonus_gold and consumables...")
-	if _golds.size() > 0:
-		var attracted_by = null
-		_ui_bonus_gold.show()
-		attracted_by = _gold_bag
-		_player.disable_gold_pickup()
-		
-		if ProgressData.settings.optimize_end_waves:
-			var bonus_gold_value = 0
-			
-			for gold in _golds:
-				var value = gold.value
-				
-				if randf() < RunData.effects["chance_double_gold"] / 100.0:
-					RunData.tracked_item_effects["item_metal_detector"] += value
-					value *= 2
-				
-				bonus_gold_value += value
-				
-				gold.visible = false
-			
-			RunData.add_bonus_gold(bonus_gold_value)
-		else :
-			for gold in _golds:
-				gold.set_collision_layer(256)
-				gold.attracted_by = attracted_by
-	
-	if _consumables.size() > 0:
-		for consumable in _consumables:
-			consumable.attracted_by = _player
-	
-	DebugService.log_data("clean_up other objects...")
 	
 	for entity in _entities_container.get_children():
 		if not entity is EntityBirth:
@@ -544,12 +391,10 @@ func apply_run_won()->void :
 	
 	ProgressData.reset_run_state()
 
-
 func is_last_wave()->bool:
 	var is_last_wave = RunData.current_wave == ZoneService.get_zone_data(RunData.current_zone).waves_data.size()
 	if RunData.is_endless_run:is_last_wave = false
 	return is_last_wave
-
 
 func manage_harvesting()->void :
 	pass
