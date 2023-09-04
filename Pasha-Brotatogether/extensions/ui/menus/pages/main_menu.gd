@@ -8,7 +8,7 @@ func _ready():
 	var buttons_node = $"HBoxContainer/ButtonsLeft"
 
 	# Duplicate a Button to get the styling
-	multiplayer_button = continue_button.duplicate()
+	multiplayer_button = start_button.duplicate()
 	multiplayer_button.text = "Multiplayer"
 	multiplayer_button.name = "MultiplayerButton"
 
