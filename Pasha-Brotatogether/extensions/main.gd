@@ -531,6 +531,10 @@ func _on_EndWaveTimer_timeout() -> void:
 		var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/shop/multiplayer_shop.tscn")
 
 func on_item_box_discard_button_pressed(item_data:ItemParentData) -> void:
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		.on_item_box_discard_button_pressed(item_data)
+		return
+		
 	game_controller.discard_item_box(item_data)
 
 func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
