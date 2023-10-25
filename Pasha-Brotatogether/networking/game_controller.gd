@@ -338,30 +338,37 @@ func send_complete_player_request() -> void:
 	
 func send_complete_player(player_id:int) -> void:
 	var player_dict = tracked_players[player_id].duplicate()
+	if not player_dict.has("run_data"):
+		player_dict.run_data = {}
 	player_dict.run_data = player_dict.run_data.duplicate()
 	
 	var new_items = []
 	
-	for item in player_dict.run_data.items:
-		var to_add = {}
-		to_add["my_id"] = item.my_id 
-		new_items.push_back(to_add)
+	if player_dict.run_data.has("items"):
+		for item in player_dict.run_data.items:
+			var to_add = {}
+			to_add["my_id"] = item.my_id 
+			new_items.push_back(to_add)
 	player_dict.run_data["items"] = new_items
 
-	player_dict.run_data.current_character = player_dict.run_data.current_character.my_id
+	if player_dict.run_data.has("current_character"):
+		player_dict.run_data.current_character = player_dict.run_data.current_character.my_id
 	
 	var new_weapons = []
-	for weapon in player_dict.run_data.weapons:
-		var to_add = {}
-		to_add["my_id"] = weapon.my_id
-		new_weapons.push_back(to_add)
+	if player_dict.run_data.has("weapons"):
+		for weapon in player_dict.run_data.weapons:
+			var to_add = {}
+			to_add["my_id"] = weapon.my_id
+			new_weapons.push_back(to_add)
 	player_dict.run_data["weapons"] = new_weapons
 	
 	var burn_chance = {}
-	burn_chance.chance = player_dict.run_data.effects.burn_chance.chance
-	burn_chance.damage = player_dict.run_data.effects.burn_chance.damage
-	burn_chance.duration = player_dict.run_data.effects.burn_chance.duration
-	player_dict.run_data.effects.burn_chance = burn_chance
+	
+	if player_dict.run_data.has("effects"): 
+		burn_chance.chance = player_dict.run_data.effects.burn_chance.chance
+		burn_chance.damage = player_dict.run_data.effects.burn_chance.damage
+		burn_chance.duration = player_dict.run_data.effects.burn_chance.duration
+		player_dict.run_data.effects.burn_chance = burn_chance
 	
 	connection.send_complete_player(player_id, player_dict)
 	
@@ -379,9 +386,10 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 		tracked_players[player_id]["run_data"]["items"] = new_items
 		
 		for query_character in ItemService.characters:
-			if query_character.my_id == player_dict.run_data.current_character:
-				player_dict.run_data.current_character = query_character
-				break
+			if player_dict.run_data.has("current_character"):
+				if query_character.my_id == player_dict.run_data.current_character:
+					player_dict.run_data.current_character = query_character
+					break
 				
 		var new_weapons = []
 		
@@ -391,7 +399,8 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 					new_weapons.push_back(query_weapon.duplicate())
 		tracked_players[player_id]["run_data"]["weapons"] = new_weapons
 		
-		RunData.emit_signal("gold_changed", tracked_players[player_id]["run_data"].gold)
+		if tracked_players[player_id]["run_data"].has("gold"):
+			RunData.emit_signal("gold_changed", tracked_players[player_id]["run_data"].gold)
 		emit_signal("complete_player_update")
 
 func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:
