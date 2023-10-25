@@ -203,7 +203,13 @@ func start_game(game_info: Dictionary):
 	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
 				
-#				run_data_node.add_item(player_id, load("res://items/all/ricochet/ricochet_data.tres"))
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
+
+#				run_data_node.add_item(player_id, load("res://items/all/bloody_hand/bloody_hand_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
@@ -516,8 +522,6 @@ func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_HIDDEN:
 			shop._weapons_container._elements.focus_element(new_weapon)
 
-
-
 func receive_uprade_selected(upgrade_data_id, player_id):
 	for upgrade in ItemService.upgrades:
 		if upgrade.my_id == upgrade_data_id:
@@ -548,7 +552,6 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 			shop_item_data = item
 	
 	if nb_coupons > 0:
-		
 #		var coupon_value = get_coupon_value() reimplemented in place
 		var coupon_value = 0
 		for item in run_data.items:
@@ -560,8 +563,6 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 		var base_value = ItemService.get_value(RunData.current_wave, shop_item_data.value, false, shop_item_data is WeaponData, shop_item_data.my_id)
 		run_data.tracked_item_effects["item_coupon"] += (base_value * coupon_effect) as int
 		
-#	emit_signal("item_bought", shop_item_data)
-	
 	if shop_item_data.get_category() == Category.ITEM:
 		run_data_node.add_item(player_id, shop_item_data)
 	elif shop_item_data.get_category() == Category.WEAPON:
@@ -569,13 +570,10 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 			for weapon in run_data.weapons:
 				if weapon.my_id == shop_item_data.my_id and weapon.upgrades_into != null:
 					var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
-					on_item_combine_button_pressed(weapon)
+					receive_item_combine(weapon.my_id, false, player_id)
 					break
 		else :
 			var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
-	
-	if player_id != self_peer_id:
-		send_complete_player(player_id)
 
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:

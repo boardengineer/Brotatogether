@@ -15,7 +15,7 @@ func _ready():
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
 
-	_stats_container.update_stats()	
+	_stats_container.update_stats()
 	_weapons_container.set_data(label_text, Category.WEAPON, run_data.weapons)
 	_items_container.set_data("ITEMS", Category.ITEM, run_data.items, true, true)
 	_gold_label.update_gold(run_data.gold)
@@ -47,7 +47,8 @@ func on_shop_item_bought(shop_item:ShopItem) -> void:
 		
 	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 	var label_text = tr("WEAPONS") + " (" + str(run_data.weapons.size()) + "/" + str(run_data.effects["weapon_slot"]) + ")"
-		
+	
+	_weapons_container.set_data(label_text, Category.WEAPON, run_data.weapons)
 	_weapons_container.set_label(label_text)
 		
 	print_debug("emitting signal")
