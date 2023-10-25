@@ -57,7 +57,8 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 			
 			if run_data.effects["temp_stats_on_dodge"].size() > 0:
 				for temp_stat_on_hit in run_data.effects["temp_stats_on_dodge"]:
-					TempStats.add_stat(temp_stat_on_hit[0], temp_stat_on_hit[1])
+					game_controller.tracked_players[player_network_id]["temp_stats"]["stats"][temp_stat_on_hit[0]] += temp_stat_on_hit[1]
+					TempStats.emit_signal("temp_stat_updated", temp_stat_on_hit[0], temp_stat_on_hit[1])
 		
 		if dmg_taken[1] > 0 and consumables_in_range.size() > 0:
 			for cons in consumables_in_range:
@@ -75,8 +76,8 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 			
 			if run_data.effects["temp_stats_on_hit"].size() > 0:
 				for temp_stat_on_hit in run_data.effects["temp_stats_on_hit"]:
-					TempStats.add_stat(temp_stat_on_hit[0], temp_stat_on_hit[1])
-			
+					game_controller.tracked_players[player_network_id]["temp_stats"]["stats"][temp_stat_on_hit[0]] += temp_stat_on_hit[1]
+					TempStats.emit_signal("temp_stat_updated", temp_stat_on_hit[0], temp_stat_on_hit[1])
 			check_hp_regen()
 		
 		return dmg_taken
