@@ -34,6 +34,8 @@ func _ready():
 	if $"/root/GameController".is_coop():
 		var run_data_node = $"/root/MultiplayerRunData"
 		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+		var multiplayer_utils = $"/root/MultiplayerUtils"
+		
 		send_updates = true
 		var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 		var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
@@ -45,6 +47,8 @@ func _ready():
 		# connnect multiplayer signals
 		_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
 		run_data_node.reset_cache()
+		multiplayer_utils.reset_temp_stats()
+		reload_stats()
 	
 	game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
 	health_tracker = HealthTracker.instance()
@@ -253,6 +257,11 @@ func _on_WaveTimer_timeout() -> void:
 	._on_WaveTimer_timeout()
 	
 	var run_data_node = $"/root/MultiplayerRunData"
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	multiplayer_utils.reset_temp_stats()
+	reload_stats()
+	
 	for player_id in game_controller.tracked_players:
 		var run_data = game_controller.tracked_players[player_id].run_data
 

@@ -2,7 +2,12 @@ extends Node
 
 func get_stat_multiplayer(player_id:int, stat_name:String) -> float:
 	return $"/root/MultiplayerRunData".get_stat(player_id, stat_name) + get_temp_stat(player_id, stat_name) + get_linked_stats(player_id, stat_name)
-	
+
+func reset_temp_stats() -> void:
+	var game_controller = get_game_controller()
+	for player_id in game_controller.tracked_players:
+		game_controller.tracked_players[player_id]["temp_stats"]["stats"] = RunData.init_stats()
+
 func get_temp_stat(player_id:int, stat_name:String) -> float:
 	var game_controller = get_game_controller()
 	
