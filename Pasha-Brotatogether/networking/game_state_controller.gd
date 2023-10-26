@@ -438,7 +438,10 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> void:
 				buffer.put_float(enemy.position.x)
 				buffer.put_float(enemy.position.y)
 				buffer.put_float(enemy._current_movement.x)
-				buffer.put_float(enemy._current_movement.y)			
+				buffer.put_float(enemy._current_movement.y)
+				
+				buffer.put_32(enemy.current_stats.health)
+				buffer.put_32(enemy.max_stats.health)
 
 func update_enemies(buffer:StreamPeerBuffer) -> void:
 	var server_enemies = {}
@@ -494,6 +497,9 @@ func update_enemies(buffer:StreamPeerBuffer) -> void:
 		var mov_x = buffer.get_float()
 		var mov_y = buffer.get_float()
 		
+		var current_hp = buffer.get_32()
+		var max_hp = buffer.get_32()
+		
 		var position = Vector2(pos_x, pos_y)
 		var movement = Vector2(mov_x, mov_y)
 		
@@ -507,6 +513,7 @@ func update_enemies(buffer:StreamPeerBuffer) -> void:
 		if is_instance_valid(stored_enemy):
 			server_enemies[enemy_id] = true
 			stored_enemy.position = position
+			stored_enemy.on_health_updated(current_hp, max_hp)
 			stored_enemy.call_deferred("update_animation", movement)
 
 
