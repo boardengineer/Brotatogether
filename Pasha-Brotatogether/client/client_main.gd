@@ -465,6 +465,9 @@ func _on_WaveTimer_timeout() -> void:
 	
 	if _is_run_won:
 		apply_run_won()
+		RunData.run_won = true
+		var _error = get_tree().change_scene("res://ui/menus/run/end_run.tscn")
+		return
 	
 	_end_wave_timer.start()
 	InputService.hide_mouse = true

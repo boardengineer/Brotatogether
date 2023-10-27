@@ -203,13 +203,22 @@ func start_game(game_info: Dictionary):
 	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
 				
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
-
 #				run_data_node.add_item(player_id, load("res://items/all/bloody_hand/bloody_hand_data.tres"))
+
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
+#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
+
+#				for _i in 300:
+#					run_data_node.add_item(player_id, load("res://items/all/helmet/helmet_data.tres"))
+#					run_data_node.add_item(player_id, load("res://items/all/medal/medal_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
@@ -665,6 +674,11 @@ func receive_discard_item_box(player_id:int, item_id:String) -> void:
 func end_wave():
 	run_updates = false
 	game_state_controller.reset_client_items()
+	
+	if current_scene_name == "ClientMain":
+		var wave_timer = $"/root/ClientMain"._wave_timer
+		wave_timer.wait_time = 0.1
+		wave_timer.start()
 	
 	for player_id in tracked_players:
 		tracked_players[player_id].erase("player")
