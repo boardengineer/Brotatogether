@@ -1,5 +1,7 @@
 extends "res://global/entity_spawner.gd"
 
+var completed_turret_spawns = []
+
 func _on_StructureTimer_timeout() -> void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_StructureTimer_timeout()
@@ -15,14 +17,16 @@ func _on_StructureTimer_timeout() -> void:
 	for player_id in game_controller.tracked_players:
 		var run_data = game_controller.tracked_players[player_id].run_data
 		
+		print_debug("spwaning turrets for player ", player_id, " ", run_data.effects["structures"].size())
+		
 		var spawn_radius = min(600, 400 + (run_data.effects["structures"].size() * 10)) as int
 		var base_pos = ZoneService.get_rand_pos(600 + Utils.EDGE_MAP_DIST)
 		var _nb_turrets = 0
 		var spawn_all = false
 		
-		if not _base_structures_spawned:
+		if not completed_turret_spawns.has(player_id):
 			spawn_all = true
-			_base_structures_spawned = true
+			completed_turret_spawns.push_back(player_id)
 		
 		for struct in run_data.effects["structures"]:
 			var spawn_cd = struct.spawn_cooldown
@@ -41,6 +45,7 @@ func _on_StructureTimer_timeout() -> void:
 					if struct.spawn_around_player != - 1:
 						pos = get_spawn_pos_in_area(_player.global_position, struct.spawn_around_player)
 					
+					print_debug("queueing turret")
 					queue_to_spawn_structures.push_back([EntityType.STRUCTURE, struct.scene, pos, struct])
 					
 					
