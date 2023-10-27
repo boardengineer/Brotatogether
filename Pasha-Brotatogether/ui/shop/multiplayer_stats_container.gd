@@ -6,6 +6,9 @@ const shop_options_resource = preload("res://mods-unpacked/Pasha-Brotatogether/o
 const shop_monster_container_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/shop/shop_monster_container.tscn")
 
 func _ready():
+	if not $"/root".has_node("GameController") or $"/root/GameController".is_coop():
+		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer/MarginContainer/VBoxContainer2/OpponentsButton".hide()
+	
 	var opponents_shop = $MarginContainer/VBoxContainer2/OpponentsShop
 	for opponents_shop_option in shop_options_resource.shop_options:
 		var shop_option = shop_monster_container_scene.instance()
