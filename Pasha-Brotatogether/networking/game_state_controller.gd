@@ -415,6 +415,8 @@ func get_enemy_damages(buffer: StreamPeerBuffer) -> void:
 		if damage_array[1]:
 			is_dodge = 1
 		buffer.put_8(is_dodge)
+	
+	parent.batched_enemy_damage = []
 
 func do_batched_damages(buffer:StreamPeerBuffer) -> void:
 	var num_damages = buffer.get_u16()
