@@ -4,6 +4,9 @@ var lobby_id = 0
 var parent
 var established_p2p_connections = {}
 
+var rpcs_by_type = {}
+var prev_sec = 0
+
 func _ready():
 	lobby_id = 0
 	var _connect_error = Steam.connect("lobby_created", self, "_on_Lobby_Created")
@@ -20,12 +23,22 @@ func _process(_delta):
 func read_p2p_packet() -> bool:
 	var packet_size = Steam.getAvailableP2PPacketSize(0)
 	
+	var sec = Time.get_time_dict_from_system()["second"]
+	if sec != prev_sec:
+		print_debug(rpcs_by_type)
+		prev_sec = sec
+	
 	if packet_size > 0:
 		var packet = Steam.readP2PPacket(packet_size, 0)
 		
 		var sender = packet["steam_id_remote"]
 		var data = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
 		var type = data.type
+		
+		if not rpcs_by_type.has(type):
+			rpcs_by_type[type] = 0
+		rpcs_by_type[type] += 1
+		
 		if type == "start_game":
 			parent.start_game(data.game_info)
 		elif type == "reroll_upgrades":
@@ -46,8 +59,6 @@ func read_p2p_packet() -> bool:
 			parent.receive_player_enter_shop(data.player_id)
 		elif type == "add_consumable_to_process":
 			parent.receive_add_consumable_to_process(data.player_id, data.consumable_data_path)
-		elif type == "enemy_death":
-			parent.enemy_death(data.enemy_id)
 		elif type == "end_wave":
 			parent.end_wave()
 		elif type == "level_up":
@@ -212,12 +223,6 @@ func send_display_hit_effect(effect_info: Dictionary) -> void:
 	send_data["effect_info"] = effect_info
 	send_data_to_all(send_data)
 
-func send_enemy_death(enemy_id):
-	var send_data = {}
-	send_data["type"] = "enemy_death"
-	send_data["enemy_id"] = enemy_id
-	send_data_to_all(send_data)
-			
 func send_end_wave():
 	var send_data = {}
 	send_data["type"] = "end_wave"

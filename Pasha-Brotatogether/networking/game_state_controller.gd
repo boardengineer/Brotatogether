@@ -65,6 +65,7 @@ func get_game_state() -> PoolByteArray:
 			get_neutrals_state(buffer)
 			get_structures_state(buffer)
 			get_enemy_projectiles(buffer)
+			get_deaths(buffer)
 	
 	return buffer.data_array
 
@@ -84,6 +85,7 @@ func update_game_state(data: PoolByteArray) -> void:
 	update_neutrals(buffer)
 	update_structures(buffer)
 	update_enemy_projectiles(buffer)
+	do_batched_deaths(buffer)
 
 func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	var projectiles_container = $"/root/Main/Projectiles"
@@ -374,6 +376,20 @@ func spawn_player_projectile(position:Vector2, global_position:Vector2, rotation
 	projectile.call_deferred("set_physics_process", false)
 	
 	return projectile
+
+func get_deaths(buffer: StreamPeerBuffer) -> void:
+	var num_deaths = parent.batched_deaths.size()
+	buffer.put_u16(num_deaths)
+	
+	for enemy_id in parent.batched_deaths:
+		buffer.put_32(enemy_id)
+
+func do_batched_deaths(buffer:StreamPeerBuffer) -> void:
+	var num_deaths = buffer.get_u16()
+	
+	for _i in num_deaths:
+		var enemy_id = buffer.get_32()
+		enemy_death(enemy_id)
 
 func enemy_death(enemy_id):
 	if client_enemies.has(enemy_id):

@@ -17,8 +17,6 @@ func _on_StructureTimer_timeout() -> void:
 	for player_id in game_controller.tracked_players:
 		var run_data = game_controller.tracked_players[player_id].run_data
 		
-		print_debug("spwaning turrets for player ", player_id, " ", run_data.effects["structures"].size())
-		
 		var spawn_radius = min(600, 400 + (run_data.effects["structures"].size() * 10)) as int
 		var base_pos = ZoneService.get_rand_pos(600 + Utils.EDGE_MAP_DIST)
 		var _nb_turrets = 0

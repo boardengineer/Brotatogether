@@ -34,6 +34,7 @@ var run_updates = false
 var disable_pause = false
 var back_to_lobby = false
 var all_players_ready = true
+var batched_deaths = []
 
 var ready_toggle
 
@@ -215,7 +216,10 @@ func start_game(game_info: Dictionary):
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-
+#
+#				for _i in 30:
+#					run_data_node.add_item(player_id, load("res://items/all/turret/turret_data.tres"))
+#
 #				for _i in 300:
 #					run_data_node.add_item(player_id, load("res://items/all/helmet/helmet_data.tres"))
 #					run_data_node.add_item(player_id, load("res://items/all/medal/medal_data.tres"))
@@ -700,7 +704,8 @@ func send_display_hit_effect(effect_info: Dictionary) -> void:
 	connection.send_display_hit_effect(effect_info)
 
 func send_enemy_death(enemy_id:int) -> void:
-	connection.send_enemy_death(enemy_id)
+	batched_deaths.push_back(enemy_id)
+#	connection.send_enemy_death(enemy_id)
 
 func send_end_wave() -> void:
 	connection.send_end_wave()
