@@ -37,6 +37,8 @@ var all_players_ready = true
 
 var batched_deaths = []
 var batched_enemy_damage = []
+var batched_flash_enemy = []
+var batched_floating_text = []
 
 var ready_toggle
 
@@ -654,10 +656,6 @@ func create_ready_toggle() -> Node:
 func _on_ready_toggle() -> void:
 	connection.send_ready(ready_toggle.pressed)
 
-func display_floating_text(text_info:Dictionary):
-	if $"/root/ClientMain":
-		$"/root/ClientMain/FloatingTextManager".display(text_info.value, text_info.position, text_info.color)
-
 func display_hit_effect(effect_info: Dictionary):
 	if $"/root/ClientMain/EffectsManager":
 		var effects_manager = $"/root/ClientMain/EffectsManager"
@@ -699,8 +697,8 @@ func send_game_state() -> void:
 func send_start_game(game_info:Dictionary) -> void:
 	connection.send_start_game(game_info)
 
-func send_display_floating_text(text_info:Dictionary) -> void:
-	connection.send_display_floating_text(text_info)
+func send_display_floating_text(value:String, text_pos:Vector2, color:Color = Color.white) -> void:
+	batched_floating_text.push_back([value,text_pos, color])
 
 func send_display_hit_effect(effect_info: Dictionary) -> void:
 	connection.send_display_hit_effect(effect_info)
@@ -713,8 +711,8 @@ func send_end_wave() -> void:
 	connection.send_end_wave()
 
 func send_flash_enemy(enemy_id:int) -> void:
-	connection.send_flash_enemy(enemy_id)
-	
+	batched_flash_enemy.push_back(enemy_id)
+
 func send_shot(player_id:int, weapon_index:int) -> void:
 	connection.send_shot(player_id, weapon_index)
 	
@@ -899,9 +897,6 @@ func update_game_state(data: PoolByteArray) -> void:
 
 func enemy_death(enemy_id):
 	game_state_controller.enemy_death(enemy_id)
-
-func flash_enemy(enemy_id):
-	game_state_controller.flash_enemy(enemy_id)
 
 func flash_neutral(neutral_id):
 	game_state_controller.flash_neutral(neutral_id)

@@ -67,6 +67,8 @@ func get_game_state() -> PoolByteArray:
 			get_enemy_projectiles(buffer)
 			get_deaths(buffer)
 			get_enemy_damages(buffer)
+			get_enemy_flashes(buffer)
+			get_batched_floating_text(buffer)
 	
 	return buffer.data_array
 
@@ -89,6 +91,8 @@ func update_game_state(data: PoolByteArray) -> void:
 	
 	do_batched_deaths(buffer)
 	do_batched_damages(buffer)
+	do_batched_flashes(buffer)
+	do_batched_floating_text(buffer)
 
 func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	var projectiles_container = $"/root/Main/Projectiles"
@@ -386,6 +390,20 @@ func get_deaths(buffer: StreamPeerBuffer) -> void:
 	
 	for enemy_id in parent.batched_deaths:
 		buffer.put_32(enemy_id)
+	
+	parent.batched_deaths = []
+
+func do_batched_deaths(buffer:StreamPeerBuffer) -> void:
+	var num_deaths = buffer.get_u16()
+	
+	for _i in num_deaths:
+		var enemy_id = buffer.get_32()
+		enemy_death(enemy_id)
+
+func enemy_death(enemy_id):
+	if client_enemies.has(enemy_id):
+		if is_instance_valid(client_enemies[enemy_id]):
+			client_enemies[enemy_id].die()
 
 func get_enemy_damages(buffer: StreamPeerBuffer) -> void:
 	var num_damages = parent.batched_enemy_damage.size()
@@ -417,22 +435,60 @@ func do_enemy_damage(enemy_id:int, is_dodge:bool) -> void:
 				sound = Utils.get_rand_element(enemy.hurt_sounds)
 			SoundManager2D.play(sound, enemy.global_position, 0, 0.2, enemy.always_play_hurt_sound)
 
-func do_batched_deaths(buffer:StreamPeerBuffer) -> void:
-	var num_deaths = buffer.get_u16()
+func get_enemy_flashes(buffer: StreamPeerBuffer) -> void:
+	var num_flashes = parent.batched_flash_enemy.size()
+	buffer.put_u16(num_flashes)
 	
-	for _i in num_deaths:
-		var enemy_id = buffer.get_32()
-		enemy_death(enemy_id)
+	for enemy_id in parent.batched_flash_enemy:
+		buffer.put_32(enemy_id)
+	
+	parent.batched_flash_enemy = []
 
-func enemy_death(enemy_id):
-	if client_enemies.has(enemy_id):
-		if is_instance_valid(client_enemies[enemy_id]):
-			client_enemies[enemy_id].die()
+func do_batched_flashes(buffer:StreamPeerBuffer) -> void:
+	var num_flashes = buffer.get_u16()
+	
+	for _i in num_flashes:
+		var enemy_id = buffer.get_32()
+		flash_enemy(enemy_id)
 
 func flash_enemy(enemy_id):
 	if client_enemies.has(enemy_id):
 		if is_instance_valid(client_enemies[enemy_id]):
 			client_enemies[enemy_id].flash()
+
+func get_batched_floating_text(buffer: StreamPeerBuffer) -> void:
+	var num_floating_text = parent.batched_floating_text.size()
+	buffer.put_u16(num_floating_text)
+	
+	for floating_text_array in parent.batched_floating_text:
+		var value = floating_text_array[0]
+		var text_pos = floating_text_array[1]
+		var color = floating_text_array[2]
+		
+		buffer.put_string(value)
+		buffer.put_float(text_pos.x)
+		buffer.put_float(text_pos.y)
+		buffer.put_32(color.to_rgba32())
+	
+	parent.batched_floating_text = []
+
+func do_batched_floating_text(buffer: StreamPeerBuffer) -> void:
+	var num_floating_text = buffer.get_u16()
+	
+	for _i in num_floating_text:
+		var value = buffer.get_string()
+		
+		var x = buffer.get_float()
+		var y = buffer.get_float()
+		var text_pos = Vector2(x,y)
+		
+		var color_rgba32 = buffer.get_32()
+		var color = Color(color_rgba32)
+		display_floating_text(value, text_pos, color)
+
+func display_floating_text(value:String, text_pos:Vector2, color:Color = Color.white):
+	if $"/root/ClientMain":
+		$"/root/ClientMain/FloatingTextManager".display(value, text_pos, color)
 
 func flash_neutral(neutral_id):
 	if client_neutrals.has(neutral_id):

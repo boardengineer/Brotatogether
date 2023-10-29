@@ -45,8 +45,6 @@ func read_p2p_packet() -> bool:
 			parent.receive_reroll_upgrades(sender, data.reroll_price)
 		elif type == "weapon_discard":
 			parent.receive_item_discard(data.weapon_id, sender)
-		elif type == "floating_text":
-			parent.display_floating_text(data.text_info)
 		elif type == "hit_effect":
 			parent.display_hit_effect(data.effect_info)
 		elif type == "send_combine_item":
@@ -63,8 +61,6 @@ func read_p2p_packet() -> bool:
 			parent.end_wave()
 		elif type == "level_up":
 			parent.receive_player_level_up(data.player_id, data.level)
-		elif type == "flash_enemy":
-			parent.flash_enemy(data.enemy_id)
 		elif type == "flash_neutral":
 			parent.flash_neutral(data.neutral_id)
 		elif type == "client_position_update":
@@ -208,12 +204,6 @@ func send_start_game(game_info:Dictionary) -> void:
 	send_data["type"] = "start_game"
 	send_data["game_info"] = game_info
 	send_data_to_all(send_data)
-	
-func send_display_floating_text(text_info:Dictionary) -> void:
-	var send_data = {}
-	send_data["type"] = "floating_text"
-	send_data["text_info"] = text_info
-	send_data_to_all(send_data)
 
 func send_display_hit_effect(effect_info: Dictionary) -> void:
 	var send_data = {}
@@ -232,13 +222,7 @@ func send_shot(player_id:int, weapon_index:int) -> void:
 	send_data["player_id"] = player_id
 	send_data["weapon_index"] = weapon_index
 	send_data_to_all(send_data)
-	
-func send_flash_enemy(enemy_id):
-	var send_data = {}
-	send_data["type"] = "flash_enemy"
-	send_data["enemy_id"] = enemy_id
-	send_data_to_all(send_data)
-	
+
 func send_flash_neutral(neutral_id):
 	var send_data = {}
 	send_data["type"] = "flash_neutral"
