@@ -560,6 +560,7 @@ func update_unique_bonuses(player_id: int) -> void:
 		for effect in run_data["effects"]["unique_weapon_effects"]:
 			run_data["effects"][effect[0]] += effect[1]
 			unique_effects.push_back(effect)
+	run_data["unique_effects"] = unique_effects
 
 func get_unique_weapon_ids(player_id: int) -> Array:
 	var game_controller = get_game_controller()
