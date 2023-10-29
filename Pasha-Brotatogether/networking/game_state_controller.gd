@@ -69,6 +69,7 @@ func get_game_state() -> PoolByteArray:
 			get_enemy_damages(buffer)
 			get_enemy_flashes(buffer)
 			get_batched_floating_text(buffer)
+			get_hit_effects(buffer)
 	
 	return buffer.data_array
 
@@ -93,6 +94,7 @@ func update_game_state(data: PoolByteArray) -> void:
 	do_batched_damages(buffer)
 	do_batched_flashes(buffer)
 	do_batched_floating_text(buffer)
+	do_batched_hit_effects(buffer)
 
 func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	var projectiles_container = $"/root/Main/Projectiles"
@@ -491,6 +493,41 @@ func do_batched_floating_text(buffer: StreamPeerBuffer) -> void:
 func display_floating_text(value:String, text_pos:Vector2, color:Color = Color.white):
 	if $"/root/ClientMain":
 		$"/root/ClientMain/FloatingTextManager".display(value, text_pos, color)
+
+func get_hit_effects(buffer: StreamPeerBuffer) -> void:
+	var num_hit_effects = parent.batched_hit_effects.size()
+	buffer.put_u16(num_hit_effects)
+	
+	for hit_effect in parent.batched_hit_effects:
+		buffer.put_float(hit_effect[0].x)
+		buffer.put_float(hit_effect[0].y)
+		
+		buffer.put_float(hit_effect[1].x)
+		buffer.put_float(hit_effect[1].y)
+		
+		buffer.put_float(hit_effect[2])
+	parent.batched_hit_effects = []
+
+func do_batched_hit_effects(buffer: StreamPeerBuffer) -> void:
+	var num_hit_effects = buffer.get_u16()
+	
+	for _i in num_hit_effects:
+		var pos_x = buffer.get_float()
+		var pos_y = buffer.get_float()
+		
+		var dir_x = buffer.get_float()
+		var dir_y = buffer.get_float()
+		
+		var scale = buffer.get_float()
+		var pos = Vector2(pos_x, pos_y)
+		var dir = Vector2(dir_x, dir_y)
+		display_hit_effect(pos, dir, scale)
+
+func display_hit_effect(position, direction, scale):
+	if $"/root/ClientMain/EffectsManager":
+		var effects_manager = $"/root/ClientMain/EffectsManager"
+		effects_manager.play_hit_particles(position, direction, scale)
+		effects_manager.play_hit_effect(position, direction, scale)
 
 func flash_neutral(neutral_id):
 	if client_neutrals.has(neutral_id):

@@ -39,6 +39,7 @@ var batched_deaths = []
 var batched_enemy_damage = []
 var batched_flash_enemy = []
 var batched_floating_text = []
+var batched_hit_effects = []
 
 var ready_toggle
 
@@ -656,12 +657,6 @@ func create_ready_toggle() -> Node:
 func _on_ready_toggle() -> void:
 	connection.send_ready(ready_toggle.pressed)
 
-func display_hit_effect(effect_info: Dictionary):
-	if $"/root/ClientMain/EffectsManager":
-		var effects_manager = $"/root/ClientMain/EffectsManager"
-		effects_manager.play_hit_particles(effect_info.position, effect_info.direction, effect_info.scale)
-		effects_manager.play_hit_effect(effect_info.position, effect_info.direction, effect_info.scale)
-
 func discard_item_box(item_data:ItemParentData) -> void:
 	if is_host:
 		receive_discard_item_box(self_peer_id, item_data.my_id)
@@ -700,8 +695,8 @@ func send_start_game(game_info:Dictionary) -> void:
 func send_display_floating_text(value:String, text_pos:Vector2, color:Color = Color.white) -> void:
 	batched_floating_text.push_back([value,text_pos, color])
 
-func send_display_hit_effect(effect_info: Dictionary) -> void:
-	connection.send_display_hit_effect(effect_info)
+func send_display_hit_effect(effect_pos, direction, effect_scale) -> void:
+	batched_hit_effects.push_back([effect_pos, direction, effect_scale])
 
 func send_enemy_death(enemy_id:int) -> void:
 	batched_deaths.push_back(enemy_id)
@@ -725,7 +720,6 @@ func receive_shot(player_id:int, weapon_index:int) -> void:
 				var weapon = player.current_weapons[weapon_index]
 				if is_instance_valid(weapon):
 					SoundManager.play(Utils.get_rand_element(weapon.current_stats.shooting_sounds), weapon.current_stats.sound_db_mod, 0.2)
-
 
 func send_explosion(pos: Vector2, scale: float) -> void:
 	connection.send_explosion(pos, scale)

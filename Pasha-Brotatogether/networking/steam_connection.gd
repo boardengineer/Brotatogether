@@ -45,8 +45,6 @@ func read_p2p_packet() -> bool:
 			parent.receive_reroll_upgrades(sender, data.reroll_price)
 		elif type == "weapon_discard":
 			parent.receive_item_discard(data.weapon_id, sender)
-		elif type == "hit_effect":
-			parent.display_hit_effect(data.effect_info)
 		elif type == "send_combine_item":
 			parent.receive_item_combine(data.weapon_data_id, data.is_upgrade, data.player_id)
 		elif type == "discard_item_box":
@@ -203,12 +201,6 @@ func send_start_game(game_info:Dictionary) -> void:
 	var send_data = {}
 	send_data["type"] = "start_game"
 	send_data["game_info"] = game_info
-	send_data_to_all(send_data)
-
-func send_display_hit_effect(effect_info: Dictionary) -> void:
-	var send_data = {}
-	send_data["type"] = "hit_effect"
-	send_data["effect_info"] = effect_info
 	send_data_to_all(send_data)
 
 func send_end_wave():
