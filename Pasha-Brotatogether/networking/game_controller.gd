@@ -34,7 +34,9 @@ var run_updates = false
 var disable_pause = false
 var back_to_lobby = false
 var all_players_ready = true
+
 var batched_deaths = []
+var batched_enemy_damage = []
 
 var ready_toggle
 
@@ -738,18 +740,7 @@ func receive_explosion(pos: Vector2, scale: float) -> void:
 	instance.call_deferred("set_area", scale)
 
 func send_enemy_take_damage(enemy_id:int, is_dodge: bool) -> void:
-	connection.send_enemy_take_damage(enemy_id, is_dodge)
-
-func receive_enemy_take_damage(enemy_id:int, is_dodge:bool) -> void:
-	if game_state_controller.client_enemies.has(enemy_id):
-		var enemy = game_state_controller.client_enemies[enemy_id]
-		if is_instance_valid(enemy):
-			var sound
-			if is_dodge:
-				sound = Utils.get_rand_element(enemy.dodge_sounds)
-			else:
-				sound = Utils.get_rand_element(enemy.hurt_sounds)
-			SoundManager2D.play(sound, enemy.global_position, 0, 0.2, enemy.always_play_hurt_sound)
+	batched_enemy_damage.push_back([enemy_id, is_dodge])
 
 func send_flash_neutral(neutral_id:int) -> void:
 	connection.send_flash_neutral(neutral_id)

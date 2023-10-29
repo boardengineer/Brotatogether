@@ -98,8 +98,6 @@ func read_p2p_packet() -> bool:
 			parent.receive_shot(data.player_id, data.weapon_index)
 		elif type == "explosion":
 			parent.receive_explosion(Vector2(data.pos_x, data.pos_y), data.scale)
-		elif type == "enemy_take_damage":
-			parent.receive_enemy_take_damage(data.enemy_id, data.is_dodge)
 		elif type == "request_lobby_update":
 			print_debug("received updated request")
 			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
@@ -338,13 +336,6 @@ func send_explosion(pos: Vector2, scale: float) -> void:
 	send_data["pos_x"] = pos.x
 	send_data["pos_y"] = pos.y
 	send_data["scale"] = scale
-	send_data_to_all(send_data)
-
-func send_enemy_take_damage(enemy_id:int, is_dodge:bool) -> void:
-	var send_data = {}
-	send_data["type"] = "enemy_take_damage"
-	send_data["enemy_id"] = enemy_id
-	send_data["is_dodge"] = is_dodge
 	send_data_to_all(send_data)
 
 func get_lobby_host() -> String:

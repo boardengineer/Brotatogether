@@ -66,6 +66,7 @@ func get_game_state() -> PoolByteArray:
 			get_structures_state(buffer)
 			get_enemy_projectiles(buffer)
 			get_deaths(buffer)
+			get_enemy_damages(buffer)
 	
 	return buffer.data_array
 
@@ -85,7 +86,9 @@ func update_game_state(data: PoolByteArray) -> void:
 	update_neutrals(buffer)
 	update_structures(buffer)
 	update_enemy_projectiles(buffer)
+	
 	do_batched_deaths(buffer)
+	do_batched_damages(buffer)
 
 func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	var projectiles_container = $"/root/Main/Projectiles"
@@ -383,6 +386,36 @@ func get_deaths(buffer: StreamPeerBuffer) -> void:
 	
 	for enemy_id in parent.batched_deaths:
 		buffer.put_32(enemy_id)
+
+func get_enemy_damages(buffer: StreamPeerBuffer) -> void:
+	var num_damages = parent.batched_enemy_damage.size()
+	buffer.put_u16(num_damages)
+	
+	for damage_array in parent.batched_enemy_damage:
+		buffer.put_32(damage_array[0])
+		var is_dodge = 0
+		if damage_array[1]:
+			is_dodge = 1
+		buffer.put_8(is_dodge)
+
+func do_batched_damages(buffer:StreamPeerBuffer) -> void:
+	var num_damages = buffer.get_u16()
+	
+	for _i in num_damages:
+		var enemy_id = buffer.get_32()
+		var is_dodge = buffer.get_8() == 1
+		do_enemy_damage(enemy_id, is_dodge)
+
+func do_enemy_damage(enemy_id:int, is_dodge:bool) -> void:
+	if client_enemies.has(enemy_id):
+		var enemy = client_enemies[enemy_id]
+		if is_instance_valid(enemy):
+			var sound
+			if is_dodge:
+				sound = Utils.get_rand_element(enemy.dodge_sounds)
+			else:
+				sound = Utils.get_rand_element(enemy.hurt_sounds)
+			SoundManager2D.play(sound, enemy.global_position, 0, 0.2, enemy.always_play_hurt_sound)
 
 func do_batched_deaths(buffer:StreamPeerBuffer) -> void:
 	var num_deaths = buffer.get_u16()
