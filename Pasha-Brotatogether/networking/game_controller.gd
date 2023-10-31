@@ -355,6 +355,9 @@ func send_complete_player_request() -> void:
 	connection.send_complete_player_request()
 	
 func send_complete_player(player_id:int) -> void:
+	if not is_host:
+		return
+	
 	var player_dict = tracked_players[player_id].duplicate()
 	if not player_dict.has("run_data"):
 		player_dict.run_data = {}
