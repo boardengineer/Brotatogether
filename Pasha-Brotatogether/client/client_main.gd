@@ -318,8 +318,12 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 	_floating_text_manager.clean_up_room()
 	
 	for entity in _entities_container.get_children():
-		if not entity is EntityBirth:
+		if not entity is EntityBirth and not entity is Player:
 			entity.die()
+		
+		if entity is Player:
+			var movemenent_node = entity.get_node("MovementBehavior")
+			entity.remove_child(movemenent_node)
 
 	health_tracker.hide()
 	_wave_cleared_label.hide()

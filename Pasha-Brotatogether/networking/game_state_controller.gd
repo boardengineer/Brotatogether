@@ -954,9 +954,15 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 		if player_id == parent.self_peer_id:
 			if $"/root/ClientMain":
 				var main = $"/root/ClientMain"
+				
 				main._life_bar.update_value(current_health, max_health)
 				main.set_life_label(current_health, max_health)
 				main._damage_vignette.update_from_hp(current_health, max_health)
+				
+				if is_instance_valid(player): 
+					player.current_stats.health = current_health
+					player.max_stats.health = max_health
+				
 				tracked_players[player_id]["current_health"] = current_health
 				tracked_players[player_id]["max_health"] = max_health
 				
@@ -977,6 +983,11 @@ func update_players(buffer:StreamPeerBuffer) -> void:
 		else:
 			if is_instance_valid(player):
 				player.position = Vector2(pos_x, pos_y)
+				
+				# This is currently only used by the hp tracker bar 
+				player.current_stats.health = current_health
+				player.max_stats.health = max_health
+				
 				player.call_deferred("maybe_update_animation", Vector2(mov_x, mov_y), true)
 		if is_instance_valid(player):
 			for weapon_data_index in player.current_weapons.size():

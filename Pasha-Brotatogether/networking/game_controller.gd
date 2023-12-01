@@ -650,10 +650,7 @@ func update_tracked_players(updated_tracked_players: Dictionary) -> void:
 	if scene_name == "Shop":
 		$"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer".update_bought_items(tracked_players)
 	elif scene_name == "Main":
-		update_health_ui()
 		check_win()
-	elif scene_name == "ClientMain":
-		update_health_ui()
 
 func create_ready_toggle() -> Node:
 	ready_toggle = toggle_scene.instance()
@@ -864,7 +861,7 @@ func receive_health_update(current_health:int, max_health:int, source_player_id:
 	
 #	if is_host:
 #		connection.send_tracked_players(tracked_players)
-	update_health_ui()
+#	update_health_ui()
 
 func update_health_ui() -> void:
 	if current_scene_name == "Main":

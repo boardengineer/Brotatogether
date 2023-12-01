@@ -123,9 +123,6 @@ func _on_player_died(_p_player:Player) -> void:
 		$"/root/GameController".send_death()
 	._on_player_died(_p_player)
 
-func on_health_update(current_health:int, max_health:int) -> void:
-	game_controller.update_health(current_health, max_health)
-
 func spawn_additional_players() -> void:
 	game_controller = $"/root/GameController"
 	var spawn_x_pos = _entity_spawner._zone_max_pos.x / 2 + 200
@@ -231,6 +228,7 @@ func _process(_delta):
 	game_controller = $"/root/GameController"
 	if game_controller.is_host and send_updates:
 		game_controller.send_game_state()
+		game_controller.update_health_ui()
 
 func send_player_position():
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():

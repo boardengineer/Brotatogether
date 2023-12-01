@@ -16,6 +16,7 @@ func init(tracked_players:Dictionary) -> void:
 	update_health_bars(tracked_players)
 	
 func update_health_bars(tracked_players:Dictionary) -> void:
+	var game_controller = $"/root/GameController"
 	for tracked_player_id in tracked_players:
 		var player = tracked_players[tracked_player_id]
 		var health_bar = health_bar_map[tracked_player_id]
@@ -27,12 +28,11 @@ func update_health_bars(tracked_players:Dictionary) -> void:
 		var current_health = 15
 		var max_health = 15
 		
-		if player.has("current_health") and player.has("max_health"):
-			current_health = player.current_health
-			max_health = player.max_health
-		elif player.has("player") and is_instance_valid(player.player):
+		
+		if player.has("player") and is_instance_valid(player.player):
 			current_health = player.player.current_stats.health
 			max_health = player.player.max_stats.health
+		
 		
 		if max_health != 0:
 			health_bar.update_value(current_health, max_health)
