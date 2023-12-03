@@ -485,6 +485,10 @@ func _on_EndWaveTimer_timeout() -> void:
 	if not game_controller:
 		game_controller = $"/root/GameController"
 	
+	if game_controller.is_host:
+		send_updates = false
+#		game_controller.send_end_wave()
+	
 	DebugService.log_data("_on_EndWaveTimer_timeout")
 	_end_wave_timer_timedout = true
 	_ui_dim_screen.dim()

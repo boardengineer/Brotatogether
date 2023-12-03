@@ -442,7 +442,7 @@ visible = false
 visible = false
 
 [node name="EndWaveTimer" type="Timer" parent="."]
-wait_time = 2.0
+wait_time = 0.75
 one_shot = true
 
 [node name="HarvestingTimer" type="Timer" parent="."]

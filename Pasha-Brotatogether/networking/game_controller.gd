@@ -680,7 +680,12 @@ func end_wave():
 	if current_scene_name == "ClientMain":
 		var wave_timer = $"/root/ClientMain"._wave_timer
 		wave_timer.wait_time = 0.1
+		wave_timer.one_shot = true
 		wave_timer.start()
+		
+		var end_wave_timer = $"/root/ClientMain"._end_wave_timer
+		end_wave_timer.one_shot = true
+		end_wave_timer.start()
 	
 	for player_id in tracked_players:
 		tracked_players[player_id].erase("player")

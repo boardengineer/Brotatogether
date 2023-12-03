@@ -1,6 +1,6 @@
 extends Node
 
-#TODO, this file should be mostly empty, far too much duping of main.gd
+var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
 
 signal consumable_to_process_added(consumable_data)
 signal upgrade_to_process_added(consumable_data)
@@ -321,9 +321,16 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 		if not entity is EntityBirth and not entity is Player:
 			entity.die()
 		
-		if entity is Player:
+		if entity.has_node("MovementBehavior"):
+			print_debug("removing movement from ", entity)
 			var movemenent_node = entity.get_node("MovementBehavior")
 			entity.remove_child(movemenent_node)
+			
+			movemenent_node = ClientMovementBehavior.new()
+			movemenent_node.set_name("MovementBehavior")
+			entity.add_child(movemenent_node)
+		
+		_entities_container.remove_child(entity)
 
 	health_tracker.hide()
 	_wave_cleared_label.hide()
@@ -332,6 +339,9 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 	_wave_manager.clean_up_room()
 	
 	if is_instance_valid(_player):
+		var movemenent_node = _player.get_node("MovementBehavior")
+		_player.remove_child(movemenent_node)
+		
 		_player.clean_up()
 	
 	DebugService.log_data("start wave_cleared_label...")
@@ -453,27 +463,19 @@ func on_gold_changed(gold:int)->void :
 
 
 func _on_WaveTimer_timeout() -> void:
+	clean_up_room(false, false, false)
+
+func _on_EndWaveTimer_timeout() -> void:
 	game_controller.send_complete_player_request()
 	yield(game_controller, "complete_player_update")
 	
-	var is_last_wave = is_last_wave()
-	
 	ProgressData.update_mouse_cursor(true)
-	
-	if not _is_run_lost and is_last_wave:
-		_is_run_won = true
-	
-	manage_harvesting()
-	
-	clean_up_room(is_last_wave, false, _is_run_won)
-	
 	if _is_run_won:
 		apply_run_won()
 		RunData.run_won = true
 		var _error = get_tree().change_scene("res://ui/menus/run/end_run.tscn")
 		return
 	
-	_end_wave_timer.start()
 	InputService.hide_mouse = true
 
 	var consumables = game_controller.tracked_players[game_controller.self_peer_id].consumables_to_process
