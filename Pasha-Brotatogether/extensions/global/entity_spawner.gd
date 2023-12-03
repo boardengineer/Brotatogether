@@ -64,9 +64,45 @@ func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool
 		number_of_enemies += run_data.effects.number_of_enemies
 		
 	RunData.effects["trees"] = trees
+	RunData.effects["number_of_enemies"] = number_of_enemies
 	
-	var additinonal_enemies_multipliler = (game_controller.tracked_players.size() - 1) * 75
+	var enemies_multipliler = game_controller.tracked_players.size() + 1
+	var new_group_data = WaveGroupData.new()
+	new_group_data.wave_units_data = []
 	
-	RunData.effects["number_of_enemies"] = number_of_enemies + additinonal_enemies_multipliler
+	for unit_wave_data in group_data.wave_units_data:
+		var duped_data = unit_wave_data.duplicate()
+		
+		if unit_wave_data.type == EntityType.ENEMY:
+			duped_data.min_number *= enemies_multipliler
+			duped_data.max_number *= enemies_multipliler
+			
+		if group_data.is_boss and enemies_multipliler > 1:
+			group_data.repeating = enemies_multipliler - 1 as int
+			group_data.repeating_interval = 1
+			group_data.min_repeating_interval = 1
+		
+		new_group_data.wave_units_data.push_back(duped_data)
 	
-	.on_group_spawn_timing_reached(group_data, _is_elite_wave)
+	_current_wave_data.max_enemies = 10_000
+	.on_group_spawn_timing_reached(new_group_data, _is_elite_wave)
+
+func _physics_process(_delta:float)->void :
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		return
+	
+	var game_controller = $"/root/GameController"
+	var max_mult = game_controller.tracked_players.size()
+	
+	for _i in (max_mult / SPAWN_DELAY) + 1:
+		if queue_to_spawn_structures.size() > 0:
+			spawn(queue_to_spawn_structures)
+		if queue_to_spawn_trees.size() > 0:
+			spawn(queue_to_spawn_trees)
+		if queue_to_spawn_bosses.size() > 0:
+			spawn(queue_to_spawn_bosses)
+		if queue_to_spawn_summons.size() > 0:
+			spawn(queue_to_spawn_summons)
+		if queue_to_spawn.size() > 0:
+			spawn(queue_to_spawn)
+
