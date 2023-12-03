@@ -115,6 +115,8 @@ func _on_CharacterButton_pressed():
 	
 	RunData.weapons = []
 	RunData.items = []
+	RunData.appearances_displayed = []
+	
 	RunData.effects = RunData.init_effects()
 	RunData.current_character = null
 	RunData.starting_weapon = null
@@ -124,6 +126,8 @@ func _on_CharacterButton_pressed():
 func _on_WeaponButton_pressed():
 	RunData.weapons = []
 	RunData.items = []
+	RunData.appearances_displayed = []
+	
 	RunData.add_character(RunData.current_character)
 	RunData.effects = RunData.init_effects()
 	RunData.starting_weapon = null
