@@ -8,7 +8,7 @@ signal picked_up_multiplayer(item, player_id)
 var SERVER_PORT = 11111
 var MAX_PLAYERS = 5
 var SERVER_IP = "127.0.0.1"
-const refresh_time = 1.0 / 100.0
+const refresh_time = 1.0 / 30.0
 
 var connected = false
 var last_detailed_index = -1
@@ -221,14 +221,18 @@ func init_weapon_stats(weapon:Weapon, player_id:int, at_wave_begin:bool = true) 
 	
 	weapon._range_shape.shape.radius = current_stats.max_range + 200
 
-func _process(_delta):
+func _process(delta):
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return
 	
+	update_timer -= delta
 	game_controller = $"/root/GameController"
 	if game_controller.is_host and send_updates:
-		game_controller.send_game_state()
 		game_controller.update_health_ui()
+		
+		if update_timer <= 0:
+			game_controller.send_game_state()
+			update_timer =refresh_time
 
 func send_player_position():
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():

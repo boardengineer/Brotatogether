@@ -30,6 +30,9 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 	return result
 
 func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false) -> void:
+	if not $"/root":
+		return
+	
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.die(knockback_vector, p_cleaning_up)
 		return
@@ -42,6 +45,9 @@ func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false) ->
 	
 	
 func flash() -> void:
+	if not $"/root":
+		return
+	
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.flash()
 		return
