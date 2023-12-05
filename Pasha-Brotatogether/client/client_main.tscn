@@ -1,4 +1,4 @@
-[gd_scene load_steps=86 format=2]
+[gd_scene load_steps=84 format=2]
 
 [ext_resource path="res://particles/heal_particles.tscn" type="PackedScene" id=1]
 [ext_resource path="res://particles/directional_hit_particles.tscn" type="PackedScene" id=2]
@@ -37,7 +37,6 @@
 [ext_resource path="res://resources/sounds/harvest/cartoon_boing_jump_09.wav" type="AudioStream" id=35]
 [ext_resource path="res://resources/sounds/harvest/cartoon_boing_jump_06.wav" type="AudioStream" id=36]
 [ext_resource path="res://ui/hud/ui_consumable_to_process_list.gd" type="Script" id=37]
-[ext_resource path="res://resources/tiles/limit_tiles.tres" type="TileSet" id=38]
 [ext_resource path="res://zones/backgrounds/background_gradient.tres" type="Gradient" id=39]
 [ext_resource path="res://resources/tiles/ground_tiles.tres" type="TileSet" id=40]
 [ext_resource path="res://global/my_camera.gd" type="Script" id=41]
@@ -65,7 +64,6 @@
 [ext_resource path="res://global/screenshaker.gd" type="Script" id=63]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/client/client_main.gd" type="Script" id=64]
 [ext_resource path="res://visual_effects/damage_vignette.gd" type="Script" id=65]
-[ext_resource path="res://global/my_tile_map_limits.gd" type="Script" id=66]
 [ext_resource path="res://ui/hud/ui_dim_screen.gd" type="Script" id=67]
 [ext_resource path="res://ui/hud/ui_upgrade_to_process_list.gd" type="Script" id=68]
 [ext_resource path="res://global/effects_manager.gd" type="Script" id=69]
@@ -191,16 +189,6 @@ __meta__ = {
 "_edit_lock_": true,
 "_edit_use_anchors_": false
 }
-
-[node name="TileMapLimits" type="TileMap" parent="."]
-visible = false
-position = Vector2( -64, -64 )
-tile_set = ExtResource( 38 )
-cell_quadrant_size = 64
-collision_layer = 128
-collision_mask = 0
-format = 1
-script = ExtResource( 66 )
 
 [node name="Items" type="Node2D" parent="."]
 
@@ -456,10 +444,6 @@ tick_sounds = [ ExtResource( 60 ) ]
 
 [node name="TickTimer" type="Timer" parent="WaveTimer"]
 
-[node name="FiveSecondsTimer" type="Timer" parent="."]
-wait_time = 5.0
-autostart = true
-
 [node name="CanvasLayer2" type="CanvasLayer" parent="."]
 
 [connection signal="timeout" from="UI/WaveClearedLabel/Timer" to="UI/WaveClearedLabel" method="_on_Timer_timeout"]
@@ -472,7 +456,6 @@ autostart = true
 [connection signal="timeout" from="WaveTimer" to="." method="_on_WaveTimer_timeout"]
 [connection signal="timeout" from="WaveTimer" to="WaveTimer" method="_on_WaveTimer_timeout"]
 [connection signal="timeout" from="WaveTimer/TickTimer" to="WaveTimer" method="_on_TickTimer_timeout"]
-[connection signal="timeout" from="FiveSecondsTimer" to="." method="_on_FiveSecondsTimer_timeout"]
 
 [editable path="UI/HUD/LifeContainer/UILifeBar"]
 [editable path="UI/HUD/LifeContainer/UIXPBar"]

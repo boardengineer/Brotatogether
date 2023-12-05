@@ -85,7 +85,6 @@ onready var _ui_upgrades_to_process = $UI / HUD / ThingsToProcessContainer / Upg
 onready var _ui_consumables_to_process = $UI / HUD / ThingsToProcessContainer / Consumables
 onready var _ui_dim_screen = $UI / DimScreen
 onready var _tile_map = $TileMap
-onready var _tile_map_limits = $TileMapLimits
 onready var _background = $CanvasLayer / Background
 onready var _harvesting_timer = $HarvestingTimer
 onready var _challenge_completed_ui = $UI / ChallengeCompletedUI
@@ -129,7 +128,6 @@ func _ready()->void :
 	current_zone.height = max(MIN_MAP_SIZE, (current_zone.height * map_size_coef)) as int
 	
 	_tile_map.init(current_zone)
-	_tile_map_limits.init(current_zone)
 	
 	ZoneService.current_zone_max_position = Vector2(current_zone.width * Utils.TILE_SIZE, current_zone.height * Utils.TILE_SIZE)
 	
@@ -413,18 +411,6 @@ func is_last_wave()->bool:
 func manage_harvesting()->void :
 	pass
 
-func _on_FiveSecondsTimer_timeout()->void :
-	if not _cleaning_up:
-		if RunData.effects["temp_stats_stacking"].size() > 0:
-			for temp_stat_stacked in RunData.effects["temp_stats_stacking"]:
-				TempStats.add_stat(temp_stat_stacked[0], temp_stat_stacked[1])
-		
-		if RunData.effects["temp_pct_stats_stacking"].size() > 0:
-			for pct_temp_stat_stacked in RunData.effects["temp_pct_stats_stacking"]:
-				var stat = (RunData.get_stat(pct_temp_stat_stacked[0]) * (pct_temp_stat_stacked[1] / 100.0)) as int
-				TempStats.add_stat(pct_temp_stat_stacked[0], stat)
-
-
 func _on_UIBonusGold_mouse_entered()->void :
 	if _cleaning_up:
 		_info_popup.display(_ui_bonus_gold, Text.text("INFO_BONUS_GOLD", [str(RunData.bonus_gold)]))
@@ -469,7 +455,6 @@ func _on_EndWaveTimer_timeout() -> void:
 	game_controller.send_complete_player_request()
 	yield(game_controller, "complete_player_update")
 	
-	ProgressData.update_mouse_cursor(true)
 	if _is_run_won:
 		apply_run_won()
 		RunData.run_won = true
