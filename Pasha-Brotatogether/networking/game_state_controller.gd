@@ -197,6 +197,8 @@ func update_enemy_projectiles(buffer:StreamPeerBuffer) -> void:
 				continue 
 			if not projectile:
 				continue
+			if not is_instance_valid(projectile):
+				continue
 				
 			# This sometimes throws a C++ error
 			$"/root/ClientMain/Projectiles".remove_child(projectile)
@@ -291,6 +293,8 @@ func update_items(buffer:StreamPeerBuffer) -> void:
 			if not $"/root/ClientMain/Items":
 				continue 
 			if not item:
+				continue
+			if not is_instance_valid(item):
 				continue
 				
 			# This sometimes throws a C++ error
@@ -429,6 +433,8 @@ func do_batched_damages(buffer:StreamPeerBuffer) -> void:
 		do_enemy_damage(enemy_id, is_dodge)
 
 func do_enemy_damage(enemy_id:int, is_dodge:bool) -> void:
+	if not is_inside_tree():
+		return
 	if client_enemies.has(enemy_id):
 		var enemy = client_enemies[enemy_id]
 		if is_instance_valid(enemy):
@@ -456,6 +462,8 @@ func do_batched_flashes(buffer:StreamPeerBuffer) -> void:
 		flash_enemy(enemy_id)
 
 func flash_enemy(enemy_id):
+	if not is_inside_tree():
+		return
 	if client_enemies.has(enemy_id):
 		if is_instance_valid(client_enemies[enemy_id]):
 			client_enemies[enemy_id].flash()
@@ -774,7 +782,7 @@ func update_structures(buffer:StreamPeerBuffer) -> void:
 		if not server_structures.has(structure_id):
 			var structure = client_structures[structure_id]
 			client_structures.erase(structure_id)
-			if is_instance_valid(structure):
+			if is_instance_valid(structure) and $"/root/ClientMain/Entities".is_a_parent_of(structure):
 				$"/root/ClientMain/Entities".remove_child(structure)
 
 func spawn_stucture(position:Vector2, filename:String):
@@ -1109,7 +1117,7 @@ func update_neutrals(buffer:StreamPeerBuffer) -> void:
 		if not server_neutrals.has(neutral_id):
 			var neutral = client_neutrals[neutral_id]
 			client_neutrals.erase(neutral_id)
-			if is_instance_valid(neutral):
+			if is_instance_valid(neutral) and $"/root/ClientMain/Entities".is_a_parent_of(neutral):
 				$"/root/ClientMain/Entities".remove_child(neutral)
 
 func spawn_neutral(position:Vector2):

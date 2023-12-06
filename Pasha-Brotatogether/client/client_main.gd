@@ -316,6 +316,10 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 	_floating_text_manager.clean_up_room()
 	
 	for entity in _entities_container.get_children():
+		if not is_instance_valid(entity):
+			continue
+		if entity.get("_boost_zone") and is_instance_valid(entity._boost_zone):
+			continue
 		if not entity is EntityBirth and not entity is Player:
 			entity.die()
 		

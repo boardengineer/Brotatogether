@@ -30,6 +30,9 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 	return result
 
 func die(knockback_vector:Vector2 = Vector2.ZERO, p_cleaning_up:bool = false) -> void:
+	if not is_inside_tree():
+		return
+	
 	if not $"/root":
 		return
 	

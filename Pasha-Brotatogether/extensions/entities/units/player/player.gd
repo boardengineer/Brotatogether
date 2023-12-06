@@ -218,6 +218,8 @@ func update_player_stats_multiplayer()->void :
 		_health_regen_timer.start()
 
 func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
 	var game_controller = $"/root/GameController"
 	
 	if force_animation or (game_controller.tracked_players.has(game_controller.self_peer_id) and game_controller.tracked_players[game_controller.self_peer_id].has("player") and game_controller.tracked_players[game_controller.self_peer_id]["player"] == self) or not game_controller.run_updates:
