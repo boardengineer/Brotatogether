@@ -37,7 +37,7 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 	elif _invincibility_timer.is_stopped() or bypass_invincibility:
 		var dmg_taken = multiplayer_utils.take_damage(self, value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
 		
-		if dmg_taken[2]:
+		if dmg_taken.size() >= 3 and dmg_taken[2]:
 			if run_data.effects["dmg_on_dodge"].size() > 0 and hitbox != null and hitbox.from != null and is_instance_valid(hitbox.from):
 				var total_dmg_to_deal = 0
 				for dmg_on_dodge in run_data.effects["dmg_on_dodge"]:
@@ -85,6 +85,8 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 	return [0, 0]
 
 func remove_weapon_behaviors():
+	_lose_health_timer.disconnect("timeout", self, "_on_LoseHealthTimer_timeout")
+	
 	for weapon in current_weapons:
 		var shooting_behavior = weapon.get_node("ShootingBehavior")
 		weapon.remove_child(shooting_behavior)
