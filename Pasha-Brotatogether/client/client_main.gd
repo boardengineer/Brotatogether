@@ -173,6 +173,9 @@ func _ready()->void :
 	var _error_discard_button = _item_box_ui.connect("item_discard_button_pressed", self, "on_item_box_discard_button_pressed")
 	
 	game_controller.send_client_started()
+	game_controller.send_client_started()
+	for player_id in game_controller.tracked_players:
+		game_controller.tracked_players[player_id].erase("player")
 
 func _input(event:InputEvent)->void :
 	var is_right_stick_motion = event is InputEventJoypadMotion and (event.axis == JOY_AXIS_2 or event.axis == JOY_AXIS_3) and abs(event.axis_value) > 0.5

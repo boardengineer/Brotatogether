@@ -65,7 +65,7 @@ func _process(_delta):
 			if current_scene_name == "Shop":
 				# First frame where we left the shop
 				var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
-				send_start_game(wave_data)
+#				send_start_game(wave_data)
 	if scene_name != current_scene_name:
 		if scene_name == "Shop":
 			enter_async_shop()
