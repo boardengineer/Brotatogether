@@ -55,6 +55,7 @@ func get_game_state() -> PoolByteArray:
 		
 	if "/root/Main":
 		var main = $"/root/Main"
+		
 		if main:
 			get_players_state(buffer)
 			get_enemies_state(buffer)
@@ -70,11 +71,15 @@ func get_game_state() -> PoolByteArray:
 			get_enemy_flashes(buffer)
 			get_batched_floating_text(buffer)
 			get_hit_effects(buffer)
+			
+			buffer.put_float(main._wave_timer.time_left)
+			buffer.put_32(RunData.bonus_gold)
 	
 	return buffer.data_array
 
 func update_game_state(data: PoolByteArray) -> void:
-	if get_tree().get_current_scene().get_name() != "ClientMain":
+	var main = get_tree().get_current_scene()
+	if main.get_name() != "ClientMain":
 		return
 		
 	var buffer = StreamPeerBuffer.new()
@@ -95,6 +100,16 @@ func update_game_state(data: PoolByteArray) -> void:
 	do_batched_flashes(buffer)
 	do_batched_floating_text(buffer)
 	do_batched_hit_effects(buffer)
+	
+	var time = buffer.get_float()
+	get_tree().get_current_scene()._wave_timer.time_left
+	
+	var bonus_gold = buffer.get_32()
+	if bonus_gold > 0:
+		main._ui_bonus_gold.show()
+		main._ui_bonus_gold.update_value(bonus_gold)
+	else:
+		main._ui_bonus_gold.hide()
 
 func get_enemy_projectiles(buffer: StreamPeerBuffer) -> void:
 	var projectiles_container = $"/root/Main/Projectiles"

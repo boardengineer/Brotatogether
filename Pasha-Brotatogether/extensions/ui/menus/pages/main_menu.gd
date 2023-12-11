@@ -12,7 +12,7 @@ func _ready():
 	multiplayer_button.text = "Multiplayer"
 	multiplayer_button.name = "MultiplayerButton"
 
-	multiplayer_button.connect("pressed", self, "_on_MultiplayerButton_pressed")
+	var _unused = multiplayer_button.connect("pressed", self, "_on_MultiplayerButton_pressed")
 	multiplayer_button.disconnect("pressed", self, "_on_StartButton_pressed")
 
 	buttons_node.add_child_below_node(buttons_node.get_children()[0], multiplayer_button)

@@ -205,7 +205,6 @@ func _on_StartButton2_pressed():
 		
 	game_controller.is_source_of_truth = true
 	var game_mode = game_controller.GameMode.COOP
-	
 	var game_info = {"current_wave":1, "mode":game_mode}
 	
 	game_info["lobby_info"] = get_lobby_info_dictionary()

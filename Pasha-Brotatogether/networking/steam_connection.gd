@@ -53,6 +53,8 @@ func read_p2p_packet() -> bool:
 			parent.receive_item_box_take(data.item_id, data.player_id)
 		elif type == "client_entered_shop":
 			parent.receive_player_enter_shop(data.player_id)
+		elif type == "client_started":
+			parent.receive_client_start(data.player_id)
 		elif type == "add_consumable_to_process":
 			parent.receive_add_consumable_to_process(data.player_id, data.consumable_data_path)
 		elif type == "end_wave":
@@ -385,5 +387,11 @@ func send_weapon_discard(weapon_id) -> void:
 func send_client_entered_shop() -> void:
 	var send_data = {}
 	send_data["type"] = "client_entered_shop"
+	send_data["player_id"] = parent.self_peer_id
+	send_data_to_all(send_data)
+
+func send_client_started() -> void:
+	var send_data = {}
+	send_data["type"] = "client_started"
 	send_data["player_id"] = parent.self_peer_id
 	send_data_to_all(send_data)

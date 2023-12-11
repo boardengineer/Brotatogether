@@ -16,7 +16,6 @@ func init(tracked_players:Dictionary) -> void:
 	update_health_bars(tracked_players)
 	
 func update_health_bars(tracked_players:Dictionary) -> void:
-	var game_controller = $"/root/GameController"
 	for tracked_player_id in tracked_players:
 		var player = tracked_players[tracked_player_id]
 		var health_bar = health_bar_map[tracked_player_id]

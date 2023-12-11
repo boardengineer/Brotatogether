@@ -36,7 +36,6 @@ func _ready():
 		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 		var multiplayer_utils = $"/root/MultiplayerUtils"
 		
-		send_updates = true
 		var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 		var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
 		RunData.emit_signal("gold_changed", run_data.gold)
@@ -49,12 +48,16 @@ func _ready():
 		run_data_node.reset_cache()
 		multiplayer_utils.reset_temp_stats()
 		reload_stats()
+		
+		_wave_timer.set_paused(true)
+		game_controller.init_client_starts_wait()
 	
 	game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
 	health_tracker = HealthTracker.instance()
 	health_tracker.set_name("HealthTracker")
 	$UI.add_child(health_tracker)
 	health_tracker.init(game_controller.tracked_players)
+	
 	
 func _on_EntitySpawner_player_spawned(player:Player)->void :
 	if not $"/root".has_node("GameController"):

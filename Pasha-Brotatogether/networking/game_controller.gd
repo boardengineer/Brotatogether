@@ -47,6 +47,8 @@ var extra_enemies_next_wave = {}
 var effects_next_wave = {}
 var game_state_controller 
 
+var waiting_for_client_starts = false
+
 signal complete_player_update
 
 func _init():
@@ -69,6 +71,37 @@ func _process(_delta):
 			enter_async_shop()
 			
 	current_scene_name = scene_name
+
+func init_client_starts_wait() -> void:
+	waiting_for_client_starts = true
+	for player in tracked_players:
+		if not player != self_peer_id:
+			tracked_players[player].in_game = false
+	receive_client_start(self_peer_id)
+
+func send_client_started() -> void:
+	connection.send_client_started()
+
+func receive_client_start(player_id) -> void:
+	if not is_host:
+		return
+	
+	if not waiting_for_client_starts:
+		return
+	
+	tracked_players[player_id].in_game = true
+	
+	var done_waiting = true
+	for player in tracked_players:
+		if not player != self_peer_id:
+			if not tracked_players[player].in_game:
+				done_waiting = false
+				break
+	
+	if done_waiting:
+		waiting_for_client_starts = false
+		$"/root/Main"._wave_timer.set_paused(false)
+		$"/root/Main".send_updates = true
 
 func enter_async_shop() -> void:
 	if $"/root/Shop/Content/MarginContainer/HBoxContainer/VBoxContainer2/StatsContainer":
