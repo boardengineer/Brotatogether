@@ -332,7 +332,7 @@ func on_alien_eyes_timeout() -> void:
 
 func _on_LoseHealthTimer_timeout()->void :
 	if not $"/root".has_node("GameController") or not player_network_id:
-		.on_alien_eyes_timeout()
+		._on_LoseHealthTimer_timeout()
 		return
 		
 	var game_controller = $"/root/GameController"
