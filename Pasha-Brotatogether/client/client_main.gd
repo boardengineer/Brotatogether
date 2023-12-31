@@ -85,6 +85,7 @@ onready var _ui_upgrades_to_process = $UI / HUD / ThingsToProcessContainer / Upg
 onready var _ui_consumables_to_process = $UI / HUD / ThingsToProcessContainer / Consumables
 onready var _ui_dim_screen = $UI / DimScreen
 onready var _tile_map = $TileMap
+onready var _tile_map_limits = $TileMapLimits
 onready var _background = $CanvasLayer / Background
 onready var _harvesting_timer = $HarvestingTimer
 onready var _challenge_completed_ui = $UI / ChallengeCompletedUI
@@ -128,6 +129,7 @@ func _ready()->void :
 	current_zone.height = max(MIN_MAP_SIZE, (current_zone.height * map_size_coef)) as int
 	
 	_tile_map.init(current_zone)
+	_tile_map_limits.init(current_zone)
 	
 	ZoneService.current_zone_max_position = Vector2(current_zone.width * Utils.TILE_SIZE, current_zone.height * Utils.TILE_SIZE)
 	

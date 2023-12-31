@@ -1,4 +1,4 @@
-[gd_scene load_steps=84 format=2]
+[gd_scene load_steps=85 format=2]
 
 [ext_resource path="res://particles/heal_particles.tscn" type="PackedScene" id=1]
 [ext_resource path="res://particles/directional_hit_particles.tscn" type="PackedScene" id=2]
@@ -37,6 +37,7 @@
 [ext_resource path="res://resources/sounds/harvest/cartoon_boing_jump_09.wav" type="AudioStream" id=35]
 [ext_resource path="res://resources/sounds/harvest/cartoon_boing_jump_06.wav" type="AudioStream" id=36]
 [ext_resource path="res://ui/hud/ui_consumable_to_process_list.gd" type="Script" id=37]
+[ext_resource path="res://global/my_tile_map_limits.gd" type="Script" id=38]
 [ext_resource path="res://zones/backgrounds/background_gradient.tres" type="Gradient" id=39]
 [ext_resource path="res://resources/tiles/ground_tiles.tres" type="TileSet" id=40]
 [ext_resource path="res://global/my_camera.gd" type="Script" id=41]
@@ -189,6 +190,12 @@ __meta__ = {
 "_edit_lock_": true,
 "_edit_use_anchors_": false
 }
+
+[node name="TileMapLimits" type="StaticBody2D" parent="."]
+position = Vector2( -64, -64 )
+collision_layer = 128
+collision_mask = 0
+script = ExtResource( 38 )
 
 [node name="Items" type="Node2D" parent="."]
 
