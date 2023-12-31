@@ -2,6 +2,8 @@ extends "res://entities/units/player/player.gd"
 
 var player_network_id
 
+var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
+
 func add_weapon(weapon_data:WeaponData, pos:int)->void :
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.add_weapon(weapon_data, pos)
@@ -94,7 +96,16 @@ func remove_weapon_behaviors():
 		client_shooting_behavior.set_name("ShootingBehavior")
 		weapon.add_child(client_shooting_behavior)
 		weapon._shooting_behavior = client_shooting_behavior
-		
+
+func remove_movement_behavior():
+	var movement_behavior_node = get_node("MovementBehavior")
+	remove_child(movement_behavior_node)
+	
+	var client_behavior = ClientMovementBehavior.new()
+	_movement_behavior = client_behavior
+	client_behavior.set_name("MovementBehavior")
+	add_child(client_behavior)
+
 func update_animation(movement:Vector2) -> void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.update_animation(movement)

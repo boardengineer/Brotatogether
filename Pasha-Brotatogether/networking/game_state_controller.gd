@@ -1033,6 +1033,9 @@ func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array, a
 
 	if player_id == parent.self_peer_id:
 		spawned_player.get_remote_transform().remote_path = $"/root/ClientMain/Camera".get_path()
+	else:
+		spawned_player.call_deferred("remove_movement_behavior")
+	
 	spawned_player.call_deferred("remove_weapon_behaviors")
 
 	for filename in appeareances_filenames:

@@ -25,7 +25,6 @@ func read_p2p_packet() -> bool:
 	
 	var sec = Time.get_time_dict_from_system()["second"]
 	if sec != prev_sec:
-		print_debug(rpcs_by_type)
 		prev_sec = sec
 	
 	if packet_size > 0:
