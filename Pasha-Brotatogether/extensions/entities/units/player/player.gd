@@ -103,6 +103,7 @@ func remove_movement_behavior():
 	
 	var client_behavior = ClientMovementBehavior.new()
 	_movement_behavior = client_behavior
+	_current_movement_behavior = client_behavior
 	client_behavior.set_name("MovementBehavior")
 	add_child(client_behavior)
 
