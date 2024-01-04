@@ -72,6 +72,7 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 		
 		if dmg_taken[1] > 0:
 			if run_data.effects["explode_on_hit"].size() > 0:
+				print_debug("explode on hit?")
 				var effect = run_data.effects["explode_on_hit"][0]
 				var stats = _explode_on_hit_stats
 				var _inst = WeaponService.explode(effect, global_position, stats.damage, stats.accuracy, stats.crit_chance, stats.crit_damage, stats.burning_data)

@@ -303,8 +303,14 @@ func get_scaling_stats_value_multiplayer(player_id:int, p_scaling_stats:Array)->
 	return value
 
 
-func explode(effect:Effect, pos:Vector2, damage:int, accuracy:float, crit_chance:float, crit_dmg:float, burning_data:BurningData, is_healing:bool = false, ignored_objects:Array = [], damage_tracking_key:String = "")->Node:
+func explode_multiplayer(player_id, effect:Effect, pos:Vector2, damage:int, accuracy:float, crit_chance:float, crit_dmg:float, burning_data:BurningData, is_healing:bool = false, ignored_objects:Array = [], damage_tracking_key:String = "")->Node:
 	var main = get_tree().current_scene
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	var game_controller = $"/root/GameController"
+	
+	var explosion_scale = max(0.1, effect.scale + (effect.scale * (multiplayer_utils.get_stat_multiplayer(player_id, "explosion_size") / 100.0)))
+	game_controller.send_explosion(pos, explosion_scale)
+	
 	var instance = effect.explosion_scene.instance()
 	instance.set_deferred("global_position", pos)
 	main.call_deferred("add_child", instance)
@@ -312,5 +318,5 @@ func explode(effect:Effect, pos:Vector2, damage:int, accuracy:float, crit_chance
 	instance.call_deferred("set_damage_tracking_key", damage_tracking_key)
 	instance.call_deferred("set_damage", damage, accuracy, crit_chance, crit_dmg, burning_data, is_healing, ignored_objects)
 	instance.call_deferred("set_smoke_amount", round(effect.scale * effect.base_smoke_amount))
-	instance.call_deferred("set_area", effect.scale)
+	instance.call_deferred("set_area_multiplayer", player_id, effect.scale)
 	return instance

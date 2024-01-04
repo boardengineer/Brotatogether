@@ -1,6 +1,5 @@
 extends "res://entities/units/unit/unit.gd"
 
-
 func init(zone_min_pos:Vector2, zone_max_pos:Vector2, p_player_ref:Node2D = null, entity_spawner_ref:EntitySpawner = null) -> void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.init(zone_min_pos, zone_max_pos, p_player_ref, entity_spawner_ref)
@@ -23,3 +22,54 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 	
 	var multiplayer_utils = $"/root/MultiplayerUtils"
 	return multiplayer_utils.take_damage(self, value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
+
+func _on_Hurtbox_area_entered(hitbox:Area2D)->void :
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		._on_Hurtbox_area_entered(hitbox)
+		return
+
+	if not hitbox.active or hitbox.ignored_objects.has(self):
+		return 
+		
+	var run_data_node = $"/root/MultiplayerRunData"
+	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
+		
+	var dmg = hitbox.damage
+	var dmg_taken = [0, 0]
+
+	if hitbox.deals_damage:
+		var is_exploding = false
+
+		for effect in hitbox.effects:
+			if effect is ExplodingEffect:
+				if Utils.get_chance_success(effect.chance):
+					var owner_player_id = run_data_node.hitbox_to_owner_map[hitbox]
+					var explosion = multiplayer_weapon_service.explode_multiplayer(owner_player_id, effect, global_position, hitbox.damage, hitbox.accuracy, hitbox.crit_chance, hitbox.crit_damage, hitbox.burning_data, hitbox.is_healing)
+
+					if hitbox.from != null and is_instance_valid(hitbox.from):
+						explosion.connect("hit_something", hitbox.from, "on_weapon_hit_something")
+
+					is_exploding = true
+
+		
+		if not is_exploding:
+			dmg_taken = take_damage(dmg, hitbox)
+
+			if hitbox.burning_data != null and Utils.get_chance_success(hitbox.burning_data.chance) and not hitbox.is_healing:
+				apply_burning(hitbox.burning_data)
+
+		if hitbox.projectiles_on_hit.size() > 0:
+			for i in hitbox.projectiles_on_hit[0]:
+				var projectile = WeaponService.manage_special_spawn_projectile(
+					self, 
+					hitbox.projectiles_on_hit[1], 
+					hitbox.projectiles_on_hit[2], 
+					_entity_spawner_ref
+				)
+				projectile.connect("hit_something", hitbox.from, "on_weapon_hit_something")
+
+				projectile.call_deferred("set_ignored_objects", [self])
+
+		on_hurt()
+
+	hitbox.hit_something(self, dmg_taken[1])

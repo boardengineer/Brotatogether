@@ -39,6 +39,7 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/weapon_service.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_projectile.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_explosion.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/projectile.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/bullet_enemy/enemy_projectile.gd")
 	

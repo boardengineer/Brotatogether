@@ -678,6 +678,7 @@ func handle_explosion_multiplayer(player_id:int, key:String, pos:Vector2) -> voi
 				var explosion_stats = multiplayer_weapon_service.init_base_stats_multiplayer(player_id, explosion.stats, "", [], [exploding_effect])
 				dmg += explosion_stats.damage
 
+			print_debug("handling explosion multiplayer in rundata")
 			var _inst = WeaponService.explode(first, pos, dmg, first.stats.accuracy, first.stats.crit_chance, first.stats.crit_damage, first.stats.burning_data, false, [], first.tracking_text)
 
 func reset_cache()->void :

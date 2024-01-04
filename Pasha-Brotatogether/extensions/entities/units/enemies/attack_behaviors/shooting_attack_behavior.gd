@@ -56,4 +56,5 @@ func shoot() -> void:
 				rand_range(pos.y - projectile_spawn_spread / 2, pos.y + projectile_spawn_spread / 2)
 			)
 		
+		print_debug("shooting from mp mod")
 		var _projectile = spawn_projectile(rotation, pos)
