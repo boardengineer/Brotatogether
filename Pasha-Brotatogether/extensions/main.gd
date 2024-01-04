@@ -36,7 +36,7 @@ func _ready():
 		var multiplayer_utils = $"/root/MultiplayerUtils"
 		
 		for player_id in game_controller.tracked_players:
-			var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+			var run_data = game_controller.tracked_players[player_id].run_data
 			var pct_val = run_data.effects["gain_pct_gold_start_wave"]
 			var apply_pct_gold_wave = (pct_val > 0 and RunData.current_wave <= RunData.nb_of_waves) or pct_val < 0
 			
@@ -145,6 +145,7 @@ func spawn_additional_players() -> void:
 	# The first player was created on at startup, create the rest manually
 	game_controller.tracked_players[game_controller.self_peer_id]["player"] = _player
 	_player.player_network_id = game_controller.self_peer_id
+	_player._item_attract_area.get_overlapping_areas()
 	_player.apply_items_effects()
 	
 	# re-init the weapons after we set the network id
@@ -160,6 +161,7 @@ func spawn_additional_players() -> void:
 			var spawn_pos = Vector2(spawn_x_pos, _entity_spawner._zone_max_pos.y / 2)
 			var spawned_player = _entity_spawner.spawn_entity(player_scene, spawn_pos, true)
 			spawned_player.player_network_id = player_id
+			spawned_player._item_attract_area.call_deferred("get_overlapping_areas")
 			spawned_player.apply_items_effects()
 			
 			# re-init the weapons after we set the network id

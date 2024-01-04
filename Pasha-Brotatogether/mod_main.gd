@@ -69,6 +69,7 @@ func _init():
 	
 	
 func _ready():
+	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/item_attract_area.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/player.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/attack_behaviors/shooting_attack_behavior.gd")

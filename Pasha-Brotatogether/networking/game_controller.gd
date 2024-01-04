@@ -256,7 +256,7 @@ func start_game(game_info: Dictionary):
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
 #
 #				for _i in 30:
-#					run_data_node.add_item(player_id, load("res://items/all/turret/turret_data.tres"))
+#					run_data_node.add_item(player_id, load("res://items/all/alien_tongue/alien_tongue_data.tres"))
 #				for _i in 10:
 #					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
 #				for _i in 300:
