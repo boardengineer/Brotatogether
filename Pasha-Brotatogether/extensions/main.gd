@@ -33,12 +33,26 @@ func _ready():
 	game_controller = $"/root/GameController"
 	if $"/root/GameController".is_coop():
 		var run_data_node = $"/root/MultiplayerRunData"
-		var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
 		var multiplayer_utils = $"/root/MultiplayerUtils"
+		
+		for player_id in game_controller.tracked_players:
+			var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+			var pct_val = run_data.effects["gain_pct_gold_start_wave"]
+			var apply_pct_gold_wave = (pct_val > 0 and RunData.current_wave <= RunData.nb_of_waves) or pct_val < 0
+			
+			if pct_val < 0 and RunData.current_wave > RunData.nb_of_waves:
+				pct_val = - 100.0
+				
+			if apply_pct_gold_wave:
+				var val = run_data.gold * (pct_val / 100.0)
+				add_gold(player_id, val)
+				
+			if player_id == game_controller.self_peer_id:
+				RunData.emit_signal("gold_changed", run_data.gold)
 		
 		var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 		var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
-		RunData.emit_signal("gold_changed", run_data.gold)
+		
 		
 		if game_controller.is_host:
 			spawn_additional_players()

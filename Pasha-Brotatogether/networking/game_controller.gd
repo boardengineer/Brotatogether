@@ -257,10 +257,10 @@ func start_game(game_info: Dictionary):
 #
 #				for _i in 30:
 #					run_data_node.add_item(player_id, load("res://items/all/turret/turret_data.tres"))
-				for _i in 10:
-					run_data_node.add_item(player_id, load("res://items/all/plastic_explosive/plastic_explosive_data.tres"))
-				for _i in 300:
-					run_data_node.add_item(player_id, load("res://items/all/medal/medal_data.tres"))
+#				for _i in 10:
+#					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
+#				for _i in 300:
+#					run_data_node.add_item(player_id, load("res://items/all/medal/medal_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
