@@ -82,27 +82,65 @@ func update_game_state(data: PoolByteArray) -> void:
 	if main.get_name() != "ClientMain":
 		return
 		
+	var before = Time.get_ticks_usec()
+	
 	var buffer = StreamPeerBuffer.new()
 	buffer.data_array = data
 	
-	update_players(buffer)
-	update_enemies(buffer)
-	update_births(buffer)
-	update_items(buffer)
-	update_player_projectiles(buffer)
-	update_consumables(buffer)
-	update_neutrals(buffer)
-	update_structures(buffer)
-	update_enemy_projectiles(buffer)
 	
-	do_batched_deaths(buffer)
-	do_batched_damages(buffer)
-	do_batched_flashes(buffer)
-	do_batched_floating_text(buffer)
-	do_batched_hit_effects(buffer)
+	var time1 = Time.get_ticks_usec()
+	update_players(buffer)
+	var time2 = Time.get_ticks_usec()
+	var num_enemies = update_enemies(buffer)
+	var time3 = Time.get_ticks_usec()
+	update_births(buffer)
+	var time4 = Time.get_ticks_usec()
+	update_items(buffer)
+	var time5 = Time.get_ticks_usec()
+	update_player_projectiles(buffer)
+	var time6 = Time.get_ticks_usec()
+	update_consumables(buffer)
+	var time7 = Time.get_ticks_usec()
+	update_neutrals(buffer)
+	var time8 = Time.get_ticks_usec()
+	update_structures(buffer)
+	var time9 = Time.get_ticks_usec()
+	update_enemy_projectiles(buffer)
+	var time10 = Time.get_ticks_usec()
+	
+	var batched_deaths = get_batched_deaths(buffer)
+	var batched_damages = get_batched_damages(buffer)
+	var batched_flashes = get_batched_flashes(buffer)
+	var batched_floating_text = get_batched_text_array(buffer)
+	var batched_hit_effects = get_batch_hit_effects_array(buffer)
+	
+	do_batched_deaths(batched_deaths)
+#	do_batched_damages(batched_damages)
+#	do_batched_flashes(batched_flashes)
+#	do_batched_floating_text(batched_floating_text)
+#	do_batched_hit_effects(batched_hit_effects)
+	
+	var time11 = Time.get_ticks_usec()
 	
 	var time = buffer.get_float()
 	get_tree().get_current_scene()._wave_timer.time_left
+	
+	var after = Time.get_ticks_usec()
+	var total_time = after - before
+	if total_time > 2_000:
+		var player_updates = time2 - time1
+		var enemies_updates = time3 - time2
+		var births_updates = time4 - time3
+		var items_updates = time5 - time4
+		var player_projectiles_updates = time6 - time5
+		var consumables_updates = time7 - time6
+		var neutrals_updates = time8 - time7
+		var structures_updates = time9 - time8
+		var enemy_projectiles_updates = time10 - time9
+		var batched_updates = time11 - time10
+		
+		print_debug(total_time, " ", player_updates, " ", enemies_updates, "(%d) " % num_enemies, births_updates, " ", items_updates, " ", player_projectiles_updates, " ", consumables_updates, " ", neutrals_updates, " ", structures_updates, " ", enemy_projectiles_updates, " ", batched_updates)
+		
 	
 	var bonus_gold = buffer.get_32()
 	if bonus_gold > 0:
@@ -414,11 +452,15 @@ func get_deaths(buffer: StreamPeerBuffer) -> void:
 	
 	parent.batched_deaths = []
 
-func do_batched_deaths(buffer:StreamPeerBuffer) -> void:
+func get_batched_deaths(buffer:StreamPeerBuffer) -> Array:
+	var result = []
 	var num_deaths = buffer.get_u16()
-	
 	for _i in num_deaths:
-		var enemy_id = buffer.get_32()
+		result.push_back(buffer.get_32())
+	return result
+
+func do_batched_deaths(death_ids : Array) -> void:
+	for enemy_id in death_ids:
 		enemy_death(enemy_id)
 
 func enemy_death(enemy_id):
@@ -439,12 +481,19 @@ func get_enemy_damages(buffer: StreamPeerBuffer) -> void:
 	
 	parent.batched_enemy_damage = []
 
-func do_batched_damages(buffer:StreamPeerBuffer) -> void:
+func get_batched_damages(buffer:StreamPeerBuffer) -> Array:
+	var result = []
 	var num_damages = buffer.get_u16()
-	
 	for _i in num_damages:
 		var enemy_id = buffer.get_32()
 		var is_dodge = buffer.get_8() == 1
+		result.push_back([enemy_id, is_dodge])
+	return result
+
+func do_batched_damages(batched_damages: Array) -> void:
+	for damage in batched_damages:
+		var enemy_id = damage[0]
+		var is_dodge = damage[1]
 		do_enemy_damage(enemy_id, is_dodge)
 
 func do_enemy_damage(enemy_id:int, is_dodge:bool) -> void:
@@ -469,11 +518,17 @@ func get_enemy_flashes(buffer: StreamPeerBuffer) -> void:
 	
 	parent.batched_flash_enemy = []
 
-func do_batched_flashes(buffer:StreamPeerBuffer) -> void:
+func get_batched_flashes(buffer:StreamPeerBuffer) -> Array:
+	var result = []
 	var num_flashes = buffer.get_u16()
 	
 	for _i in num_flashes:
 		var enemy_id = buffer.get_32()
+		result.push_back(enemy_id)
+	return result
+
+func do_batched_flashes(batched_flashes: Array) -> void:
+	for enemy_id in batched_flashes:
 		flash_enemy(enemy_id)
 
 func flash_enemy(enemy_id):
@@ -499,7 +554,8 @@ func get_batched_floating_text(buffer: StreamPeerBuffer) -> void:
 	
 	parent.batched_floating_text = []
 
-func do_batched_floating_text(buffer: StreamPeerBuffer) -> void:
+func get_batched_text_array(buffer: StreamPeerBuffer) -> Array:
+	var result = []
 	var num_floating_text = buffer.get_u16()
 	
 	for _i in num_floating_text:
@@ -511,7 +567,12 @@ func do_batched_floating_text(buffer: StreamPeerBuffer) -> void:
 		
 		var color_rgba32 = buffer.get_32()
 		var color = Color(color_rgba32)
-		display_floating_text(value, text_pos, color)
+		result.push_back([value, text_pos, color])
+	return result
+
+func do_batched_floating_text(text_array: Array) -> void:
+	for text in text_array:
+		display_floating_text(text[0], text[1], text[2])
 
 func display_floating_text(value:String, text_pos:Vector2, color:Color = Color.white):
 	if $"/root/ClientMain":
@@ -531,7 +592,8 @@ func get_hit_effects(buffer: StreamPeerBuffer) -> void:
 		buffer.put_float(hit_effect[2])
 	parent.batched_hit_effects = []
 
-func do_batched_hit_effects(buffer: StreamPeerBuffer) -> void:
+func get_batch_hit_effects_array(buffer: StreamPeerBuffer) -> Array:
+	var result = []
 	var num_hit_effects = buffer.get_u16()
 	
 	for _i in num_hit_effects:
@@ -544,7 +606,12 @@ func do_batched_hit_effects(buffer: StreamPeerBuffer) -> void:
 		var scale = buffer.get_float()
 		var pos = Vector2(pos_x, pos_y)
 		var dir = Vector2(dir_x, dir_y)
-		display_hit_effect(pos, dir, scale)
+		result.push_back([pos, dir, scale])
+	return result
+
+func do_batched_hit_effects(hit_effects_array: Array) -> void:
+	for hit_effect in hit_effects_array:
+		display_hit_effect(hit_effect[0], hit_effect[1], hit_effect[2])
 
 func display_hit_effect(position, direction, scale):
 	if $"/root/ClientMain/EffectsManager":
@@ -610,7 +677,7 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> void:
 				buffer.put_32(enemy.current_stats.health)
 				buffer.put_32(enemy.max_stats.health)
 
-func update_enemies(buffer:StreamPeerBuffer) -> void:
+func update_enemies(buffer:StreamPeerBuffer) -> int:
 	var server_enemies = {}
 	
 	var num_enemies = buffer.get_u16()
@@ -682,6 +749,7 @@ func update_enemies(buffer:StreamPeerBuffer) -> void:
 			stored_enemy.position = position
 			stored_enemy.on_health_updated(current_hp, max_hp)
 			stored_enemy.call_deferred("update_animation", movement)
+	return num_enemies
 
 
 func spawn_enemy(position:Vector2, filename:String, resource_path:String):
