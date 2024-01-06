@@ -98,20 +98,13 @@ func update_game_state(data: PoolByteArray) -> void:
 	var main = get_tree().get_current_scene()
 	if main.get_name() != "ClientMain":
 		return
-		
-	var before = Time.get_ticks_usec()
 	
 	var buffer = StreamPeerBuffer.new()
 	buffer.data_array = data
 	
-	
-	var time1 = Time.get_ticks_usec()
 	update_players(buffer)
-	var time2 = Time.get_ticks_usec()
 	
-	var enemies_arrays = get_enemies_arrays(buffer) 
-	
-	var enemy_parse_time = Time.get_ticks_usec()
+	var enemies_arrays = get_enemies_arrays(buffer)
 	
 	call_deferred("update_enemies", enemies_arrays)
 	
@@ -120,21 +113,13 @@ func update_game_state(data: PoolByteArray) -> void:
 		if enemy[1] != "":
 			new_enemies += 1
 	
-	var time3 = Time.get_ticks_usec()
 	update_births(buffer)
-	var time4 = Time.get_ticks_usec()
 	update_items(buffer)
-	var time5 = Time.get_ticks_usec()
 	update_player_projectiles(buffer)
-	var time6 = Time.get_ticks_usec()
 	update_consumables(buffer)
-	var time7 = Time.get_ticks_usec()
 	update_neutrals(buffer)
-	var time8 = Time.get_ticks_usec()
 	update_structures(buffer)
-	var time9 = Time.get_ticks_usec()
 	update_enemy_projectiles(buffer)
-	var time10 = Time.get_ticks_usec()
 	
 	var batched_deaths = get_batched_deaths(buffer)
 	var batched_damages = get_batched_damages(buffer)
@@ -148,31 +133,8 @@ func update_game_state(data: PoolByteArray) -> void:
 	call_deferred("do_batched_floating_text", batched_floating_text)
 	call_deferred("do_batched_hit_effects", batched_hit_effects)
 	
-	var time11 = Time.get_ticks_usec()
-	
 	var time = buffer.get_float()
 	get_tree().get_current_scene()._wave_timer.time_left
-	
-	var after = Time.get_ticks_usec()
-	var total_time = after - before
-	if total_time > 2_000:
-		var player_updates = time2 - time1
-		
-		var enemies_updates = time3 - time2
-		var enemies_read = enemy_parse_time - time2
-		var enemies_write =  time3 - enemy_parse_time
-		
-		var births_updates = time4 - time3
-		var items_updates = time5 - time4
-		var player_projectiles_updates = time6 - time5
-		var consumables_updates = time7 - time6
-		var neutrals_updates = time8 - time7
-		var structures_updates = time9 - time8
-		var enemy_projectiles_updates = time10 - time9
-		var batched_updates = time11 - time10
-		
-		print_debug(total_time, " ", player_updates, " ", enemies_updates, "(%d - %d - %d - %d) " % [enemies_read, enemies_write, enemies_arrays[0].size() , new_enemies], births_updates, " ", items_updates, " ", player_projectiles_updates, " ", consumables_updates, " ", neutrals_updates, " ", structures_updates, " ", enemy_projectiles_updates, " ", batched_updates)
-		
 	
 	var bonus_gold = buffer.get_32()
 	if bonus_gold > 0:

@@ -331,7 +331,6 @@ func clean_up_room(is_last_wave:bool = false, is_run_lost:bool = false, is_run_w
 			entity.die()
 		
 		if entity.has_node("MovementBehavior"):
-			print_debug("removing movement from ", entity)
 			var movemenent_node = entity.get_node("MovementBehavior")
 			entity.remove_child(movemenent_node)
 			
