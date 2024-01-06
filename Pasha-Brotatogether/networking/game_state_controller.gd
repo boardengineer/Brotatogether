@@ -32,7 +32,24 @@ var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/
 # TODO sometimes clear these
 var sent_detail_ids = {}
 
-func _process(_delta):
+const refresh_time = 1.0 / 30.0
+var update_timer = refresh_time
+
+func _physics_process(delta):
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		return
+		
+	var game_controller = $"/root/GameController"
+	update_timer -= delta
+	var scene_name = get_tree().get_current_scene().get_name()
+	
+	if update_timer <= 0:
+		update_timer = refresh_time
+		if game_controller.is_host:
+			if scene_name == "Main":
+				if get_tree().get_current_scene().send_updates:
+					game_controller.call_deferred("send_game_state")
+	
 	while read_p2p_packet():
 			pass
 
@@ -91,7 +108,18 @@ func update_game_state(data: PoolByteArray) -> void:
 	var time1 = Time.get_ticks_usec()
 	update_players(buffer)
 	var time2 = Time.get_ticks_usec()
-	var num_enemies = update_enemies(buffer)
+	
+	var enemies_arrays = get_enemies_arrays(buffer) 
+	
+	var enemy_parse_time = Time.get_ticks_usec()
+	
+	call_deferred("update_enemies", enemies_arrays)
+	
+	var new_enemies = 0
+	for enemy in enemies_arrays[0]:
+		if enemy[1] != "":
+			new_enemies += 1
+	
 	var time3 = Time.get_ticks_usec()
 	update_births(buffer)
 	var time4 = Time.get_ticks_usec()
@@ -114,11 +142,11 @@ func update_game_state(data: PoolByteArray) -> void:
 	var batched_floating_text = get_batched_text_array(buffer)
 	var batched_hit_effects = get_batch_hit_effects_array(buffer)
 	
-	do_batched_deaths(batched_deaths)
-#	do_batched_damages(batched_damages)
-#	do_batched_flashes(batched_flashes)
-#	do_batched_floating_text(batched_floating_text)
-#	do_batched_hit_effects(batched_hit_effects)
+	call_deferred("do_batched_deaths", batched_deaths)
+	call_deferred("do_batched_damages", batched_damages)
+	call_deferred("do_batched_flashes", batched_flashes)
+	call_deferred("do_batched_floating_text", batched_floating_text)
+	call_deferred("do_batched_hit_effects", batched_hit_effects)
 	
 	var time11 = Time.get_ticks_usec()
 	
@@ -129,7 +157,11 @@ func update_game_state(data: PoolByteArray) -> void:
 	var total_time = after - before
 	if total_time > 2_000:
 		var player_updates = time2 - time1
+		
 		var enemies_updates = time3 - time2
+		var enemies_read = enemy_parse_time - time2
+		var enemies_write =  time3 - enemy_parse_time
+		
 		var births_updates = time4 - time3
 		var items_updates = time5 - time4
 		var player_projectiles_updates = time6 - time5
@@ -139,7 +171,7 @@ func update_game_state(data: PoolByteArray) -> void:
 		var enemy_projectiles_updates = time10 - time9
 		var batched_updates = time11 - time10
 		
-		print_debug(total_time, " ", player_updates, " ", enemies_updates, "(%d) " % num_enemies, births_updates, " ", items_updates, " ", player_projectiles_updates, " ", consumables_updates, " ", neutrals_updates, " ", structures_updates, " ", enemy_projectiles_updates, " ", batched_updates)
+		print_debug(total_time, " ", player_updates, " ", enemies_updates, "(%d - %d - %d - %d) " % [enemies_read, enemies_write, enemies_arrays[0].size() , new_enemies], births_updates, " ", items_updates, " ", player_projectiles_updates, " ", consumables_updates, " ", neutrals_updates, " ", structures_updates, " ", enemy_projectiles_updates, " ", batched_updates)
 		
 	
 	var bonus_gold = buffer.get_32()
@@ -406,8 +438,10 @@ func update_player_projectiles(buffer:StreamPeerBuffer) -> void:
 		var global_position = Vector2(global_pos_x, global_pos_y)
 		
 		var rotation = buffer.get_float()
-		
 		var filename = buffer.get_string()
+		
+		if filename == "":
+			continue
 		
 		if not client_player_projectiles.has(projectile_id):
 			client_player_projectiles[projectile_id] = spawn_player_projectile(position, global_position, rotation, filename)
@@ -677,82 +711,104 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> void:
 				buffer.put_32(enemy.current_stats.health)
 				buffer.put_32(enemy.max_stats.health)
 
-func update_enemies(buffer:StreamPeerBuffer) -> int:
+func get_enemies_arrays(buffer:StreamPeerBuffer) -> Array:
 	var server_enemies = {}
 	
+	var enemies_array = []
 	var num_enemies = buffer.get_u16()
-	
 	for _enemy_index in num_enemies:
 		var enemy_id = buffer.get_32()
 		var has_filenames = buffer.get_8() == 1
 		var filename = ""
 		var resource_path = ""
-		
 		if has_filenames:
 			resource_path = buffer.get_string()
-			
 			filename = buffer.get_string()
-		
 		var pos_x = buffer.get_float()
 		var pos_y = buffer.get_float()
 		var mov_x = buffer.get_float()
 		var mov_y = buffer.get_float()
-		
-		var position = Vector2(pos_x, pos_y)
-		var movement = Vector2(mov_x, mov_y)
-		
-		if not client_enemies.has(enemy_id):
-			if not has_filenames:
-				continue
-			var enemy = spawn_enemy(position, filename, resource_path)
-			client_enemies[enemy_id] = enemy
-			
-		var stored_enemy = client_enemies[enemy_id]
-		if is_instance_valid(stored_enemy):
-			server_enemies[enemy_id] = true
-			stored_enemy.position = position
-			stored_enemy.call_deferred("update_animation", movement)
-			
-	var num_bosses = buffer.get_u16()
+		enemies_array.push_back([enemy_id, filename, resource_path, pos_x, pos_y, mov_x, mov_y])
 	
+	var bosses_array = []
+	var num_bosses = buffer.get_u16()
 	for _enemy_index in num_bosses:
 		var enemy_id = buffer.get_32()
 		var has_filenames = buffer.get_8() == 1
 		var filename = ""
 		var resource_path = ""
-		
 		if has_filenames:
 			resource_path = buffer.get_string()
-			
 			filename = buffer.get_string()
-		
 		var pos_x = buffer.get_float()
 		var pos_y = buffer.get_float()
 		var mov_x = buffer.get_float()
 		var mov_y = buffer.get_float()
-		
 		var current_hp = buffer.get_32()
 		var max_hp = buffer.get_32()
+		bosses_array.push_back([enemy_id, filename, resource_path, pos_x, pos_y, mov_x, mov_y, current_hp, max_hp])
+	
+	return [enemies_array, bosses_array]
+
+func update_enemies(enemies_arrays: Array) -> void:
+	var server_enemies = {}
+	
+	for enemy in enemies_arrays[0]:
+		var enemy_id = enemy[0]
+		var filename = enemy[1]
+		var resource_path = enemy[2]
+		
+		var pos_x = enemy[3]
+		var pos_y = enemy[4]
+		var mov_x = enemy[5]
+		var mov_y = enemy[6]
 		
 		var position = Vector2(pos_x, pos_y)
 		var movement = Vector2(mov_x, mov_y)
 		
 		if not client_enemies.has(enemy_id):
-			if not has_filenames:
+			if filename == "":
 				continue
-			var enemy = spawn_enemy(position, filename, resource_path)
-			client_enemies[enemy_id] = enemy
+			call_deferred("spawn_enemy", enemy_id, position, filename, resource_path)
+		
+		if client_enemies.has(enemy_id):
+			var stored_enemy = client_enemies[enemy_id]
+			if is_instance_valid(stored_enemy):
+				server_enemies[enemy_id] = true
+				stored_enemy.position = position
+				stored_enemy.call_deferred("update_animation", movement)
+	
+	for boss in enemies_arrays[1]:
+		var enemy_id = boss[0]
+		var filename = boss[1]
+		var resource_path = boss[2]
+		
+		var pos_x = boss[3]
+		var pos_y = boss[4]
+		var mov_x = boss[5]
+		var mov_y = boss[6]
+		
+		var current_hp = boss[7]
+		var max_hp = boss[8]
+		
+		var position = Vector2(pos_x, pos_y)
+		var movement = Vector2(mov_x, mov_y)
+		
+		if not client_enemies.has(enemy_id):
+			if filename == "":
+				continue
+			call_deferred("spawn_enemy", enemy_id, position, filename, resource_path)
 			
-		var stored_enemy = client_enemies[enemy_id]
-		if is_instance_valid(stored_enemy):
-			server_enemies[enemy_id] = true
-			stored_enemy.position = position
-			stored_enemy.on_health_updated(current_hp, max_hp)
-			stored_enemy.call_deferred("update_animation", movement)
-	return num_enemies
+		if client_enemies.has(enemy_id):
+			var stored_enemy = client_enemies[enemy_id]
+			if is_instance_valid(stored_enemy):
+				server_enemies[enemy_id] = true
+				stored_enemy.position = position
+				stored_enemy.on_health_updated(current_hp, max_hp)
+				stored_enemy.call_deferred("update_animation", movement)
 
 
-func spawn_enemy(position:Vector2, filename:String, resource_path:String):
+func spawn_enemy(enemy_id, position:Vector2, filename:String, resource_path:String):
 	var entity = load(filename).instance()
 
 	entity.position = position
@@ -762,7 +818,7 @@ func spawn_enemy(position:Vector2, filename:String, resource_path:String):
 
 	$"/root/ClientMain/Entities".add_child(entity)
 
-	return entity
+	client_enemies[enemy_id] = entity
 
 
 # TODO: DEDUPE
@@ -885,7 +941,7 @@ func get_births_state(buffer: StreamPeerBuffer) -> void:
 	buffer.put_u16(num_births)
 	
 	for birth in main._entity_spawner.births:
-		if is_instance_valid(birth):
+		if is_instance_valid(birth) and birth.is_inside_tree() and birth.get_node("data_node") != null:
 			buffer.put_32(birth.get_network_id())
 			
 			buffer.put_float(birth.global_position.x)
@@ -895,6 +951,16 @@ func get_births_state(buffer: StreamPeerBuffer) -> void:
 			buffer.put_float(birth.color.g)
 			buffer.put_float(birth.color.b)
 			buffer.put_float(birth.color.a)
+		else:
+			buffer.put_32(1)
+			
+			buffer.put_float(0.0)
+			buffer.put_float(0.0)
+			
+			buffer.put_float(0.0)
+			buffer.put_float(0.0)
+			buffer.put_float(0.0)
+			buffer.put_float(0.0)
 
 func update_births(buffer:StreamPeerBuffer) -> void:
 	var server_births = {}

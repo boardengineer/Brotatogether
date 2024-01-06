@@ -247,8 +247,8 @@ func _process(delta):
 		game_controller.update_health_ui()
 		
 		if update_timer <= 0:
-			game_controller.send_game_state()
-			update_timer =refresh_time
+#			game_controller.send_game_state()
+			update_timer = refresh_time
 
 func send_player_position():
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
