@@ -4,6 +4,7 @@ extends "res://ui/menus/shop/synergy_panel.gd"
 func set_data(set:SetData)->void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		.set_data(set)
+		return
 		
 	var game_controller = $"/root/GameController"
 	var nb = min(set.set_bonuses.size() + 1, game_controller.tracked_players[game_controller.self_peer_id].run_data.active_sets[set.my_id]) as int if RunData.active_sets.has(set.my_id) else 0
