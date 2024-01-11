@@ -59,6 +59,7 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_item.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_items_container.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/stat_container.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/synergy_panel.gd")
 		
 	ModLoaderMod.install_script_extension(ext_dir + "zones/wave_manager.gd")
 	
