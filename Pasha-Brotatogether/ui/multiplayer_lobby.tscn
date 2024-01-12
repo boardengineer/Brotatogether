@@ -153,7 +153,7 @@ margin_top = 90.0
 margin_right = 600.0
 margin_bottom = 155.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "Start Co-op Game [Alpha]"
+text = "Start Co-op Game"
 
 [connection signal="pressed" from="GameSettings/CharacterBox/CharacterButton" to="." method="_on_CharacterButton_pressed"]
 [connection signal="pressed" from="GameSettings/WeaponBox/WeaponButton" to="." method="_on_WeaponButton_pressed"]
