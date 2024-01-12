@@ -140,10 +140,11 @@ func apply_items_effects() -> void:
 	for i in run_data.weapons.size():
 		add_weapon(run_data.weapons[i], i)
 	
-	RunData.sort_appearances()
+	var appearances_displayed = run_data.appearances_displayed
+	appearances_displayed.sort_custom(Sorter, "sort_depth_ascending")
 	var appearances_behind = []
 		
-	for appearance in RunData.appearances_displayed:
+	for appearance in appearances_displayed:
 		var item_sprite = Sprite.new()
 		item_sprite.texture = appearance.sprite
 		animation_node.add_child(item_sprite)
