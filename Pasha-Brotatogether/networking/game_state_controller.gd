@@ -980,10 +980,10 @@ func get_players_state(buffer: StreamPeerBuffer) -> void:
 		buffer.put_u16(run_data.current_xp)
 #		print_debug("sending gold for player ", player_id, " ", run_data.gold)
 		
-		var num_appearances = RunData.appearances_displayed.size()
+		var num_appearances = run_data.appearances_displayed.size()
 		buffer.put_u16(num_appearances)
 		
-		for appearance in RunData.appearances_displayed:
+		for appearance in run_data.appearances_displayed:
 			buffer.put_string(appearance.resource_path) 
 
 		var num_weapons = tracked_player.current_weapons.size()
