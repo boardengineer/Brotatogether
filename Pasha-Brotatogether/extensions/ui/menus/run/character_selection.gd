@@ -2,21 +2,27 @@ extends CharacterSelection
 
 
 func on_element_pressed(element:InventoryElement)->void :
+	print_debug("element pressed ", character_added, " ", element.is_special)
 	if character_added:
 		return 
 	
+	var item
 	if element.is_random:
 		character_added = true
-		RunData.add_character(Utils.get_rand_element(available_elements))
+		item = Utils.get_rand_element(available_elements)
+		RunData.add_character(item)
 	elif element.is_special:
 		return 
 	else :
 		character_added = true
+		item = element.item
 		RunData.add_character(element.item)
 		
 		
 	if $"/root/GameController":
-		if $"/root/GameController".back_to_lobby:
+		var game_controller = $"/root/GameController"
+		if game_controller.back_to_lobby:
+			game_controller.on_character_selected(item.my_id)
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 			return
 	

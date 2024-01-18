@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=2]
+[gd_scene load_steps=12 format=2]
 
 [ext_resource path="res://resources/fonts/raw/NotoSansKR-Medium.otf" type="DynamicFontData" id=1]
 [ext_resource path="res://resources/fonts/raw/Anybody-Medium.ttf" type="DynamicFontData" id=2]
@@ -6,157 +6,332 @@
 [ext_resource path="res://resources/fonts/raw/NotoSansTC-Medium.otf" type="DynamicFontData" id=4]
 [ext_resource path="res://resources/fonts/raw/NotoSansSC-Medium.otf" type="DynamicFontData" id=5]
 [ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=6]
-[ext_resource path="res://ui/menus/ingame/item_panel_ui.tscn" type="PackedScene" id=7]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.gd" type="Script" id=8]
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/player_selections.tscn" type="PackedScene" id=9]
+[ext_resource path="res://ui/menus/global/slider_option.tscn" type="PackedScene" id=10]
+[ext_resource path="res://resources/fonts/actual/base/font_big_title.tres" type="DynamicFont" id=11]
 
 [sub_resource type="DynamicFont" id=1]
-size = 40
-outline_size = 1
+size = 50
+outline_size = 3
 outline_color = Color( 0, 0, 0, 1 )
-extra_spacing_top = 3
+extra_spacing_top = 10
 font_data = ExtResource( 2 )
 fallback/0 = ExtResource( 3 )
 fallback/1 = ExtResource( 1 )
 fallback/2 = ExtResource( 5 )
 fallback/3 = ExtResource( 4 )
 
-[node name="MultiplayerLobby" type="Control"]
+[node name="MultiplayerLobby" type="VBoxContainer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 size_flags_vertical = 0
 theme = ExtResource( 6 )
 script = ExtResource( 8 )
 
-[node name="Label" type="Label" parent="."]
-margin_left = -8.0
-margin_top = 54.0
-margin_right = 1865.0
-margin_bottom = 99.0
-custom_fonts/font = SubResource( 1 )
+[node name="Title" type="Label" parent="."]
+margin_right = 1920.0
+margin_bottom = 200.0
+rect_min_size = Vector2( 0, 200 )
+custom_fonts/font = ExtResource( 11 )
 text = "Multiplayer Lobby"
 align = 1
+valign = 1
 
-[node name="PlayerList" type="HBoxContainer" parent="."]
-margin_left = 20.0
-margin_top = 120.0
-margin_right = 1913.0
-margin_bottom = 165.0
-size_flags_horizontal = 2
-custom_constants/separation = 50
-
-[node name="GameSettings" type="HBoxContainer" parent="."]
-margin_left = 20.0
-margin_top = 242.0
-margin_right = 1900.0
-margin_bottom = 969.0
+[node name="LobbyContent" type="HBoxContainer" parent="."]
+margin_top = 204.0
+margin_right = 1920.0
+margin_bottom = 751.0
 alignment = 1
 
-[node name="CharacterBox" type="VBoxContainer" parent="GameSettings"]
-margin_right = 624.0
-margin_bottom = 727.0
-rect_clip_content = true
+[node name="PlayerContainer" type="HBoxContainer" parent="LobbyContent"]
+margin_left = 7.0
+margin_right = 1059.0
+margin_bottom = 389.0
+size_flags_horizontal = 6
+size_flags_vertical = 0
+alignment = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="LobbyContent/PlayerContainer"]
+margin_right = 1052.0
+margin_bottom = 389.0
+
+[node name="PlayerListTitle" type="Label" parent="LobbyContent/PlayerContainer/VBoxContainer"]
+margin_right = 1052.0
+margin_bottom = 62.0
+custom_fonts/font = SubResource( 1 )
+text = "Players"
+align = 1
+
+[node name="Players" type="VBoxContainer" parent="LobbyContent/PlayerContainer/VBoxContainer"]
+unique_name_in_owner = true
+margin_top = 66.0
+margin_right = 1052.0
+margin_bottom = 389.0
 size_flags_horizontal = 3
-custom_constants/separation = 50
 
-[node name="CharacterButton" type="Button" parent="GameSettings/CharacterBox"]
-margin_left = 109.0
-margin_right = 515.0
-margin_bottom = 65.0
-rect_pivot_offset = Vector2( 13, 259 )
-focus_neighbour_bottom = NodePath("../../WeaponBox/WeaponButton")
-size_flags_horizontal = 4
-text = "Change Character"
-
-[node name="CharacterInfo" parent="GameSettings/CharacterBox" instance=ExtResource( 7 )]
-margin_left = 132.0
-margin_top = 115.0
-margin_right = 491.0
-margin_bottom = 365.0
+[node name="SamplePlayer1" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
+margin_right = 1052.0
+margin_bottom = 105.0
 size_flags_vertical = 0
 
-[node name="WeaponBox" type="VBoxContainer" parent="GameSettings"]
-margin_left = 628.0
-margin_right = 1252.0
-margin_bottom = 727.0
-size_flags_horizontal = 3
-custom_constants/separation = 50
+[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="2"]
+text = "Really REALLY Long Username"
 
-[node name="WeaponButton" type="Button" parent="GameSettings/WeaponBox"]
-margin_left = 136.0
-margin_right = 487.0
-margin_bottom = 65.0
-rect_pivot_offset = Vector2( 13, 259 )
-focus_neighbour_top = NodePath(".")
-focus_neighbour_bottom = NodePath("../../DangerBox/DangerButton")
-size_flags_horizontal = 4
-disabled = true
-text = "Change Weapon"
+[node name="CheckButton" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="3"]
+margin_top = 17.0
+margin_right = 1052.0
+margin_bottom = 87.0
 
-[node name="WeaponInfo" parent="GameSettings/WeaponBox" instance=ExtResource( 7 )]
-margin_left = 132.0
-margin_top = 115.0
-margin_right = 491.0
-margin_bottom = 365.0
+[node name="SamplePlayer2" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
+margin_top = 109.0
+margin_right = 1052.0
+margin_bottom = 214.0
+size_flags_vertical = 0
 
-[node name="DangerBox" type="VBoxContainer" parent="GameSettings"]
-margin_left = 1256.0
-margin_right = 1880.0
-margin_bottom = 727.0
-size_flags_horizontal = 3
-custom_constants/separation = 50
+[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="2"]
+text = "Really Long Username"
 
-[node name="DangerButton" type="Button" parent="GameSettings/DangerBox"]
-margin_left = 143.0
-margin_right = 480.0
-margin_bottom = 65.0
-rect_pivot_offset = Vector2( 13, 259 )
-focus_neighbour_top = NodePath("../../WeaponBox/WeaponButton")
-size_flags_horizontal = 4
-disabled = true
-text = "Change Danger"
+[node name="CheckButton" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="3"]
+margin_top = 17.0
+margin_right = 1052.0
+margin_bottom = 87.0
 
-[node name="DangerInfo" parent="GameSettings/DangerBox" instance=ExtResource( 7 )]
-margin_left = 132.0
-margin_top = 115.0
-margin_right = 491.0
-margin_bottom = 365.0
+[node name="SamplePlayer3" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
+margin_top = 218.0
+margin_right = 1052.0
+margin_bottom = 323.0
+size_flags_vertical = 0
 
-[node name="ControlBox" type="VBoxContainer" parent="."]
-margin_left = -3.0
-margin_top = 915.0
-margin_right = 1912.0
-margin_bottom = 1070.0
-size_flags_horizontal = 6
-custom_constants/separation = 50
+[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="2"]
+text = "Bob"
+
+[node name="CheckButton" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="3"]
+margin_top = 17.0
+margin_right = 1052.0
+margin_bottom = 87.0
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="LobbyContent"]
+margin_left = 1070.0
+margin_right = 1920.0
+margin_bottom = 547.0
+rect_min_size = Vector2( 850, 0 )
+size_flags_horizontal = 5
 alignment = 1
 
+[node name="OptionsContainer" type="VBoxContainer" parent="LobbyContent/HBoxContainer2"]
+margin_left = 19.0
+margin_right = 831.0
+margin_bottom = 547.0
+rect_min_size = Vector2( 774, 0 )
+size_flags_horizontal = 0
+size_flags_vertical = 4
+
+[node name="GameModeDropdown" type="OptionButton" parent="LobbyContent/HBoxContainer2/OptionsContainer"]
+unique_name_in_owner = true
+margin_left = 206.0
+margin_right = 606.0
+margin_bottom = 74.0
+rect_min_size = Vector2( 400, 0 )
+size_flags_horizontal = 4
+size_flags_vertical = 0
+text = "Game Mode"
+
+[node name="CheckButton" type="CheckButton" parent="LobbyContent/HBoxContainer2/OptionsContainer"]
+margin_top = 78.0
+margin_right = 812.0
+margin_bottom = 152.0
+text = "Copy Host Loadout"
+
+[node name="MaterialCountSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+margin_top = 156.0
+margin_right = 812.0
+margin_bottom = 231.0
+rect_min_size = Vector2( 0, 75 )
+size_flags_vertical = 0
+
+[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="0"]
+margin_top = 10.0
+margin_right = 372.0
+margin_bottom = 64.0
+text = "Material Drops"
+
+[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="1"]
+margin_left = 422.0
+margin_right = 422.0
+margin_bottom = 75.0
+
+[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="2"]
+margin_left = 472.0
+margin_right = 672.0
+margin_bottom = 75.0
+
+[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="3"]
+margin_left = 722.0
+margin_top = 10.0
+margin_right = 812.0
+margin_bottom = 64.0
+
+[node name="EnemyCountSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+margin_top = 235.0
+margin_right = 812.0
+margin_bottom = 310.0
+rect_min_size = Vector2( 0, 75 )
+size_flags_vertical = 0
+
+[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="0"]
+margin_top = 10.0
+margin_right = 317.0
+margin_bottom = 64.0
+text = "Enemy Count"
+
+[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="1"]
+margin_left = 367.0
+margin_right = 422.0
+margin_bottom = 75.0
+
+[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="2"]
+margin_left = 472.0
+margin_right = 672.0
+margin_bottom = 75.0
+
+[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="3"]
+margin_left = 722.0
+margin_top = 10.0
+margin_right = 812.0
+margin_bottom = 64.0
+
+[node name="EnemyHPSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+margin_top = 314.0
+margin_right = 812.0
+margin_bottom = 389.0
+rect_min_size = Vector2( 0, 75 )
+size_flags_vertical = 0
+
+[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="0"]
+margin_top = 10.0
+margin_right = 231.0
+margin_bottom = 64.0
+text = "Enemy HP"
+
+[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="1"]
+margin_left = 281.0
+margin_right = 422.0
+margin_bottom = 75.0
+
+[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="2"]
+margin_left = 472.0
+margin_right = 672.0
+margin_bottom = 75.0
+
+[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="3"]
+margin_left = 722.0
+margin_top = 10.0
+margin_right = 812.0
+margin_bottom = 64.0
+
+[node name="EnemyDamageSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+margin_top = 393.0
+margin_right = 812.0
+margin_bottom = 468.0
+rect_min_size = Vector2( 0, 75 )
+size_flags_vertical = 0
+
+[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="0"]
+margin_top = 10.0
+margin_right = 366.0
+margin_bottom = 64.0
+text = "Enemy Damage"
+
+[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="1"]
+margin_left = 416.0
+margin_right = 422.0
+margin_bottom = 75.0
+
+[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="2"]
+margin_left = 472.0
+margin_right = 672.0
+margin_bottom = 75.0
+
+[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="3"]
+margin_left = 722.0
+margin_top = 10.0
+margin_right = 812.0
+margin_bottom = 64.0
+
+[node name="EnemySpeedSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+margin_top = 472.0
+margin_right = 812.0
+margin_bottom = 547.0
+rect_min_size = Vector2( 0, 75 )
+size_flags_vertical = 0
+
+[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="0"]
+margin_top = 10.0
+margin_right = 322.0
+margin_bottom = 64.0
+text = "Enemy Speed"
+
+[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="1"]
+margin_left = 372.0
+margin_right = 422.0
+margin_bottom = 75.0
+
+[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="2"]
+margin_left = 472.0
+margin_right = 672.0
+margin_bottom = 75.0
+
+[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="3"]
+margin_left = 722.0
+margin_top = 10.0
+margin_right = 812.0
+margin_bottom = 64.0
+
+[node name="ControlBox" type="VBoxContainer" parent="."]
+margin_left = 660.0
+margin_top = 755.0
+margin_right = 1260.0
+margin_bottom = 1080.0
+size_flags_horizontal = 6
+size_flags_vertical = 3
+custom_constants/separation = 50
+alignment = 2
+
 [node name="Buttons" type="VBoxContainer" parent="ControlBox"]
-margin_left = 657.0
-margin_right = 1257.0
-margin_bottom = 155.0
+margin_top = 152.0
+margin_right = 600.0
+margin_bottom = 325.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
-alignment = 1
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
 [node name="StartButton" type="Button" parent="ControlBox/Buttons"]
 margin_right = 600.0
-margin_bottom = 65.0
+margin_bottom = 74.0
 rect_pivot_offset = Vector2( 13, 259 )
-text = "Start VS Game"
+text = "Start Game"
 
-[node name="OtherStartButton" type="Button" parent="ControlBox/Buttons"]
-margin_top = 90.0
+[node name="BackButton" type="Button" parent="ControlBox/Buttons"]
+margin_top = 99.0
 margin_right = 600.0
-margin_bottom = 155.0
-rect_pivot_offset = Vector2( 13, 259 )
-text = "Start Co-op Game"
+margin_bottom = 173.0
+rect_pivot_offset = Vector2( 13, 260 )
+text = "Back"
 
-[connection signal="pressed" from="GameSettings/CharacterBox/CharacterButton" to="." method="_on_CharacterButton_pressed"]
-[connection signal="pressed" from="GameSettings/WeaponBox/WeaponButton" to="." method="_on_WeaponButton_pressed"]
-[connection signal="pressed" from="GameSettings/DangerBox/DangerButton" to="." method="_on_DangerButton_pressed"]
+[connection signal="item_selected" from="LobbyContent/HBoxContainer2/OptionsContainer/GameModeDropdown" to="." method="_on_game_mode_changed"]
 [connection signal="pressed" from="ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
-[connection signal="pressed" from="ControlBox/Buttons/OtherStartButton" to="." method="_on_StartButton2_pressed"]
+[connection signal="pressed" from="ControlBox/Buttons/BackButton" to="." method="_on_BackButton_pressed"]
+
+[editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1"]
+[editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1/SelectedCharacter"]
+[editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2"]
+[editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3"]
+[editable path="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider"]
+[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider"]
+[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider"]
+[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider"]
+[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider"]

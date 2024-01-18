@@ -16,7 +16,9 @@ func on_element_pressed(element:InventoryElement)->void :
 	RunData.add_starting_items_and_weapons()
 	
 	if $"/root/GameController":
-		if $"/root/GameController".back_to_lobby:
+		var game_controller = $"/root/GameController"
+		if game_controller.back_to_lobby:
+			game_controller.on_weapon_selected(element.item.my_id)
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 			return
 	

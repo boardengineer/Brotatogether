@@ -1,7 +1,6 @@
 [gd_scene format=2]
 
 [node name="ListSample" type="Label"]
-visible = false
 margin_right = 341.0
 margin_bottom = 65.0
 rect_pivot_offset = Vector2( 13, 259 )

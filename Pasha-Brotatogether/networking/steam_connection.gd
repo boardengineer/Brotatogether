@@ -96,8 +96,7 @@ func read_p2p_packet() -> bool:
 		elif type == "request_lobby_update":
 			print_debug("received updated request")
 			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
-				var lobby_info = $"/root/MultiplayerLobby".get_lobby_info_dictionary()
-				send_lobby_update(lobby_info)
+				send_lobby_update(parent.lobby_data)
 		else:
 			print_debug("unhandled type " , type)
 		return true
@@ -393,4 +392,28 @@ func send_client_started() -> void:
 	var send_data = {}
 	send_data["type"] = "client_started"
 	send_data["player_id"] = parent.self_peer_id
+	send_data_to_all(send_data)
+
+
+func send_danger_selected(danger) -> void:
+	var send_data = {}
+	send_data["type"] = "danger_selected"
+	send_data["player_id"] = parent.self_peer_id
+	send_data["danger"] = danger
+	send_data_to_all(send_data)
+
+
+func send_character_selected(character) -> void:
+	var send_data = {}
+	send_data["type"] = "character_selected"
+	send_data["player_id"] = parent.self_peer_id
+	send_data["character"] = character
+	send_data_to_all(send_data)
+
+
+func send_weapon_selected(weapon) -> void:
+	var send_data = {}
+	send_data["type"] = "weapon_selected"
+	send_data["player_id"] = parent.self_peer_id
+	send_data["weapon"] = weapon
 	send_data_to_all(send_data)

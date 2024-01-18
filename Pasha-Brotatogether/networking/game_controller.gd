@@ -4,6 +4,9 @@ extends Node
 var tracked_players = {}
 var connection
 
+# tracked player info to be used in the multiplayer lobby
+var lobby_data = {}
+
 # The id of this player, in direct ip connections this will be 1 for the host.
 # in steam connections this will be a steam id against which a username can
 # be queried
@@ -50,6 +53,14 @@ var game_state_controller
 var waiting_for_client_starts = false
 
 signal complete_player_update
+signal lobby_info_updated
+signal danger_selected(danger_level)
+signal character_selected(character_item_data)
+signal weapon_selected(weapon_data)
+
+
+func _ready():
+	init_lobby_info()
 
 func _init():
 	game_state_controller = GameStateController.new()
@@ -78,6 +89,11 @@ func init_client_starts_wait() -> void:
 		if not player != self_peer_id:
 			tracked_players[player].in_game = false
 	receive_client_start(self_peer_id)
+
+
+func init_lobby_info() -> void:
+	lobby_data = {}
+	lobby_data["players"] = {}
 
 func send_client_started() -> void:
 	connection.send_client_started()
@@ -222,22 +238,36 @@ func start_game(game_info: Dictionary):
 #			RunData.current_character = null
 #			RunData.starting_weapon = null
 			
+			print_debug(game_info)
 			var lobby_info = game_info.lobby_info
 			
-			var danger = lobby_info.danger
+#			var danger = lobby_info.danger
+			var danger = 0
 			
-			var character_data = load(lobby_info.character)
-			
-			# Needed for random checks in main
-			RunData.add_character(character_data)
-						
 			for player_id in tracked_players:
-				if lobby_info.has("weapon"):
-					var weapon_data = load(lobby_info.weapon)
-#					var _unused = RunData.add_weapon(weapon_data, true)
-					run_data_node.add_weapon(player_id, weapon_data, true)
-					
+				var player_selections_dict = lobby_info.players[player_id]
+				print_debug(player_selections_dict)
+				
+				var character_data
+				if player_selections_dict.has("character"):
+					var character_id = player_selections_dict.character
+					for character in ItemService.characters:
+						if character.my_id == character_id:
+							character_data = character
+							break
+				else:
+					character_data = Utils.get_rand_element(ItemService.characters)
+				
+				if player_selections_dict.has("weapon"):
+					var weapon_id = player_selections_dict.weapon
+					for weapon in ItemService.weapons:
+						if weapon.my_id == weapon_id:
+							run_data_node.add_weapon(player_id, weapon, true)
+							break
+				
 				run_data_node.add_character(player_id, character_data)
+				if player_id == self_peer_id:
+					RunData.add_character(character_data)
 				
 	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
@@ -301,16 +331,28 @@ func start_game(game_info: Dictionary):
 			RunData.starting_weapon = null
 			
 			var lobby_info = game_info.lobby_info
+			var my_player_selections_dict = lobby_info.players[self_peer_id]
+			var character_data
 			
-			var character_data = load(lobby_info.character)
+			if my_player_selections_dict.has("character"):
+				var character_id = my_player_selections_dict.character
+				for character in ItemService.characters:
+					if character.my_id == character_id:
+						character_data = character
+						break
+			else:
+				character_data = Utils.get_rand_element(ItemService.characters)
 			
-			if lobby_info.has("weapon"):
-				var weapon_data = load(lobby_info.weapon)
-				var _unused = RunData.add_weapon(weapon_data, true)
-			var danger = lobby_info.danger
-			
+			# Needed for random checks in main
 			RunData.add_character(character_data)
 			
+			if my_player_selections_dict.has("weapon"):
+				var weapon_id = my_player_selections_dict["weapon"]
+				for weapon in ItemService.weapons:
+					if weapon.my_id == weapon_id:
+						var _unused = RunData.add_weapon(weapon, true)
+				
+			var danger = game_info.danger
 			RunData.add_starting_items_and_weapons()
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
@@ -328,6 +370,7 @@ func start_game(game_info: Dictionary):
 		if game_info.has("effects"):
 			effects_next_wave = game_info.effects
 		var _change_error = get_tree().change_scene(MenuData.game_scene)
+
 
 func send_death() -> void:
 	disable_pause = false
@@ -940,3 +983,29 @@ func flash_neutral(neutral_id):
 
 func is_coop() -> bool:
 	return game_mode == GameMode.COOP
+
+
+func on_danger_selected(danger) -> void:
+	lobby_data["danger"] = danger
+
+
+func on_character_selected(character) -> void:
+	if is_host:
+		received_character_selected(self_peer_id, character)
+	else:
+		connection.send_character_selected(character)
+
+
+func received_character_selected(player_id, character) -> void:
+	lobby_data["players"][player_id]["character"] = character
+
+
+func on_weapon_selected(weapon) -> void:
+	if is_host:
+		received_weapon_selected(self_peer_id, weapon)
+	else:
+		connection.send_weapon_selected(weapon)
+
+
+func received_weapon_selected(player_id, weapon) -> void:
+	lobby_data["players"][player_id]["weapon"] = weapon 

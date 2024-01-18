@@ -1,106 +1,98 @@
 extends Control
 
-onready var player_list = $PlayerList
+onready var players_container = get_node("%Players")
 onready var start_button = $ControlBox/Buttons/StartButton
-onready var other_start_button = $ControlBox/Buttons/OtherStartButton
 
-onready var character_info = $"GameSettings/CharacterBox/CharacterInfo"
-onready var weapon_select_info = $"GameSettings/WeaponBox/WeaponInfo"
-onready var danger_select_info = $"GameSettings/DangerBox/DangerInfo"
+onready var game_mode_dropdown:OptionButton = get_node("%GameModeDropdown")
 
-onready var character_select_button = $"GameSettings/CharacterBox/CharacterButton"
-onready var weapon_select_button = $"GameSettings/WeaponBox/WeaponButton"
-onready var danger_select_button = $"GameSettings/DangerBox/DangerButton"
+const PlayerSelections = preload("res://mods-unpacked/Pasha-Brotatogether/ui/player_selections.tscn")
 
-const player_label_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/player_label.tscn")
+onready var selections_by_player = {}
 
 func _ready():
 	var _error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
 	
-	if not $"/root/GameController".is_host:
-		start_button.disabled = true
-		other_start_button.disabled = true
+	var game_controller = $"/root/GameController"
+	if game_controller.is_host:
+		pass
+#		start_button.disabled = true
 		
-		character_select_button.hide()
-		weapon_select_button.hide()
-		danger_select_button.hide()
+#		character_select_button.hide()
+#		weapon_select_button.hide()
+#		danger_select_button.hide()
 	
-	update_player_list()
+	for child in players_container.get_children():
+		players_container.remove_child(child)
+	
+	game_controller.connect("lobby_info_updated", self, "update_selections")
+	init_mode_dropdown()
 	update_selections()
-	
+
+
+func init_mode_dropdown() -> void:
+	game_mode_dropdown.clear()
+	game_mode_dropdown.add_item("Versus", 0)
+	game_mode_dropdown.add_item("Co-op", 1)
+
+
 func update_player_list() -> void:
 	# TODO make this work with direct connections too
 	var steam_connection = $"/root/SteamConnection"
 	steam_connection.update_tracked_players()
-	
+
+
 func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: int, _chat_state: int) -> void:
-	update_player_list()
+	update_selections()
+
 
 func update_selections() -> void:
-	for node in player_list.get_children():
-		player_list.remove_child(node)
-		node.queue_free()
-		
 	var game_controller = $"/root/GameController"
 	var steam_connection = $"/root/SteamConnection"
 	var host = steam_connection.get_lobby_host()
 	
+	if game_controller.lobby_data.has("game_mode"):
+		game_mode_dropdown.select(game_controller.lobby_data["game_mode"]) 
+	
 	for player_id in game_controller.tracked_players:
 		var username = game_controller.tracked_players[player_id].username
-		var label = player_label_scene.instance()
-		if username == host:
-			label.text = username + " (HOST)"
-			label.set("custom_colors/font_color","#FF0000")
-		else:
-			label.text = username
-		label.show()
-		player_list.add_child(label)
+		
+		if not selections_by_player.has(player_id):
+			if not game_controller.lobby_data["players"].has(player_id):
+				game_controller.lobby_data["players"][player_id] = {}
+			var player_to_add = PlayerSelections.instance()
+			
+			var name = username
+			if username == host:
+				name += " (HOST)"
+			
+			player_to_add.call_deferred("set_player_name", name)
+			player_to_add.call_deferred("set_player_selections", game_controller.lobby_data["players"][player_id])
+			if player_id != game_controller.self_peer_id:
+				player_to_add.call_deferred("disable_selections")
+			players_container.add_child(player_to_add)
+			selections_by_player[player_id] = player_to_add
 	
 	var can_start = false
 	
-	if RunData.current_character:
-		var is_bull = RunData.current_character.my_id == "character_bull"
-		weapon_select_button.disabled = is_bull
-		danger_select_button.disabled = false
-		character_info.set_data(RunData.current_character)
-		
-		var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-		danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
-		
-		
-		if RunData.starting_weapon:
-			danger_select_button.disabled = false
-			weapon_select_info.set_data(RunData.starting_weapon)
-			
-		if is_bull or RunData.starting_weapon:
-			can_start = true
-	else:
-		# reset weapon selection
-		weapon_select_button.disabled = true
-		danger_select_button.disabled = true
-	
 	if game_controller.is_host:
-		game_controller.send_lobby_update(get_lobby_info_dictionary())
+		game_controller.send_lobby_update(game_controller.lobby_data)
 	can_start = can_start and game_controller.all_players_ready
-	if can_start and game_controller.is_host:
-		start_button.disabled = false
-		other_start_button.disabled = false
-	else:
-		start_button.disabled = true
-		other_start_button.disabled = true
-	
+#	if can_start and game_controller.is_host:
+#		start_button.disabled = false
+#	else:
+#		start_button.disabled = true
+
+
 func _on_StartButton_pressed():
 	var game_controller = $"/root/GameController"
 	if not game_controller.is_host:
 		return
-		
-	game_controller.is_source_of_truth = false
-	var game_mode = game_controller.GameMode.VERSUS
 	
-	var game_info = {"current_wave":1, "mode":game_mode}
+	var game_mode = game_mode_dropdown.selected
+	game_controller.is_source_of_truth = game_mode == 1
+	var game_info = {"current_wave":1, "mode":game_mode, "danger":0}
 	
-	game_info ["lobby_info"] = get_lobby_info_dictionary()
-	
+	game_info["lobby_info"] = game_controller.lobby_data
 	game_controller.send_start_game(game_info)
 	game_controller.game_mode = game_mode
 
@@ -123,6 +115,7 @@ func _on_CharacterButton_pressed():
 	
 	var _error = get_tree().change_scene(MenuData.character_selection_scene)
 
+
 func _on_WeaponButton_pressed():
 	RunData.weapons = []
 	RunData.items = []
@@ -135,31 +128,20 @@ func _on_WeaponButton_pressed():
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.weapon_selection_scene)
 
+
 func _on_DangerButton_pressed():
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.difficulty_selection_scene)
 
-func get_lobby_info_dictionary() -> Dictionary:
-	var result = {}
-	
-	if RunData.current_character:
-		result["character"] = ItemService.get_element(ItemService.characters, RunData.current_character.my_id).get_path()
-		var difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-		danger_select_info.set_data(ItemService.difficulties[difficulty.difficulty_selected_value])
-		result["danger"] = difficulty.difficulty_selected_value
-		
-	if RunData.starting_weapon:
-		result["weapon"] = ItemService.get_element(ItemService.weapons, RunData.starting_weapon.my_id).get_path()
-		
-	return result
-	
+
 func clear_selections() -> void:
 	RunData.weapons = []
 	RunData.items = []
 	RunData.effects = RunData.init_effects()
 	RunData.current_character = null
 	RunData.init_appearances_displayed()
-	
+
+
 func remote_update_lobby(lobby_info:Dictionary) -> void:
 	# Remote only
 	if $"/root/GameController".is_host:
@@ -182,37 +164,33 @@ func remote_update_lobby(lobby_info:Dictionary) -> void:
 		character_difficulty.difficulty_selected_value = lobby_info.danger
 	
 	update_selections()
+ 
 
 func _input(event:InputEvent)->void :
 	manage_back(event)
 
+
 func manage_back(event:InputEvent)->void :
 	if event.is_action_pressed("ui_cancel"):
-		var game_controller = $"/root/GameController"
-	
-		if game_controller.is_host:
-			var steam_connection = $"/root/SteamConnection"
-			steam_connection.close_lobby()
-		
-		RunData.current_zone = 0
-		RunData.reload_music = false
-		var _error = get_tree().change_scene(MenuData.title_screen_scene)
+		exit_lobby()
 
-func _on_StartButton2_pressed():
+
+func exit_lobby() -> void:
 	var game_controller = $"/root/GameController"
-	if not game_controller.is_host:
-		return
+	
+	if game_controller.is_host:
+		var steam_connection = $"/root/SteamConnection"
+		steam_connection.close_lobby()
 		
-	game_controller.is_source_of_truth = true
-	var game_mode = game_controller.GameMode.COOP
-	var game_info = {"current_wave":1, "mode":game_mode}
-	
-	game_info["lobby_info"] = get_lobby_info_dictionary()
-	
-	game_controller.send_start_game(game_info)
-	game_controller.game_mode = game_mode
+	RunData.current_zone = 0
+	RunData.reload_music = false
+	var _error = get_tree().change_scene(MenuData.title_screen_scene)
 
-	game_controller.start_game(game_info)
-	
-	var steam_connection = $"/root/SteamConnection"
-	steam_connection.close_lobby()
+
+func _on_game_mode_changed(_index):
+	var game_controller = $"/root/GameController"
+	game_controller.lobby_data["game_mode"] = game_mode_dropdown.selected
+
+
+func _on_BackButton_pressed():
+	exit_lobby()

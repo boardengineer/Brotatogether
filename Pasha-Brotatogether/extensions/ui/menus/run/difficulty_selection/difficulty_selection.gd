@@ -23,7 +23,9 @@ func on_element_pressed(element:InventoryElement)->void :
 	ProgressData.save_status = SaveStatus.SAVE_OK
 	
 	if $"/root/GameController":
-		if $"/root/GameController".back_to_lobby:
+		var game_controller = $"/root/GameController"
+		if game_controller.back_to_lobby:
+			game_controller.emit_signal("danger_selected", element.item)
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 			return
 			
