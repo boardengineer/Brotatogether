@@ -25,7 +25,7 @@ func on_element_pressed(element:InventoryElement)->void :
 	if $"/root/GameController":
 		var game_controller = $"/root/GameController"
 		if game_controller.back_to_lobby:
-			game_controller.emit_signal("danger_selected", element.item)
+			game_controller.on_danger_selected(element.item.my_id)
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
 			return
 			

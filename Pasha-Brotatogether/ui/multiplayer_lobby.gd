@@ -13,9 +13,8 @@ func _ready():
 	var _error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
 	
 	var game_controller = $"/root/GameController"
-	if game_controller.is_host:
-		pass
-#		start_button.disabled = true
+	if not game_controller.is_host:
+		start_button.disabled = true
 		
 #		character_select_button.hide()
 #		weapon_select_button.hide()
@@ -50,6 +49,7 @@ func update_selections() -> void:
 	var steam_connection = $"/root/SteamConnection"
 	var host = steam_connection.get_lobby_host()
 	
+	print_debug("updating selections ", game_controller.lobby_data)
 	if game_controller.lobby_data.has("game_mode"):
 		game_mode_dropdown.select(game_controller.lobby_data["game_mode"]) 
 	
@@ -60,17 +60,21 @@ func update_selections() -> void:
 			if not game_controller.lobby_data["players"].has(player_id):
 				game_controller.lobby_data["players"][player_id] = {}
 			var player_to_add = PlayerSelections.instance()
+			players_container.add_child(player_to_add)
+			selections_by_player[player_id] = player_to_add
 			
 			var name = username
 			if username == host:
 				name += " (HOST)"
+				player_to_add.call_deferred("hide_ready_toggle")
 			
-			player_to_add.call_deferred("set_player_name", name)
-			player_to_add.call_deferred("set_player_selections", game_controller.lobby_data["players"][player_id])
 			if player_id != game_controller.self_peer_id:
 				player_to_add.call_deferred("disable_selections")
-			players_container.add_child(player_to_add)
-			selections_by_player[player_id] = player_to_add
+				player_to_add.call_deferred("disable_ready_toggle")
+			player_to_add.call_deferred("set_player_name", name)
+				
+		var player_selections = selections_by_player[player_id]
+		player_selections.call_deferred("set_player_selections", game_controller.lobby_data["players"][player_id], player_id == game_controller.self_peer_id)
 	
 	var can_start = false
 	
@@ -146,12 +150,6 @@ func remote_update_lobby(lobby_info:Dictionary) -> void:
 	# Remote only
 	if $"/root/GameController".is_host:
 		return
-	
-	RunData.weapons = []
-	RunData.items = []
-	RunData.effects = RunData.init_effects()
-	RunData.current_character = null
-	RunData.starting_weapon = null
 	
 	if lobby_info.has("character"):
 		RunData.add_character(load(lobby_info.character))

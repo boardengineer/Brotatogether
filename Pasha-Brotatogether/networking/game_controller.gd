@@ -828,6 +828,8 @@ func send_lobby_update(lobby_info:Dictionary) -> void:
 
 func receive_lobby_update(lobby_info:Dictionary) -> void:
 	if current_scene_name == "MultiplayerLobby":
+		lobby_data = lobby_info
+		print_debug("should remote update lobby? ", lobby_info)
 		$"/root/MultiplayerLobby".remote_update_lobby(lobby_info)
 	
 func update_multiplayer_lobby() -> void:
@@ -986,7 +988,15 @@ func is_coop() -> bool:
 
 
 func on_danger_selected(danger) -> void:
-	lobby_data["danger"] = danger
+	if is_host:
+		received_danger_selected(self_peer_id, danger)
+	else:
+		connection.send_danger_selected(danger)
+
+
+func received_danger_selected(player_id, danger) -> void:
+	lobby_data["players"][player_id]["danger"] = danger
+	emit_signal("lobby_info_updated")
 
 
 func on_character_selected(character) -> void:
@@ -998,6 +1008,7 @@ func on_character_selected(character) -> void:
 
 func received_character_selected(player_id, character) -> void:
 	lobby_data["players"][player_id]["character"] = character
+	emit_signal("lobby_info_updated")
 
 
 func on_weapon_selected(weapon) -> void:
@@ -1009,3 +1020,4 @@ func on_weapon_selected(weapon) -> void:
 
 func received_weapon_selected(player_id, weapon) -> void:
 	lobby_data["players"][player_id]["weapon"] = weapon 
+	emit_signal("lobby_info_updated")

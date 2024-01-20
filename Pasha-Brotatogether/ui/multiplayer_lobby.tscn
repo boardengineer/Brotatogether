@@ -30,7 +30,7 @@ theme = ExtResource( 6 )
 script = ExtResource( 8 )
 
 [node name="Title" type="Label" parent="."]
-margin_right = 1920.0
+margin_right = 2026.0
 margin_bottom = 200.0
 rect_min_size = Vector2( 0, 200 )
 custom_fonts/font = ExtResource( 11 )
@@ -40,24 +40,23 @@ valign = 1
 
 [node name="LobbyContent" type="HBoxContainer" parent="."]
 margin_top = 204.0
-margin_right = 1920.0
+margin_right = 2026.0
 margin_bottom = 751.0
 alignment = 1
 
 [node name="PlayerContainer" type="HBoxContainer" parent="LobbyContent"]
-margin_left = 7.0
-margin_right = 1059.0
+margin_right = 1172.0
 margin_bottom = 389.0
 size_flags_horizontal = 6
 size_flags_vertical = 0
 alignment = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="LobbyContent/PlayerContainer"]
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 389.0
 
 [node name="PlayerListTitle" type="Label" parent="LobbyContent/PlayerContainer/VBoxContainer"]
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 62.0
 custom_fonts/font = SubResource( 1 )
 text = "Players"
@@ -66,54 +65,54 @@ align = 1
 [node name="Players" type="VBoxContainer" parent="LobbyContent/PlayerContainer/VBoxContainer"]
 unique_name_in_owner = true
 margin_top = 66.0
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 389.0
 size_flags_horizontal = 3
 
 [node name="SamplePlayer1" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 105.0
 size_flags_vertical = 0
 
-[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="2"]
+[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="3"]
 text = "Really REALLY Long Username"
 
-[node name="CheckButton" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="3"]
+[node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="4"]
 margin_top = 17.0
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 87.0
 
 [node name="SamplePlayer2" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
 margin_top = 109.0
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 214.0
 size_flags_vertical = 0
 
-[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="2"]
+[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="3"]
 text = "Really Long Username"
 
-[node name="CheckButton" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="3"]
+[node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="4"]
 margin_top = 17.0
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 87.0
 
 [node name="SamplePlayer3" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
 margin_top = 218.0
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 323.0
 size_flags_vertical = 0
 
-[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="2"]
+[node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="3"]
 text = "Bob"
 
-[node name="CheckButton" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="3"]
+[node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="4"]
 margin_top = 17.0
-margin_right = 1052.0
+margin_right = 1172.0
 margin_bottom = 87.0
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="LobbyContent"]
-margin_left = 1070.0
-margin_right = 1920.0
+margin_left = 1176.0
+margin_right = 2026.0
 margin_bottom = 547.0
 rect_min_size = Vector2( 850, 0 )
 size_flags_horizontal = 5
@@ -289,9 +288,9 @@ margin_right = 812.0
 margin_bottom = 64.0
 
 [node name="ControlBox" type="VBoxContainer" parent="."]
-margin_left = 660.0
+margin_left = 713.0
 margin_top = 755.0
-margin_right = 1260.0
+margin_right = 1313.0
 margin_bottom = 1080.0
 size_flags_horizontal = 6
 size_flags_vertical = 3

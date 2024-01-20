@@ -82,6 +82,7 @@ func read_p2p_packet() -> bool:
 		elif type == "update_tracked_players":
 			parent.update_tracked_players(data.tracked_players)
 		elif type == "lobby_update":
+			print_debug("received lobby update")
 			parent.receive_lobby_update(data.lobby_info)
 		elif type == "health_update":
 			parent.receive_health_update(data.current_health, data.max_health, sender)
@@ -93,6 +94,12 @@ func read_p2p_packet() -> bool:
 			parent.receive_shot(data.player_id, data.weapon_index)
 		elif type == "explosion":
 			parent.receive_explosion(Vector2(data.pos_x, data.pos_y), data.scale)
+		elif type == "character_selected":
+			parent.received_character_selected(data.player_id, data.character)
+		elif type == "weapon_selected":
+			parent.received_weapon_selected(data.player_id, data.weapon)
+		elif type == "danger_selected":
+			parent.received_danger_selected(data.player_id, data.danger)
 		elif type == "request_lobby_update":
 			print_debug("received updated request")
 			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
