@@ -30,7 +30,7 @@ theme = ExtResource( 6 )
 script = ExtResource( 8 )
 
 [node name="Title" type="Label" parent="."]
-margin_right = 2026.0
+margin_right = 1929.0
 margin_bottom = 200.0
 rect_min_size = Vector2( 0, 200 )
 custom_fonts/font = ExtResource( 11 )
@@ -40,23 +40,28 @@ valign = 1
 
 [node name="LobbyContent" type="HBoxContainer" parent="."]
 margin_top = 204.0
-margin_right = 2026.0
+margin_right = 1929.0
 margin_bottom = 751.0
+custom_constants/separation = 23
 alignment = 1
 
 [node name="PlayerContainer" type="HBoxContainer" parent="LobbyContent"]
-margin_right = 1172.0
-margin_bottom = 389.0
-size_flags_horizontal = 6
-size_flags_vertical = 0
+margin_right = 1056.0
+margin_bottom = 547.0
 alignment = 2
 
+[node name="MarginContainer" type="MarginContainer" parent="LobbyContent/PlayerContainer"]
+margin_right = 20.0
+margin_bottom = 547.0
+rect_min_size = Vector2( 20, 0 )
+
 [node name="VBoxContainer" type="VBoxContainer" parent="LobbyContent/PlayerContainer"]
-margin_right = 1172.0
-margin_bottom = 389.0
+margin_left = 24.0
+margin_right = 1056.0
+margin_bottom = 547.0
 
 [node name="PlayerListTitle" type="Label" parent="LobbyContent/PlayerContainer/VBoxContainer"]
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 62.0
 custom_fonts/font = SubResource( 1 )
 text = "Players"
@@ -65,13 +70,12 @@ align = 1
 [node name="Players" type="VBoxContainer" parent="LobbyContent/PlayerContainer/VBoxContainer"]
 unique_name_in_owner = true
 margin_top = 66.0
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 389.0
 size_flags_horizontal = 3
 
 [node name="SamplePlayer1" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
-margin_right = 1172.0
-margin_bottom = 105.0
+margin_right = 1032.0
 size_flags_vertical = 0
 
 [node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="3"]
@@ -79,12 +83,12 @@ text = "Really REALLY Long Username"
 
 [node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="4"]
 margin_top = 17.0
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 87.0
 
 [node name="SamplePlayer2" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
 margin_top = 109.0
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 214.0
 size_flags_vertical = 0
 
@@ -93,12 +97,12 @@ text = "Really Long Username"
 
 [node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="4"]
 margin_top = 17.0
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 87.0
 
 [node name="SamplePlayer3" parent="LobbyContent/PlayerContainer/VBoxContainer/Players" instance=ExtResource( 9 )]
 margin_top = 218.0
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 323.0
 size_flags_vertical = 0
 
@@ -107,190 +111,196 @@ text = "Bob"
 
 [node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="4"]
 margin_top = 17.0
-margin_right = 1172.0
+margin_right = 1032.0
 margin_bottom = 87.0
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="LobbyContent"]
-margin_left = 1176.0
-margin_right = 2026.0
+[node name="OuterOptionsContainer" type="HBoxContainer" parent="LobbyContent"]
+unique_name_in_owner = true
+margin_left = 1079.0
+margin_right = 1929.0
 margin_bottom = 547.0
 rect_min_size = Vector2( 850, 0 )
-size_flags_horizontal = 5
+size_flags_horizontal = 7
 alignment = 1
 
-[node name="OptionsContainer" type="VBoxContainer" parent="LobbyContent/HBoxContainer2"]
-margin_left = 19.0
-margin_right = 831.0
+[node name="OptionsContainer" type="VBoxContainer" parent="LobbyContent/OuterOptionsContainer"]
+margin_right = 826.0
 margin_bottom = 547.0
 rect_min_size = Vector2( 774, 0 )
-size_flags_horizontal = 0
+size_flags_horizontal = 11
 size_flags_vertical = 4
 
-[node name="GameModeDropdown" type="OptionButton" parent="LobbyContent/HBoxContainer2/OptionsContainer"]
+[node name="GameModeDropdown" type="OptionButton" parent="LobbyContent/OuterOptionsContainer/OptionsContainer"]
 unique_name_in_owner = true
-margin_left = 206.0
-margin_right = 606.0
+margin_left = 213.0
+margin_right = 613.0
 margin_bottom = 74.0
 rect_min_size = Vector2( 400, 0 )
 size_flags_horizontal = 4
 size_flags_vertical = 0
 text = "Game Mode"
 
-[node name="CheckButton" type="CheckButton" parent="LobbyContent/HBoxContainer2/OptionsContainer"]
+[node name="CheckButton" type="CheckButton" parent="LobbyContent/OuterOptionsContainer/OptionsContainer"]
 margin_top = 78.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 152.0
 text = "Copy Host Loadout"
 
-[node name="MaterialCountSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+[node name="MaterialCountSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 margin_top = 156.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 231.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
 
-[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="0"]
+[node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="0"]
 margin_top = 10.0
 margin_right = 372.0
 margin_bottom = 64.0
 text = "Material Drops"
 
-[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="1"]
+[node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="1"]
 margin_left = 422.0
-margin_right = 422.0
+margin_right = 436.0
 margin_bottom = 75.0
 
-[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="2"]
-margin_left = 472.0
-margin_right = 672.0
+[node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="2"]
+margin_left = 486.0
+margin_right = 686.0
 margin_bottom = 75.0
 
-[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider" index="3"]
-margin_left = 722.0
+[node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="3"]
+margin_left = 736.0
 margin_top = 10.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 64.0
 
-[node name="EnemyCountSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+[node name="EnemyCountSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 margin_top = 235.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 310.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
 
-[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="0"]
+[node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="0"]
 margin_top = 10.0
 margin_right = 317.0
 margin_bottom = 64.0
 text = "Enemy Count"
 
-[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="1"]
+[node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="1"]
 margin_left = 367.0
-margin_right = 422.0
+margin_right = 436.0
 margin_bottom = 75.0
 
-[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="2"]
-margin_left = 472.0
-margin_right = 672.0
+[node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="2"]
+margin_left = 486.0
+margin_right = 686.0
 margin_bottom = 75.0
 
-[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider" index="3"]
-margin_left = 722.0
+[node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="3"]
+margin_left = 736.0
 margin_top = 10.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 64.0
 
-[node name="EnemyHPSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+[node name="EnemyHPSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 margin_top = 314.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 389.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
 
-[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="0"]
+[node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="0"]
 margin_top = 10.0
 margin_right = 231.0
 margin_bottom = 64.0
 text = "Enemy HP"
 
-[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="1"]
+[node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="1"]
 margin_left = 281.0
-margin_right = 422.0
+margin_right = 436.0
 margin_bottom = 75.0
 
-[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="2"]
-margin_left = 472.0
-margin_right = 672.0
+[node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="2"]
+margin_left = 486.0
+margin_right = 686.0
 margin_bottom = 75.0
 
-[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider" index="3"]
-margin_left = 722.0
+[node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="3"]
+margin_left = 736.0
 margin_top = 10.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 64.0
 
-[node name="EnemyDamageSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+[node name="EnemyDamageSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 margin_top = 393.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 468.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
 
-[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="0"]
+[node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="0"]
 margin_top = 10.0
 margin_right = 366.0
 margin_bottom = 64.0
 text = "Enemy Damage"
 
-[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="1"]
+[node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="1"]
 margin_left = 416.0
-margin_right = 422.0
+margin_right = 436.0
 margin_bottom = 75.0
 
-[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="2"]
-margin_left = 472.0
-margin_right = 672.0
+[node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="2"]
+margin_left = 486.0
+margin_right = 686.0
 margin_bottom = 75.0
 
-[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider" index="3"]
-margin_left = 722.0
+[node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="3"]
+margin_left = 736.0
 margin_top = 10.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 64.0
 
-[node name="EnemySpeedSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer" instance=ExtResource( 10 )]
+[node name="EnemySpeedSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 margin_top = 472.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 547.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
 
-[node name="Label" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="0"]
+[node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="0"]
 margin_top = 10.0
 margin_right = 322.0
 margin_bottom = 64.0
 text = "Enemy Speed"
 
-[node name="Control" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="1"]
+[node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="1"]
 margin_left = 372.0
-margin_right = 422.0
+margin_right = 436.0
 margin_bottom = 75.0
 
-[node name="HSlider" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="2"]
-margin_left = 472.0
-margin_right = 672.0
+[node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="2"]
+margin_left = 486.0
+margin_right = 686.0
 margin_bottom = 75.0
 
-[node name="Value" parent="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider" index="3"]
-margin_left = 722.0
+[node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="3"]
+margin_left = 736.0
 margin_top = 10.0
-margin_right = 812.0
+margin_right = 826.0
 margin_bottom = 64.0
 
+[node name="MarginContainer" type="MarginContainer" parent="LobbyContent/OuterOptionsContainer"]
+margin_left = 830.0
+margin_right = 850.0
+margin_bottom = 547.0
+rect_min_size = Vector2( 20, 0 )
+
 [node name="ControlBox" type="VBoxContainer" parent="."]
-margin_left = 713.0
+margin_left = 664.0
 margin_top = 755.0
-margin_right = 1313.0
+margin_right = 1264.0
 margin_bottom = 1080.0
 size_flags_horizontal = 6
 size_flags_vertical = 3
@@ -321,7 +331,7 @@ margin_bottom = 173.0
 rect_pivot_offset = Vector2( 13, 260 )
 text = "Back"
 
-[connection signal="item_selected" from="LobbyContent/HBoxContainer2/OptionsContainer/GameModeDropdown" to="." method="_on_game_mode_changed"]
+[connection signal="item_selected" from="LobbyContent/OuterOptionsContainer/OptionsContainer/GameModeDropdown" to="." method="_on_game_mode_changed"]
 [connection signal="pressed" from="ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
 [connection signal="pressed" from="ControlBox/Buttons/BackButton" to="." method="_on_BackButton_pressed"]
 
@@ -329,8 +339,8 @@ text = "Back"
 [editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1/SelectedCharacter"]
 [editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2"]
 [editable path="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3"]
-[editable path="LobbyContent/HBoxContainer2/OptionsContainer/MaterialCountSlider"]
-[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemyCountSlider"]
-[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemyHPSlider"]
-[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemyDamageSlider"]
-[editable path="LobbyContent/HBoxContainer2/OptionsContainer/EnemySpeedSlider"]
+[editable path="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider"]
+[editable path="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider"]
+[editable path="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider"]
+[editable path="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider"]
+[editable path="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider"]

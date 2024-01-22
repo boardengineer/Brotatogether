@@ -1008,6 +1008,7 @@ func on_character_selected(character) -> void:
 
 func received_character_selected(player_id, character) -> void:
 	lobby_data["players"][player_id]["character"] = character
+	lobby_data["players"][player_id].erase("weapon")
 	emit_signal("lobby_info_updated")
 
 

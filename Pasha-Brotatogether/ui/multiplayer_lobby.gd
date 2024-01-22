@@ -2,6 +2,7 @@ extends Control
 
 onready var players_container = get_node("%Players")
 onready var start_button = $ControlBox/Buttons/StartButton
+onready var outer_options_container = get_node("%OuterOptionsContainer")
 
 onready var game_mode_dropdown:OptionButton = get_node("%GameModeDropdown")
 
@@ -15,10 +16,6 @@ func _ready():
 	var game_controller = $"/root/GameController"
 	if not game_controller.is_host:
 		start_button.disabled = true
-		
-#		character_select_button.hide()
-#		weapon_select_button.hide()
-#		danger_select_button.hide()
 	
 	for child in players_container.get_children():
 		players_container.remove_child(child)
@@ -49,9 +46,18 @@ func update_selections() -> void:
 	var steam_connection = $"/root/SteamConnection"
 	var host = steam_connection.get_lobby_host()
 	
-	print_debug("updating selections ", game_controller.lobby_data)
+	var game_mode = 0
 	if game_controller.lobby_data.has("game_mode"):
-		game_mode_dropdown.select(game_controller.lobby_data["game_mode"]) 
+		game_mode = game_controller.lobby_data["game_mode"]
+		game_mode_dropdown.select(game_mode) 
+	
+	var host_dict = {}
+	for player_id in game_controller.tracked_players:
+		if not game_controller.lobby_data["players"].has(player_id):
+			game_controller.lobby_data["players"][player_id] = {}
+		var username = game_controller.tracked_players[player_id].username
+		if username == host:
+			host_dict = game_controller.lobby_data["players"][player_id].duplicate()
 	
 	for player_id in game_controller.tracked_players:
 		var username = game_controller.tracked_players[player_id].username
@@ -72,9 +78,21 @@ func update_selections() -> void:
 				player_to_add.call_deferred("disable_selections")
 				player_to_add.call_deferred("disable_ready_toggle")
 			player_to_add.call_deferred("set_player_name", name)
-				
+		
+		# co-op mode will only show host 
 		var player_selections = selections_by_player[player_id]
-		player_selections.call_deferred("set_player_selections", game_controller.lobby_data["players"][player_id], player_id == game_controller.self_peer_id)
+		var selections_dict = host_dict if game_mode == 1 else game_controller.lobby_data["players"][player_id]
+		var can_edit = false
+		var lock_danger = false
+		if username == host:
+			if player_id == game_controller.self_peer_id:
+				can_edit = true
+		else:
+			if game_mode == 1:
+				lock_danger = true
+			if game_mode == 0 and player_id == game_controller.self_peer_id:
+				can_edit = true
+		player_selections.call_deferred("set_player_selections", selections_dict, can_edit, lock_danger)
 	
 	var can_start = false
 	
@@ -188,6 +206,7 @@ func exit_lobby() -> void:
 func _on_game_mode_changed(_index):
 	var game_controller = $"/root/GameController"
 	game_controller.lobby_data["game_mode"] = game_mode_dropdown.selected
+	update_selections()
 
 
 func _on_BackButton_pressed():
