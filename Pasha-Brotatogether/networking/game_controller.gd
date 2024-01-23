@@ -264,6 +264,8 @@ func start_game(game_info: Dictionary):
 						if weapon.my_id == weapon_id:
 							run_data_node.add_weapon(player_id, weapon, true)
 							break
+				else:
+					run_data_node.add_weapon(player_id, Utils.get_rand_element(character_data.starting_weapons), true)
 				
 				run_data_node.add_character(player_id, character_data)
 				if player_id == self_peer_id:
@@ -351,6 +353,8 @@ func start_game(game_info: Dictionary):
 				for weapon in ItemService.weapons:
 					if weapon.my_id == weapon_id:
 						var _unused = RunData.add_weapon(weapon, true)
+			else:
+				var _unused = RunData.add_weapon(Utils.get_rand_element(character_data.starting_weapons), true)
 				
 			var danger = game_info.danger
 			RunData.add_starting_items_and_weapons()
