@@ -59,6 +59,8 @@ func update_selections() -> void:
 		game_mode_dropdown.select(game_mode) 
 	
 	var host_dict = {}
+	var can_start = true
+	
 	for player_id in game_controller.tracked_players:
 		if not game_controller.lobby_data["players"].has(player_id):
 			game_controller.lobby_data["players"][player_id] = {}
@@ -85,7 +87,7 @@ func update_selections() -> void:
 				player_to_add.call_deferred("disable_selections")
 				player_to_add.call_deferred("disable_ready_toggle")
 			player_to_add.call_deferred("set_player_name", name)
-			players_container.connect("ready_toggled", self, "update_ready_toggle")
+			player_to_add.call_deferred("connect", "ready_toggled", self, "update_ready_toggle")
 		
 		# co-op mode will only show host 
 		var player_selections = selections_by_player[player_id]
@@ -99,6 +101,8 @@ func update_selections() -> void:
 			if player_id == game_controller.self_peer_id:
 				can_edit = true
 		else:
+			if not selections_dict.has("ready") or not selections_dict["ready"]:
+				can_start = false
 			if game_mode == 1:
 				lock_danger = true
 			if player_id == game_controller.self_peer_id:
@@ -106,15 +110,13 @@ func update_selections() -> void:
 		
 		player_selections.call_deferred("set_player_selections", selections_dict, can_edit, lock_danger)
 	
-	var can_start = false
-	
 	if game_controller.is_host:
 		game_controller.send_lobby_update(game_controller.lobby_data)
-	can_start = can_start and game_controller.all_players_ready
-#	if can_start and game_controller.is_host:
-#		start_button.disabled = false
-#	else:
-#		start_button.disabled = true
+
+	if can_start and game_controller.is_host:
+		start_button.disabled = false
+	else:
+		start_button.disabled = true
 
 
 func _on_StartButton_pressed():
