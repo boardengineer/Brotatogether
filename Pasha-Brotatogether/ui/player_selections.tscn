@@ -76,3 +76,4 @@ align = 1
 [connection signal="element_pressed" from="SelectedCharacter" to="." method="_on_SelectedCharacter_element_pressed"]
 [connection signal="element_pressed" from="SelectedWeapon" to="." method="_on_SelectedWeapon_element_pressed"]
 [connection signal="element_pressed" from="SelectedDanger" to="." method="_on_select_danger_element_pressed"]
+[connection signal="toggled" from="ReadyToggle" to="." method="_on_ReadyToggle_toggled"]

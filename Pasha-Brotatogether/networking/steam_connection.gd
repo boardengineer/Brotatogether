@@ -100,6 +100,8 @@ func read_p2p_packet() -> bool:
 			parent.received_weapon_selected(data.player_id, data.weapon)
 		elif type == "danger_selected":
 			parent.received_danger_selected(data.player_id, data.danger)
+		elif type == "mp_lobby_readied":
+			parent.receive_mp_lobby_ready_changed(data.player_id, data.is_ready)
 		elif type == "request_lobby_update":
 			print_debug("received updated request")
 			if get_tree().get_current_scene().get_name() == "MultiplayerLobby":
@@ -423,4 +425,12 @@ func send_weapon_selected(weapon) -> void:
 	send_data["type"] = "weapon_selected"
 	send_data["player_id"] = parent.self_peer_id
 	send_data["weapon"] = weapon
+	send_data_to_all(send_data)
+
+
+func send_mp_lobby_readied(is_ready) -> void:
+	var send_data = {}
+	send_data["type"] = "mp_lobby_readied"
+	send_data["player_id"] = parent.self_peer_id
+	send_data["is_ready"] = is_ready
 	send_data_to_all(send_data)

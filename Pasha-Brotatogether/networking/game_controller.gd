@@ -1022,3 +1022,15 @@ func on_weapon_selected(weapon) -> void:
 func received_weapon_selected(player_id, weapon) -> void:
 	lobby_data["players"][player_id]["weapon"] = weapon 
 	emit_signal("lobby_info_updated")
+
+
+func on_mp_lobby_ready_changed(is_ready:bool) -> void:
+	if is_host:
+		receive_mp_lobby_ready_changed(self_peer_id, is_ready)
+	else:
+		connection.send_mp_lobby_readied(is_ready)
+
+
+func receive_mp_lobby_ready_changed(player_id, is_ready:bool) -> void:
+	lobby_data["players"][player_id]["ready"] = is_ready
+	emit_signal("lobby_info_updated")

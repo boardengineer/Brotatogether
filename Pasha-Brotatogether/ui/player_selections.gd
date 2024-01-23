@@ -1,5 +1,7 @@
 extends HBoxContainer
 
+signal ready_toggled(is_ready)
+
 onready var selected_character_element := get_node("%SelectedCharacter")
 onready var selected_weapon_element := get_node("%SelectedWeapon")
 onready var selected_danger_element := get_node("%SelectedDanger")
@@ -7,10 +9,6 @@ onready var username_label := get_node("%Username")
 onready var ready_toggle := get_node("%ReadyToggle")
 
 var unpicked_icon = load("res://items/global/random_icon.png")
-
-func _ready():
-	pass
-#	selected_character_element.set_element(load("res://items/characters/arms_dealer/arms_dealer_data.tres"))
 
 
 func set_player_name(name:String) -> void:
@@ -76,6 +74,9 @@ func set_player_selections(selections_dict : Dictionary, is_me:bool = false, loc
 	else:
 		selected_danger_element.icon = unpicked_icon
 	
+	if selections_dict.has("ready"):
+		ready_toggle.pressed = selections_dict["ready"]
+	
 	if lock_danger:
 		selected_danger_element.disabled = true
 	
@@ -88,3 +89,7 @@ func set_player_selections(selections_dict : Dictionary, is_me:bool = false, loc
 func _on_select_danger_element_pressed(element):
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.difficulty_selection_scene)
+
+
+func _on_ReadyToggle_toggled(button_pressed):
+	emit_signal("ready_toggled", button_pressed)

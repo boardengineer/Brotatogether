@@ -5,6 +5,12 @@ onready var start_button = $ControlBox/Buttons/StartButton
 onready var outer_options_container = get_node("%OuterOptionsContainer")
 
 onready var game_mode_dropdown:OptionButton = get_node("%GameModeDropdown")
+onready var copy_host_toggle:CheckButton = get_node("%CopyHostToggle")
+onready var material_count_slider:SliderOption = get_node("%MaterialCountSlider")
+onready var enemy_count_slider:SliderOption = get_node("%EnemyCountSlider")
+onready var enemy_hp_slider:SliderOption = get_node("%EnemyHPSlider")
+onready var enemy_damage_slider:SliderOption = get_node("%EnemyDamageSlider")
+onready var enemy_speed_slider:SliderOption = get_node("%EnemySpeedSlider")
 
 const PlayerSelections = preload("res://mods-unpacked/Pasha-Brotatogether/ui/player_selections.tscn")
 
@@ -16,6 +22,7 @@ func _ready():
 	var game_controller = $"/root/GameController"
 	if not game_controller.is_host:
 		start_button.disabled = true
+		disable_options()
 	
 	for child in players_container.get_children():
 		players_container.remove_child(child)
@@ -78,20 +85,25 @@ func update_selections() -> void:
 				player_to_add.call_deferred("disable_selections")
 				player_to_add.call_deferred("disable_ready_toggle")
 			player_to_add.call_deferred("set_player_name", name)
+			players_container.connect("ready_toggled", self, "update_ready_toggle")
 		
 		# co-op mode will only show host 
 		var player_selections = selections_by_player[player_id]
-		var selections_dict = host_dict if game_mode == 1 else game_controller.lobby_data["players"][player_id]
+		var selections_dict = game_controller.lobby_data["players"][player_id].duplicate()
+		if host_dict.has("danger"):
+			selections_dict["danger"] = host_dict["danger"]
 		var can_edit = false
 		var lock_danger = false
+		
 		if username == host:
 			if player_id == game_controller.self_peer_id:
 				can_edit = true
 		else:
 			if game_mode == 1:
 				lock_danger = true
-			if game_mode == 0 and player_id == game_controller.self_peer_id:
+			if player_id == game_controller.self_peer_id:
 				can_edit = true
+		
 		player_selections.call_deferred("set_player_selections", selections_dict, can_edit, lock_danger)
 	
 	var can_start = false
@@ -209,5 +221,20 @@ func _on_game_mode_changed(_index):
 	update_selections()
 
 
+func update_ready_toggle(is_ready:bool):
+	var game_controller = $"/root/GameController"
+	game_controller.on_mp_lobby_ready_changed(is_ready)
+
+
 func _on_BackButton_pressed():
 	exit_lobby()
+
+
+func disable_options() -> void:
+	game_mode_dropdown.disabled = true
+	copy_host_toggle.disabled = true
+	material_count_slider._slider.editable = false
+	enemy_count_slider._slider.editable = false
+	enemy_hp_slider._slider.editable = false
+	enemy_damage_slider._slider.editable = false
+	enemy_speed_slider._slider.editable = false
