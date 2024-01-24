@@ -376,6 +376,7 @@ rect_pivot_offset = Vector2( 13, 260 )
 text = "Back"
 
 [connection signal="item_selected" from="LobbyContent/OuterOptionsContainer/OptionsContainer/GameModeDropdown" to="." method="_on_game_mode_changed"]
+[connection signal="toggled" from="LobbyContent/OuterOptionsContainer/OptionsContainer/CopyHostToggle" to="." method="on_option_updated"]
 [connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" to="." method="on_option_updated"]
 [connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" to="." method="on_option_updated"]
 [connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" to="." method="on_option_updated"]

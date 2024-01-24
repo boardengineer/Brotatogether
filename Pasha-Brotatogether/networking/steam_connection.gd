@@ -186,7 +186,7 @@ func update_tracked_players() -> void:
 			if member_steam_id != parent.self_peer_id:
 				all_players_ready = false
 				if parent.is_host:
-					member_username = member_username + " (loading)"
+					member_username = member_username
 		
 		parent.tracked_players[member_steam_id] = {"username": member_username}
 	

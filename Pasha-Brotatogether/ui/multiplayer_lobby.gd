@@ -69,25 +69,28 @@ func update_selections() -> void:
 	var game_mode = 0
 	if game_controller.lobby_data.has("game_mode"):
 		game_mode = game_controller.lobby_data["game_mode"]
-		game_mode_dropdown.select(game_mode) 
 	
-	if game_controller.lobby_data.has("copy_host"):
-		copy_host_toggle.set_pressed_no_signal(game_controller.lobby_data["copy_host"])
-	
-	if game_controller.lobby_data.has("material_count"):
-		material_count_slider.set_value(game_controller.lobby_data["material_count"])
-	
-	if game_controller.lobby_data.has("enemy_count"):
-		enemy_count_slider.set_value(game_controller.lobby_data["enemy_count"])
-	
-	if game_controller.lobby_data.has("enemy_hp"):
-		enemy_hp_slider.set_value(game_controller.lobby_data["enemy_hp"])
-	
-	if game_controller.lobby_data.has("enemy_damage"):
-		enemy_damage_slider.set_value(game_controller.lobby_data["enemy_damage"])
-	
-	if game_controller.lobby_data.has("enemy_speed"):
-		enemy_speed_slider.set_value(game_controller.lobby_data["enemy_speed"])
+	if not game_controller.is_host:
+		if game_controller.lobby_data.has("game_mode"):
+			game_mode_dropdown.select(game_mode) 
+		
+		if game_controller.lobby_data.has("copy_host"):
+			copy_host_toggle.set_pressed_no_signal(game_controller.lobby_data["copy_host"])
+		
+		if game_controller.lobby_data.has("material_count"):
+			material_count_slider.set_value(game_controller.lobby_data["material_count"])
+		
+		if game_controller.lobby_data.has("enemy_count"):
+			enemy_count_slider.set_value(game_controller.lobby_data["enemy_count"])
+		
+		if game_controller.lobby_data.has("enemy_hp"):
+			enemy_hp_slider.set_value(game_controller.lobby_data["enemy_hp"])
+		
+		if game_controller.lobby_data.has("enemy_damage"):
+			enemy_damage_slider.set_value(game_controller.lobby_data["enemy_damage"])
+		
+		if game_controller.lobby_data.has("enemy_speed"):
+			enemy_speed_slider.set_value(game_controller.lobby_data["enemy_speed"])
 	
 	var host_dict = {}
 	var can_start = true
@@ -122,7 +125,7 @@ func update_selections() -> void:
 		# co-op mode will only show host 
 		var player_selections = selections_by_player[player_id]
 		var selections_dict = game_controller.lobby_data["players"][player_id].duplicate()
-		if host_dict.has("danger"):
+		if host_dict.has("danger") and game_mode == 1:
 			selections_dict["danger"] = host_dict["danger"]
 		var can_edit = false
 		var lock_danger = false
@@ -133,6 +136,8 @@ func update_selections() -> void:
 		else:
 			if not selections_dict.has("ready") or not selections_dict["ready"]:
 				can_start = false
+			if game_controller.lobby_data.has("copy_host") and game_controller.lobby_data["copy_host"]:
+				selections_dict = host_dict 
 			if game_mode == 1:
 				lock_danger = true
 			if player_id == game_controller.self_peer_id and not game_controller.lobby_data["copy_host"]:
@@ -285,3 +290,4 @@ func on_option_updated(_value) -> void:
 	game_controller.lobby_data["enemy_speed"] = enemy_speed_slider._slider.get_value()
 	
 	should_send_lobby_update = true
+	update_selections()

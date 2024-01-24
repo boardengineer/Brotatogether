@@ -2,7 +2,6 @@ extends CharacterSelection
 
 
 func on_element_pressed(element:InventoryElement)->void :
-	print_debug("element pressed ", character_added, " ", element.is_special)
 	if character_added:
 		return 
 	

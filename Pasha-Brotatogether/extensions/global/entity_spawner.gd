@@ -43,7 +43,6 @@ func _on_StructureTimer_timeout() -> void:
 					if struct.spawn_around_player != - 1:
 						pos = get_spawn_pos_in_area(_player.global_position, struct.spawn_around_player)
 					
-					print_debug("queueing turret")
 					queue_to_spawn_structures.push_back([EntityType.STRUCTURE, struct.scene, pos, struct])
 					
 					
@@ -76,7 +75,6 @@ func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool
 		
 		if unit_wave_data.type == EntityType.ENEMY:
 			duped_data.min_number *= enemies_multipliler
-			print_debug(duped_data.min_number)
 			duped_data.max_number *= enemies_multipliler
 			
 		if group_data.is_boss and enemies_multipliler > 1:
