@@ -39,9 +39,9 @@ func _ready():
 
 
 func send_lobby_update() -> void:
-	if should_send_lobby_update:
+	var game_controller = $"/root/GameController"
+	if should_send_lobby_update and game_controller.is_host:
 		should_send_lobby_update = false
-		var game_controller = $"/root/GameController"
 		game_controller.send_lobby_update(game_controller.lobby_data)
 
 
@@ -135,7 +135,7 @@ func update_selections() -> void:
 				can_start = false
 			if game_mode == 1:
 				lock_danger = true
-			if player_id == game_controller.self_peer_id:
+			if player_id == game_controller.self_peer_id and not game_controller.lobby_data["copy_host"]:
 				can_edit = true
 		
 		player_selections.call_deferred("set_player_selections", selections_dict, can_edit, lock_danger)
@@ -274,12 +274,14 @@ func disable_options() -> void:
 
 func on_option_updated(_value) -> void:
 	var game_controller = $"/root/GameController"
+	if not game_controller.is_host:
+		return
 	
-	game_controller.lobby_data["copy_host"] = copy_host_toggle.selected
-	game_controller.lobby_data["material_count"] = material_count_slider.get_value()
-	game_controller.lobby_data["enemy_count"] = enemy_count_slider.get_value()
-	game_controller.lobby_data["enemy_hp"] = enemy_hp_slider.get_value()
-	game_controller.lobby_data["enemy_damage"] = enemy_damage_slider.get_value()
-	game_controller.lobby_data["enemy_speed"] = enemy_speed_slider.get_value()
+	game_controller.lobby_data["copy_host"] = copy_host_toggle.is_pressed()
+	game_controller.lobby_data["material_count"] = material_count_slider._slider.get_value()
+	game_controller.lobby_data["enemy_count"] = enemy_count_slider._slider.get_value()
+	game_controller.lobby_data["enemy_hp"] = enemy_hp_slider._slider.get_value()
+	game_controller.lobby_data["enemy_damage"] = enemy_damage_slider._slider.get_value()
+	game_controller.lobby_data["enemy_speed"] = enemy_speed_slider._slider.get_value()
 	
 	should_send_lobby_update = true

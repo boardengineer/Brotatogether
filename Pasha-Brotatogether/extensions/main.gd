@@ -651,12 +651,19 @@ func on_levelled_up() -> void:
 		game_controller.update_health(_player.current_stats.health, _player.max_stats.health)
 
 func spawn_gold(unit:Unit, entity_type:int)->void :
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+	if not $"/root".has_node("GameController"):
 		.spawn_gold(unit, entity_type)
 		return
 		
 	var size_before = _golds.size()
+	
+	unit.stats = unit.stats.duplicate()
+	unit.stats.value *= game_controller.lobby_data["material_count"]
 	.spawn_gold(unit, entity_type)
+	
+	if not $"/root/GameController".is_coop():
+		return
+	
 	var size_after = _golds.size()
 	
 	var index = size_before

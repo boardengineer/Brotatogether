@@ -48,7 +48,7 @@ func _on_StructureTimer_timeout() -> void:
 					
 					
 func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool) -> void:
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+	if not $"/root".has_node("GameController"):
 		.on_group_spawn_timing_reached(group_data, _is_elite_wave)
 		return
 	
@@ -58,15 +58,16 @@ func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool
 	
 	var game_controller = $"/root/GameController"
 	
-	for player_id in game_controller.tracked_players:
-		var run_data = game_controller.tracked_players[player_id].run_data
-		trees += run_data.effects.trees
-		number_of_enemies += run_data.effects.number_of_enemies
+	if $"/root/GameController".is_coop():
+		for player_id in game_controller.tracked_players:
+			var run_data = game_controller.tracked_players[player_id].run_data
+			trees += run_data.effects.trees
+			number_of_enemies += run_data.effects.number_of_enemies
 		
 	RunData.effects["trees"] = trees
 	RunData.effects["number_of_enemies"] = number_of_enemies
 	
-	var enemies_multipliler = game_controller.tracked_players.size() + 1
+	var enemies_multipliler = game_controller.lobby_data["enemy_count"]
 	var new_group_data = WaveGroupData.new()
 	new_group_data.wave_units_data = []
 	
@@ -75,6 +76,7 @@ func on_group_spawn_timing_reached(group_data:WaveGroupData, _is_elite_wave:bool
 		
 		if unit_wave_data.type == EntityType.ENEMY:
 			duped_data.min_number *= enemies_multipliler
+			print_debug(duped_data.min_number)
 			duped_data.max_number *= enemies_multipliler
 			
 		if group_data.is_boss and enemies_multipliler > 1:

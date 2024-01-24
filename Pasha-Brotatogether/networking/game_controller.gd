@@ -310,15 +310,10 @@ func start_game(game_info: Dictionary):
 			
 			back_to_lobby = false
 			
-			var num_players = tracked_players.size()
-			var speed_multi = 1 + (num_players - 1.0) * .1
-			var health_multi  =  1 + (num_players - 1.0) * .25
-			var damage_multi = 1 + (num_players - 1.0) * .25
-			
 			RunData.current_run_accessibility_settings = ProgressData.settings.enemy_scaling.duplicate()
-			RunData.current_run_accessibility_settings.health = RunData.current_run_accessibility_settings.health * health_multi
-			RunData.current_run_accessibility_settings.damage = RunData.current_run_accessibility_settings.damage * damage_multi
-			RunData.current_run_accessibility_settings.speed = RunData.current_run_accessibility_settings.speed * speed_multi
+			RunData.current_run_accessibility_settings.health = lobby_data["enemy_hp"]
+			RunData.current_run_accessibility_settings.damage = lobby_data["enemy_damage"]
+			RunData.current_run_accessibility_settings.speed = lobby_data["enemy_speed"]
 			
 #		tracked_players = {}
 #		RunData.current_wave = game_info.current_wave
@@ -361,7 +356,8 @@ func start_game(game_info: Dictionary):
 					if weapon.my_id == weapon_id:
 						var _unused = RunData.add_weapon(weapon, true)
 			else:
-				var _unused = RunData.add_weapon(Utils.get_rand_element(character_data.starting_weapons), true)
+				if character_data.starting_weapons.size() > 0:
+					var _unused = RunData.add_weapon(Utils.get_rand_element(character_data.starting_weapons), true)
 				
 			var danger = game_info.danger
 			RunData.add_starting_items_and_weapons()
@@ -374,6 +370,11 @@ func start_game(game_info: Dictionary):
 				effect.apply()
 			
 			back_to_lobby = false
+			
+			RunData.current_run_accessibility_settings = ProgressData.settings.enemy_scaling.duplicate()
+			RunData.current_run_accessibility_settings.health = lobby_data["enemy_hp"]
+			RunData.current_run_accessibility_settings.damage = lobby_data["enemy_damage"]
+			RunData.current_run_accessibility_settings.speed = lobby_data["enemy_speed"]
 			
 		RunData.current_wave = game_info.current_wave
 		if game_info.has("extra_enemies_next_wave"):
@@ -839,8 +840,7 @@ func send_lobby_update(lobby_info:Dictionary) -> void:
 
 func receive_lobby_update(lobby_info:Dictionary) -> void:
 	if current_scene_name == "MultiplayerLobby":
-		lobby_data = lobby_info
-		print_debug("should remote update lobby? ", lobby_info)
+		lobby_data = lobby_info.duplicate()
 		$"/root/MultiplayerLobby".remote_update_lobby(lobby_info)
 	
 func update_multiplayer_lobby() -> void:
