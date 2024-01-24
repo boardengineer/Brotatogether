@@ -94,6 +94,13 @@ func init_client_starts_wait() -> void:
 func init_lobby_info() -> void:
 	lobby_data = {}
 	lobby_data["players"] = {}
+	
+	lobby_data["copy_host"] = false
+	lobby_data["material_count"] = 1
+	lobby_data["enemy_count"] = 1
+	lobby_data["enemy_hp"] = 1
+	lobby_data["enemy_damage"] = 1
+	lobby_data["enemy_speed"] = 1
 
 func send_client_started() -> void:
 	connection.send_client_started()

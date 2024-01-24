@@ -59,6 +59,8 @@ rect_min_size = Vector2( 20, 0 )
 margin_left = 24.0
 margin_right = 1056.0
 margin_bottom = 547.0
+rect_min_size = Vector2( 1032, 0 )
+size_flags_horizontal = 0
 
 [node name="PlayerListTitle" type="Label" parent="LobbyContent/PlayerContainer/VBoxContainer"]
 margin_right = 1032.0
@@ -79,9 +81,11 @@ margin_right = 1032.0
 size_flags_vertical = 0
 
 [node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="3"]
+margin_right = 830.0
 text = "Really REALLY Long Username"
 
 [node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer1" index="4"]
+margin_left = 835.0
 margin_top = 17.0
 margin_right = 1032.0
 margin_bottom = 87.0
@@ -93,9 +97,11 @@ margin_bottom = 214.0
 size_flags_vertical = 0
 
 [node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="3"]
+margin_right = 830.0
 text = "Really Long Username"
 
 [node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer2" index="4"]
+margin_left = 835.0
 margin_top = 17.0
 margin_right = 1032.0
 margin_bottom = 87.0
@@ -107,9 +113,11 @@ margin_bottom = 323.0
 size_flags_vertical = 0
 
 [node name="Username" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="3"]
+margin_right = 830.0
 text = "Bob"
 
 [node name="ReadyToggle" parent="LobbyContent/PlayerContainer/VBoxContainer/Players/SamplePlayer3" index="4"]
+margin_left = 835.0
 margin_top = 17.0
 margin_right = 1032.0
 margin_bottom = 87.0
@@ -154,28 +162,34 @@ margin_right = 826.0
 margin_bottom = 231.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
+custom_constants/separation = 0
 
 [node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="0"]
 margin_top = 10.0
-margin_right = 372.0
+margin_right = 450.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 450, 0 )
 text = "Material Drops"
 
 [node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="1"]
-margin_left = 422.0
-margin_right = 436.0
+margin_left = 450.0
+margin_right = 450.0
 margin_bottom = 75.0
+size_flags_horizontal = 1
 
 [node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="2"]
-margin_left = 486.0
-margin_right = 686.0
+margin_left = 450.0
+margin_right = 650.0
 margin_bottom = 75.0
+max_value = 3.0
+value = 1.0
 
 [node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" index="3"]
-margin_left = 736.0
+margin_left = 650.0
 margin_top = 10.0
-margin_right = 826.0
+margin_right = 800.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 150, 0 )
 
 [node name="EnemyCountSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 unique_name_in_owner = true
@@ -184,28 +198,34 @@ margin_right = 826.0
 margin_bottom = 310.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
+custom_constants/separation = 0
 
 [node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="0"]
 margin_top = 10.0
-margin_right = 317.0
+margin_right = 450.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 450, 0 )
 text = "Enemy Count"
 
 [node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="1"]
-margin_left = 367.0
-margin_right = 436.0
+margin_left = 450.0
+margin_right = 450.0
 margin_bottom = 75.0
+size_flags_horizontal = 1
 
 [node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="2"]
-margin_left = 486.0
-margin_right = 686.0
+margin_left = 450.0
+margin_right = 650.0
 margin_bottom = 75.0
+max_value = 3.0
+value = 1.0
 
 [node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" index="3"]
-margin_left = 736.0
+margin_left = 650.0
 margin_top = 10.0
-margin_right = 826.0
+margin_right = 800.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 150, 0 )
 
 [node name="EnemyHPSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 unique_name_in_owner = true
@@ -214,28 +234,34 @@ margin_right = 826.0
 margin_bottom = 389.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
+custom_constants/separation = 0
 
 [node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="0"]
 margin_top = 10.0
-margin_right = 231.0
+margin_right = 450.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 450, 0 )
 text = "Enemy HP"
 
 [node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="1"]
-margin_left = 281.0
-margin_right = 436.0
+margin_left = 450.0
+margin_right = 450.0
 margin_bottom = 75.0
+size_flags_horizontal = 1
 
 [node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="2"]
-margin_left = 486.0
-margin_right = 686.0
+margin_left = 450.0
+margin_right = 650.0
 margin_bottom = 75.0
+max_value = 3.0
+value = 1.0
 
 [node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" index="3"]
-margin_left = 736.0
+margin_left = 650.0
 margin_top = 10.0
-margin_right = 826.0
+margin_right = 800.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 150, 0 )
 
 [node name="EnemyDamageSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 unique_name_in_owner = true
@@ -244,28 +270,34 @@ margin_right = 826.0
 margin_bottom = 468.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
+custom_constants/separation = 0
 
 [node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="0"]
 margin_top = 10.0
-margin_right = 366.0
+margin_right = 450.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 450, 0 )
 text = "Enemy Damage"
 
 [node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="1"]
-margin_left = 416.0
-margin_right = 436.0
+margin_left = 450.0
+margin_right = 450.0
 margin_bottom = 75.0
+size_flags_horizontal = 1
 
 [node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="2"]
-margin_left = 486.0
-margin_right = 686.0
+margin_left = 450.0
+margin_right = 650.0
 margin_bottom = 75.0
+max_value = 3.0
+value = 1.0
 
 [node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" index="3"]
-margin_left = 736.0
+margin_left = 650.0
 margin_top = 10.0
-margin_right = 826.0
+margin_right = 800.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 150, 0 )
 
 [node name="EnemySpeedSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 unique_name_in_owner = true
@@ -274,28 +306,34 @@ margin_right = 826.0
 margin_bottom = 547.0
 rect_min_size = Vector2( 0, 75 )
 size_flags_vertical = 0
+custom_constants/separation = 0
 
 [node name="Label" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="0"]
 margin_top = 10.0
-margin_right = 322.0
+margin_right = 450.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 450, 0 )
 text = "Enemy Speed"
 
 [node name="Control" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="1"]
-margin_left = 372.0
-margin_right = 436.0
+margin_left = 450.0
+margin_right = 450.0
 margin_bottom = 75.0
+size_flags_horizontal = 1
 
 [node name="HSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="2"]
-margin_left = 486.0
-margin_right = 686.0
+margin_left = 450.0
+margin_right = 650.0
 margin_bottom = 75.0
+max_value = 3.0
+value = 1.0
 
 [node name="Value" parent="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" index="3"]
-margin_left = 736.0
+margin_left = 650.0
 margin_top = 10.0
-margin_right = 826.0
+margin_right = 800.0
 margin_bottom = 64.0
+rect_min_size = Vector2( 150, 0 )
 
 [node name="MarginContainer" type="MarginContainer" parent="LobbyContent/OuterOptionsContainer"]
 margin_left = 830.0
@@ -338,6 +376,11 @@ rect_pivot_offset = Vector2( 13, 260 )
 text = "Back"
 
 [connection signal="item_selected" from="LobbyContent/OuterOptionsContainer/OptionsContainer/GameModeDropdown" to="." method="_on_game_mode_changed"]
+[connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" to="." method="on_option_updated"]
+[connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" to="." method="on_option_updated"]
+[connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" to="." method="on_option_updated"]
+[connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyDamageSlider" to="." method="on_option_updated"]
+[connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemySpeedSlider" to="." method="on_option_updated"]
 [connection signal="pressed" from="ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
 [connection signal="pressed" from="ControlBox/Buttons/BackButton" to="." method="_on_BackButton_pressed"]
 

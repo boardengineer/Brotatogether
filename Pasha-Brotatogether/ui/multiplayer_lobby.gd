@@ -15,6 +15,7 @@ onready var enemy_speed_slider:SliderOption = get_node("%EnemySpeedSlider")
 const PlayerSelections = preload("res://mods-unpacked/Pasha-Brotatogether/ui/player_selections.tscn")
 
 onready var selections_by_player = {}
+var should_send_lobby_update = false
 
 func _ready():
 	var _error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
@@ -30,6 +31,18 @@ func _ready():
 	game_controller.connect("lobby_info_updated", self, "update_selections")
 	init_mode_dropdown()
 	update_selections()
+	var send_timer = Timer.new()
+	send_timer.wait_time = .5
+	send_timer.autostart = true
+	send_timer.connect("timeout", self, "send_lobby_update")
+	add_child(send_timer)
+
+
+func send_lobby_update() -> void:
+	if should_send_lobby_update:
+		should_send_lobby_update = false
+		var game_controller = $"/root/GameController"
+		game_controller.send_lobby_update(game_controller.lobby_data)
 
 
 func init_mode_dropdown() -> void:
@@ -58,9 +71,26 @@ func update_selections() -> void:
 		game_mode = game_controller.lobby_data["game_mode"]
 		game_mode_dropdown.select(game_mode) 
 	
+	if game_controller.lobby_data.has("copy_host"):
+		copy_host_toggle.set_pressed_no_signal(game_controller.lobby_data["copy_host"])
+	
+	if game_controller.lobby_data.has("material_count"):
+		material_count_slider.set_value(game_controller.lobby_data["material_count"])
+	
+	if game_controller.lobby_data.has("enemy_count"):
+		enemy_count_slider.set_value(game_controller.lobby_data["enemy_count"])
+	
+	if game_controller.lobby_data.has("enemy_hp"):
+		enemy_hp_slider.set_value(game_controller.lobby_data["enemy_hp"])
+	
+	if game_controller.lobby_data.has("enemy_damage"):
+		enemy_damage_slider.set_value(game_controller.lobby_data["enemy_damage"])
+	
+	if game_controller.lobby_data.has("enemy_speed"):
+		enemy_speed_slider.set_value(game_controller.lobby_data["enemy_speed"])
+	
 	var host_dict = {}
 	var can_start = true
-	
 	for player_id in game_controller.tracked_players:
 		if not game_controller.lobby_data["players"].has(player_id):
 			game_controller.lobby_data["players"][player_id] = {}
@@ -240,3 +270,16 @@ func disable_options() -> void:
 	enemy_hp_slider._slider.editable = false
 	enemy_damage_slider._slider.editable = false
 	enemy_speed_slider._slider.editable = false
+
+
+func on_option_updated(_value) -> void:
+	var game_controller = $"/root/GameController"
+	
+	game_controller.lobby_data["copy_host"] = copy_host_toggle.selected
+	game_controller.lobby_data["material_count"] = material_count_slider.get_value()
+	game_controller.lobby_data["enemy_count"] = enemy_count_slider.get_value()
+	game_controller.lobby_data["enemy_hp"] = enemy_hp_slider.get_value()
+	game_controller.lobby_data["enemy_damage"] = enemy_damage_slider.get_value()
+	game_controller.lobby_data["enemy_speed"] = enemy_speed_slider.get_value()
+	
+	should_send_lobby_update = true

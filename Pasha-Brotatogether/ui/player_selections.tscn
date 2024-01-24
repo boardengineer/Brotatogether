@@ -55,18 +55,19 @@ icon_align = 1
 unique_name_in_owner = true
 margin_left = 330.0
 margin_top = 25.0
-margin_right = 830.0
+margin_right = 970.0
 margin_bottom = 79.0
 rect_min_size = Vector2( 500, 0 )
+size_flags_horizontal = 3
 custom_fonts/font = ExtResource( 3 )
 text = "USERNAME"
 clip_text = true
 
 [node name="ReadyToggle" type="CheckButton" parent="."]
 unique_name_in_owner = true
-margin_left = 835.0
+margin_left = 975.0
 margin_top = 32.0
-margin_right = 980.0
+margin_right = 1120.0
 margin_bottom = 72.0
 size_flags_vertical = 4
 custom_fonts/font = ExtResource( 4 )
