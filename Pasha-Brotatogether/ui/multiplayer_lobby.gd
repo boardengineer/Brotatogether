@@ -32,7 +32,7 @@ func _ready():
 	
 	game_controller.connect("lobby_info_updated", self, "update_selections")
 	init_mode_dropdown()
-	update_selections()
+	update_selections(true)
 	var send_timer = Timer.new()
 	send_timer.wait_time = .5
 	send_timer.autostart = true
@@ -63,7 +63,7 @@ func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: i
 	update_selections()
 
 
-func update_selections() -> void:
+func update_selections(from_ready:bool = false) -> void:
 	var game_controller = $"/root/GameController"
 	var steam_connection = $"/root/SteamConnection"
 	var host = steam_connection.get_lobby_host()
@@ -73,13 +73,13 @@ func update_selections() -> void:
 		game_mode = game_controller.lobby_data["game_mode"]
 	
 	if game_mode == 1:
-		first_death_loss_toggle.show()
+#		first_death_loss_toggle.show()
 		shared_gold_toggle.show()
 	else:
 		first_death_loss_toggle.hide()
 		shared_gold_toggle.hide()
 	
-	if not game_controller.is_host:
+	if not game_controller.is_host or from_ready:
 		if game_controller.lobby_data.has("game_mode"):
 			game_mode_dropdown.select(game_mode) 
 		

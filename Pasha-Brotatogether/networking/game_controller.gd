@@ -416,6 +416,7 @@ func check_win() -> void:
 		else:
 			anyone_dead = true
 	
+	# TODO this doesn't actually work yet
 	var should_end_coop = false
 	if lobby_data["first_death_loss"]:
 		should_end_coop = anyone_dead
