@@ -6,6 +6,8 @@ onready var outer_options_container = get_node("%OuterOptionsContainer")
 
 onready var game_mode_dropdown:OptionButton = get_node("%GameModeDropdown")
 onready var copy_host_toggle:CheckButton = get_node("%CopyHostToggle")
+onready var first_death_loss_toggle:CheckButton = get_node("%FirstDeathLossToggle")
+onready var shared_gold_toggle:CheckButton = get_node("%ShareGoldToggle")
 onready var material_count_slider:SliderOption = get_node("%MaterialCountSlider")
 onready var enemy_count_slider:SliderOption = get_node("%EnemyCountSlider")
 onready var enemy_hp_slider:SliderOption = get_node("%EnemyHPSlider")
@@ -69,6 +71,13 @@ func update_selections() -> void:
 	var game_mode = 0
 	if game_controller.lobby_data.has("game_mode"):
 		game_mode = game_controller.lobby_data["game_mode"]
+	
+	if game_mode == 1:
+		first_death_loss_toggle.show()
+		shared_gold_toggle.show()
+	else:
+		first_death_loss_toggle.hide()
+		shared_gold_toggle.hide()
 	
 	if not game_controller.is_host:
 		if game_controller.lobby_data.has("game_mode"):
@@ -270,6 +279,8 @@ func _on_BackButton_pressed():
 func disable_options() -> void:
 	game_mode_dropdown.disabled = true
 	copy_host_toggle.disabled = true
+	first_death_loss_toggle.disabled = true
+	shared_gold_toggle.disabled = true
 	material_count_slider._slider.editable = false
 	enemy_count_slider._slider.editable = false
 	enemy_hp_slider._slider.editable = false
@@ -283,6 +294,8 @@ func on_option_updated(_value) -> void:
 		return
 	
 	game_controller.lobby_data["copy_host"] = copy_host_toggle.is_pressed()
+	game_controller.lobby_data["first_death_loss"] = first_death_loss_toggle.is_pressed()
+	game_controller.lobby_data["shared_gold"] = shared_gold_toggle.is_pressed()
 	game_controller.lobby_data["material_count"] = material_count_slider._slider.get_value()
 	game_controller.lobby_data["enemy_count"] = enemy_count_slider._slider.get_value()
 	game_controller.lobby_data["enemy_hp"] = enemy_hp_slider._slider.get_value()

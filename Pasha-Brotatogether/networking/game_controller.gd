@@ -96,6 +96,8 @@ func init_lobby_info() -> void:
 	lobby_data["players"] = {}
 	
 	lobby_data["copy_host"] = false
+	lobby_data["first_death_loss"] = false
+	lobby_data["shared_gold"] = false
 	lobby_data["material_count"] = 1
 	lobby_data["enemy_count"] = 1
 	lobby_data["enemy_hp"] = 1
@@ -403,16 +405,24 @@ func receive_death(source_player_id:int) -> void:
 func check_win() -> void:
 	var all_others_dead = true
 	var anyone_dead = false
+	var all_dead = true
 	for tracked_player_id in tracked_players:
 		if tracked_player_id == self_peer_id:
 			continue
 		var tracked_player = tracked_players[tracked_player_id]
 		if not tracked_player.has("dead") or not tracked_player.dead:
 			all_others_dead = false
+			all_dead = false
 		else:
 			anyone_dead = true
 	
-	if all_others_dead or (is_coop() and anyone_dead):
+	var should_end_coop = false
+	if lobby_data["first_death_loss"]:
+		should_end_coop = anyone_dead
+	else:
+		should_end_coop = all_dead
+	
+	if all_others_dead or (should_end_coop):
 		disable_pause = false
 		var main = get_tree().get_current_scene()
 		var did_win = not is_coop()

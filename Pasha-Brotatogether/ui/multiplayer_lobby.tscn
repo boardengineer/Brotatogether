@@ -31,17 +31,17 @@ script = ExtResource( 8 )
 
 [node name="Title" type="Label" parent="."]
 margin_right = 1929.0
-margin_bottom = 200.0
-rect_min_size = Vector2( 0, 200 )
+margin_bottom = 150.0
+rect_min_size = Vector2( 0, 150 )
 custom_fonts/font = ExtResource( 11 )
 text = "Multiplayer Lobby"
 align = 1
 valign = 1
 
 [node name="LobbyContent" type="HBoxContainer" parent="."]
-margin_top = 204.0
+margin_top = 154.0
 margin_right = 1929.0
-margin_bottom = 751.0
+margin_bottom = 701.0
 custom_constants/separation = 23
 alignment = 1
 
@@ -129,6 +129,7 @@ margin_right = 1929.0
 margin_bottom = 547.0
 rect_min_size = Vector2( 850, 0 )
 size_flags_horizontal = 7
+size_flags_vertical = 2
 alignment = 1
 
 [node name="OptionsContainer" type="VBoxContainer" parent="LobbyContent/OuterOptionsContainer"]
@@ -154,6 +155,22 @@ margin_top = 78.0
 margin_right = 826.0
 margin_bottom = 152.0
 text = "Copy Host Loadout"
+
+[node name="FirstDeathLossToggle" type="CheckButton" parent="LobbyContent/OuterOptionsContainer/OptionsContainer"]
+unique_name_in_owner = true
+visible = false
+margin_top = 156.0
+margin_right = 826.0
+margin_bottom = 230.0
+text = "Lose On First Death"
+
+[node name="ShareGoldToggle" type="CheckButton" parent="LobbyContent/OuterOptionsContainer/OptionsContainer"]
+unique_name_in_owner = true
+visible = false
+margin_top = 156.0
+margin_right = 826.0
+margin_bottom = 230.0
+text = "Share Gold Pickups"
 
 [node name="MaterialCountSlider" parent="LobbyContent/OuterOptionsContainer/OptionsContainer" instance=ExtResource( 10 )]
 unique_name_in_owner = true
@@ -343,7 +360,7 @@ rect_min_size = Vector2( 20, 0 )
 
 [node name="ControlBox" type="VBoxContainer" parent="."]
 margin_left = 664.0
-margin_top = 755.0
+margin_top = 705.0
 margin_right = 1264.0
 margin_bottom = 1080.0
 size_flags_horizontal = 6
@@ -352,9 +369,9 @@ custom_constants/separation = 50
 alignment = 2
 
 [node name="Buttons" type="VBoxContainer" parent="ControlBox"]
-margin_top = 152.0
+margin_top = 202.0
 margin_right = 600.0
-margin_bottom = 325.0
+margin_bottom = 375.0
 rect_min_size = Vector2( 600, 0 )
 size_flags_horizontal = 4
 custom_constants/separation = 25
@@ -377,6 +394,8 @@ text = "Back"
 
 [connection signal="item_selected" from="LobbyContent/OuterOptionsContainer/OptionsContainer/GameModeDropdown" to="." method="_on_game_mode_changed"]
 [connection signal="toggled" from="LobbyContent/OuterOptionsContainer/OptionsContainer/CopyHostToggle" to="." method="on_option_updated"]
+[connection signal="toggled" from="LobbyContent/OuterOptionsContainer/OptionsContainer/FirstDeathLossToggle" to="." method="on_option_updated"]
+[connection signal="toggled" from="LobbyContent/OuterOptionsContainer/OptionsContainer/ShareGoldToggle" to="." method="on_option_updated"]
 [connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/MaterialCountSlider" to="." method="on_option_updated"]
 [connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyCountSlider" to="." method="on_option_updated"]
 [connection signal="value_changed" from="LobbyContent/OuterOptionsContainer/OptionsContainer/EnemyHPSlider" to="." method="on_option_updated"]

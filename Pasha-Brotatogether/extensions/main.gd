@@ -386,8 +386,13 @@ func on_gold_picked_up_multiplayer(gold:Node, player_id:int) -> void:
 		var dmg_taken = handle_stat_damages(run_data.effects["dmg_when_pickup_gold"])
 		run_data.tracked_item_effects["item_baby_elephant"] += dmg_taken[1]
 		
-	add_gold(player_id, value)
-	add_xp(player_id, value)
+	if game_controller.lobby_data["shared_gold"]:
+		for lucky_player_id in game_controller.tracked_players:
+			add_gold(lucky_player_id, value)
+			add_xp(lucky_player_id, value)
+	else:
+		add_gold(player_id, value)
+		add_xp(player_id, value)
 
 #	ProgressData.add_data("materials_collected")
 
