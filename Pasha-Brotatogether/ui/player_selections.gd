@@ -40,14 +40,21 @@ func _on_SelectedWeapon_element_pressed(element):
 
 
 func set_player_selections(selections_dict : Dictionary, is_me:bool = false, lock_danger: bool = false) -> void:
+	var weapon_required = true
 	if selections_dict.has("character"):
 		var character_id = selections_dict["character"]
 		for character in ItemService.characters:
 			if character.my_id == character_id:
 				selected_character_element.set_element(character)
+				if character.starting_weapons.empty():
+					weapon_required = false
 				break
 		if is_me:
-			selected_weapon_element.disabled = false
+			if weapon_required:
+				selected_weapon_element.disabled = false
+			else:
+				selected_weapon_element.disabled = true
+				selected_danger_element.disabled = false
 	else:
 		selected_character_element.icon = unpicked_icon
 		selected_weapon_element.disabled = true
@@ -63,7 +70,7 @@ func set_player_selections(selections_dict : Dictionary, is_me:bool = false, loc
 			selected_danger_element.disabled = false
 	else:
 		selected_weapon_element.icon = unpicked_icon
-		selected_danger_element.disabled = true
+		selected_danger_element.disabled = weapon_required
 	
 	if selections_dict.has("danger"):
 		var danger_id = selections_dict["danger"]

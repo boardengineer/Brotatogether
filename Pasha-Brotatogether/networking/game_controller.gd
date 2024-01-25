@@ -272,7 +272,8 @@ func start_game(game_info: Dictionary):
 							run_data_node.add_weapon(player_id, weapon, true)
 							break
 				else:
-					run_data_node.add_weapon(player_id, Utils.get_rand_element(character_data.starting_weapons), true)
+					if not character_data.starting_weapons.empty():
+						run_data_node.add_weapon(player_id, Utils.get_rand_element(character_data.starting_weapons), true)
 				
 				run_data_node.add_character(player_id, character_data)
 				if player_id == self_peer_id:

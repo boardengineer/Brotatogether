@@ -33,6 +33,7 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 			
 	var run_data = game_controller.tracked_players[player_network_id].run_data
 	var multiplayer_utils = $"/root/MultiplayerUtils"
+	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
 	
 	if hitbox and hitbox.is_healing:
 		var _healed = on_healing_effect(value)
@@ -72,11 +73,10 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 		
 		if dmg_taken[1] > 0:
 			if run_data.effects["explode_on_hit"].size() > 0:
-				print_debug("explode on hit?")
 				var effect = run_data.effects["explode_on_hit"][0]
 				var stats = _explode_on_hit_stats
-				var _inst = WeaponService.explode(effect, global_position, stats.damage, stats.accuracy, stats.crit_chance, stats.crit_damage, stats.burning_data)
-			
+				var _explosion = multiplayer_weapon_service.explode_multiplayer(player_network_id, effect, global_position, stats.damage, stats.accuracy, stats.crit_chance, stats.crit_damage, stats.burning_data)
+				
 			if run_data.effects["temp_stats_on_hit"].size() > 0:
 				for temp_stat_on_hit in run_data.effects["temp_stats_on_hit"]:
 					game_controller.tracked_players[player_network_id]["temp_stats"]["stats"][temp_stat_on_hit[0]] += temp_stat_on_hit[1]
@@ -213,7 +213,7 @@ func update_player_stats_multiplayer()->void :
 	
 	if run_data.effects["explode_on_hit"].size() > 0:
 #		init_exploding_stats()
-		_explode_on_hit_stats = multiplayer_weapon_service.init_base_stats_multiplayer(run_data, run_data.effects["explode_on_hit"][0].stats, "", [], [ExplodingEffect.new()])
+		_explode_on_hit_stats = multiplayer_weapon_service.init_base_stats_multiplayer(player_network_id, run_data.effects["explode_on_hit"][0].stats, "", [], [ExplodingEffect.new()])
 	
 	current_stats.copy(max_stats, true)
 	
