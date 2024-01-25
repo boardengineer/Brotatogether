@@ -86,6 +86,12 @@ func update_selections() -> void:
 		if game_controller.lobby_data.has("copy_host"):
 			copy_host_toggle.set_pressed_no_signal(game_controller.lobby_data["copy_host"])
 		
+		if game_controller.lobby_data.has("first_death_loss"):
+			first_death_loss_toggle.set_pressed_no_signal(game_controller.lobby_data["first_death_loss"])
+		
+		if game_controller.lobby_data.has("shared_gold"):
+			shared_gold_toggle.set_pressed_no_signal(game_controller.lobby_data["shared_gold"])
+		
 		if game_controller.lobby_data.has("material_count"):
 			material_count_slider.set_value(game_controller.lobby_data["material_count"])
 		
