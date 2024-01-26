@@ -234,7 +234,7 @@ func update_player_stats_multiplayer()->void :
 		_health_regen_timer.start()
 
 func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
-	if not is_instance_valid(self) or not is_inside_tree():
+	if not is_instance_valid(self) or not is_inside_tree() or not is_instance_valid(_shadow):
 		return
 	var game_controller = $"/root/GameController"
 	

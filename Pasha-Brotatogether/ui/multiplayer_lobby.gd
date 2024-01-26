@@ -18,6 +18,7 @@ const PlayerSelections = preload("res://mods-unpacked/Pasha-Brotatogether/ui/pla
 
 onready var selections_by_player = {}
 var should_send_lobby_update = false
+var ignore_updates = false
 
 func _ready():
 	var _error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
@@ -80,6 +81,7 @@ func update_selections(from_ready:bool = false) -> void:
 		shared_gold_toggle.hide()
 	
 	if not game_controller.is_host or from_ready:
+		ignore_updates = true
 		if game_controller.lobby_data.has("game_mode"):
 			game_mode_dropdown.select(game_mode) 
 		
@@ -106,6 +108,7 @@ func update_selections(from_ready:bool = false) -> void:
 		
 		if game_controller.lobby_data.has("enemy_speed"):
 			enemy_speed_slider.set_value(game_controller.lobby_data["enemy_speed"])
+		ignore_updates = false
 	
 	var host_dict = {}
 	var can_start = true
@@ -297,6 +300,9 @@ func disable_options() -> void:
 func on_option_updated(_value) -> void:
 	var game_controller = $"/root/GameController"
 	if not game_controller.is_host:
+		return
+	
+	if ignore_updates:
 		return
 	
 	game_controller.lobby_data["copy_host"] = copy_host_toggle.is_pressed()
