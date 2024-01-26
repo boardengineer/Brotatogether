@@ -185,6 +185,7 @@ func _on_StartButton_pressed():
 	game_controller.send_start_game(game_info)
 	game_controller.game_mode = game_mode
 
+	game_controller.save_config()
 	game_controller.start_game(game_info)
 	
 	var steam_connection = $"/root/SteamConnection"

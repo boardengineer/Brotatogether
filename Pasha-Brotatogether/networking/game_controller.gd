@@ -32,6 +32,10 @@ const toggle_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/toggle.
 const button_scene = preload("res://mods-unpacked/Pasha-Brotatogether/ui/button.tscn")
 const explosion_scene = preload("res://projectiles/explosion.tscn")
 
+const MOD_NAME = "Pasha-Brotatogether"
+const CONFIG_FILENAME = "user://pasha-brotatogether-options.cfg"
+const CONFIG_SECTION = "latest-mp-lobby"
+
 var current_scene_name = ""
 var run_updates = false
 var disable_pause = false
@@ -59,13 +63,11 @@ signal character_selected(character_item_data)
 signal weapon_selected(weapon_data)
 
 
-func _ready():
-	init_lobby_info()
-
 func _init():
 	game_state_controller = GameStateController.new()
 	game_state_controller.parent = self
 	add_child(game_state_controller)
+
 
 func _process(_delta):
 	var scene_name = get_tree().get_current_scene().get_name()
@@ -95,6 +97,7 @@ func init_lobby_info() -> void:
 	lobby_data = {}
 	lobby_data["players"] = {}
 	
+	lobby_data["game_mode"] = 0
 	lobby_data["copy_host"] = false
 	lobby_data["first_death_loss"] = false
 	lobby_data["shared_gold"] = false
@@ -103,9 +106,34 @@ func init_lobby_info() -> void:
 	lobby_data["enemy_hp"] = 1
 	lobby_data["enemy_damage"] = 1
 	lobby_data["enemy_speed"] = 1
+	load_config()
+
+
+func save_config() -> void:
+	var config := ConfigFile.new()
+	
+	for key in lobby_data:
+		if key == "players":
+			continue
+		config.set_value(CONFIG_SECTION, key, lobby_data[key])
+	
+	config.save(CONFIG_FILENAME)
+
+
+func load_config() -> void:
+	var config := ConfigFile.new()
+	var err = config.load(CONFIG_FILENAME)
+	
+	if err != OK:
+		return
+	
+	for key in config.get_section_keys(CONFIG_SECTION):
+		lobby_data[key] = config.get_value(CONFIG_SECTION, key)
+
 
 func send_client_started() -> void:
 	connection.send_client_started()
+
 
 func receive_client_start(player_id) -> void:
 	if not is_host:
