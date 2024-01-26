@@ -35,6 +35,9 @@ func _ready():
 		var run_data_node = $"/root/MultiplayerRunData"
 		var multiplayer_utils = $"/root/MultiplayerUtils"
 		
+		if game_controller.is_host:
+			spawn_additional_players()
+		
 		for player_id in game_controller.tracked_players:
 			var run_data = game_controller.tracked_players[player_id].run_data
 			var pct_val = run_data.effects["gain_pct_gold_start_wave"]
@@ -52,12 +55,7 @@ func _ready():
 		
 		var _disconnect_error = RunData.disconnect("levelled_up", self, "on_levelled_up")
 		var _connect_error = connect("levelled_up_multiplayer", self, "on_levelled_up_multiplayer")
-		
-		
-		if game_controller.is_host:
-			spawn_additional_players()
 			
-		# connnect multiplayer signals
 		_connect_error = connect("picked_up_multiplayer", self, "on_item_picked_up_multiplayer")
 		run_data_node.reset_cache()
 		multiplayer_utils.reset_temp_stats()
