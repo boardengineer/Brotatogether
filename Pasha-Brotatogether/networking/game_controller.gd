@@ -69,6 +69,10 @@ func _init():
 	add_child(game_state_controller)
 
 
+func _ready():
+	init_lobby_info()
+
+
 func _process(_delta):
 	var scene_name = get_tree().get_current_scene().get_name()
 	if is_coop() and is_host:
