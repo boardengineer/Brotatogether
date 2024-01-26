@@ -3,6 +3,8 @@ extends Structure
 var network_id
 var my_data
 
+var DataNode = load("res://mods-unpacked/Pasha-Brotatogether/data_node.gd")
+
 func _ready():
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		return
@@ -11,6 +13,10 @@ func _ready():
 	if game_controller and game_controller.is_source_of_truth:
 		network_id = game_controller.id_count
 		game_controller.id_count = network_id + 1
+	
+	var struct_data = DataNode.new()
+	struct_data.set_name("StrcutureData")
+	add_child(struct_data)
 
 func set_data(data:Resource) -> void :
 	base_stats = data.stats
@@ -41,6 +47,8 @@ func reload_data() -> void:
 		return
 	
 	var player_id = run_data_node.effect_to_owner_map[my_data]
+	
+	get_node("StrcutureData").data["owner_player_id"] = player_id
 	
 	stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_id, base_stats, "", [], effects, true)
 	
