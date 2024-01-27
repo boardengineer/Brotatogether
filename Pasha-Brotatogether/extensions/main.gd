@@ -187,7 +187,7 @@ func reload_stats()->void :
 		.reload_stats()
 		return
 	
-	var run_data_node = $"/root/MultiplayerRunData"		
+	var run_data_node = $"/root/MultiplayerRunData"
 	for player_id in game_controller.tracked_players:
 		for weapon in game_controller.tracked_players[player_id].player.current_weapons:
 			if is_instance_valid(weapon):
@@ -602,7 +602,8 @@ func on_consumable_picked_up_multiplayer(consumable:Node, player_id:int)->void :
 			
 			if not has_max or not reached_max:
 				run_data_node.add_stat(player_id, stat[0], stat[1])
-								
+				reload_stats()
+				
 				if has_max:
 					run_data.max_consumable_stats_gained_this_wave[i][2] += stat[1]
 	

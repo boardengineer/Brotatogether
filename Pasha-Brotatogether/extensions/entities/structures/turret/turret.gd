@@ -2,6 +2,10 @@ extends "res://entities/structures/turret/turret.gd"
 
 
 func shoot()->void :
+	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
+		.shoot()
+		return
+	
 	if _current_target.size() == 0 or not is_instance_valid(_current_target[0]):
 		_is_shooting = false
 		_cooldown = rand_range(max(1, _max_cooldown * 0.7), _max_cooldown * 1.3)
