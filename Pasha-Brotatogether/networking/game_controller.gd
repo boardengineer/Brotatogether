@@ -530,6 +530,11 @@ func send_complete_player(player_id:int) -> void:
 		burn_chance.duration = player_dict.run_data.effects.burn_chance.duration
 		player_dict.run_data.effects.burn_chance = burn_chance
 	
+	var elites = []
+	for elite in RunData.elites_spawn:
+		elites.push_back([elite[0], elite[1]])
+	player_dict["elites"] = elites
+	
 	connection.send_complete_player(player_id, player_dict)
 	
 func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
@@ -561,6 +566,10 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 		
 		if tracked_players[player_id]["run_data"].has("gold"):
 			RunData.emit_signal("gold_changed", tracked_players[player_id]["run_data"].gold)
+		var elites_spawn = []
+		for elite in player_dict["elites"]:
+			elites_spawn.push_back([elite[0], elite[1], "some_boss_id"])
+		RunData.elites_spawn = elites_spawn
 		emit_signal("complete_player_update")
 
 func on_item_box_take_button_pressed(item_data:ItemParentData) -> void:

@@ -10,9 +10,8 @@ func on_element_pressed(element:InventoryElement)->void :
 		var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 		
 		character_difficulty.difficulty_selected_value = element.item.value
-		
+		RunData.current_difficulty = element.item.value
 		RunData.init_elites_spawn()
-		
 		ProgressData.save()
 		
 		for effect in element.item.effects:
