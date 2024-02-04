@@ -23,6 +23,35 @@ func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_a
 	var multiplayer_utils = $"/root/MultiplayerUtils"
 	return multiplayer_utils.take_damage(self, value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
 
+
+func init_current_stats()->void :
+	if not $"/root".has_node("GameController"):
+		.init_current_stats()
+		return
+	
+	var game_controller = $"/root/GameController"
+	var multiplayer_utils = $"/root/MultiplayerUtils"
+	
+	max_stats.copy_stats(stats)
+	var str_factor = Utils.get_stat("enemy_health") / 100.0
+	if game_controller.is_coop():
+		var sum := 0.0
+		for player_id in game_controller.tracked_players:
+			sum += multiplayer_utils.get_stat_multiplayer(player_id, "enemy_health")
+		str_factor = sum / 100.0
+
+	var accessibility_health_factor = RunData.current_run_accessibility_settings.health
+	if game_controller.lobby_data.has("enemy_hp"):
+		accessibility_health_factor = game_controller.lobby_data["enemy_hp"]
+	
+	var new_val = round((stats.health + (stats.health_increase_each_wave * (RunData.current_wave - 1))) * (accessibility_health_factor + str_factor))
+	
+	max_stats.health = round(new_val * (1.0 + RunData.get_endless_factor() * 2.25)) as int
+
+	current_stats.copy(max_stats)
+	reset_stats()
+
+
 func _on_Hurtbox_area_entered(hitbox:Area2D)->void :
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
 		._on_Hurtbox_area_entered(hitbox)
