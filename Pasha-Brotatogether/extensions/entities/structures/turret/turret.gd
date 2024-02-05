@@ -6,6 +6,9 @@ func shoot()->void :
 		.shoot()
 		return
 	
+	if not $"/root/GameController".is_host:
+		return
+	
 	if _current_target.size() == 0 or not is_instance_valid(_current_target[0]):
 		_is_shooting = false
 		_cooldown = rand_range(max(1, _max_cooldown * 0.7), _max_cooldown * 1.3)
