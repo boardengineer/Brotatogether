@@ -108,11 +108,6 @@ func update_game_state(data: PoolByteArray) -> void:
 	
 	call_deferred("update_enemies", enemies_arrays)
 	
-	var new_enemies = 0
-	for enemy in enemies_arrays[0]:
-		if enemy[1] != "":
-			new_enemies += 1
-	
 	update_births(buffer)
 	update_items(buffer)
 	update_player_projectiles(buffer)
@@ -132,9 +127,6 @@ func update_game_state(data: PoolByteArray) -> void:
 	call_deferred("do_batched_flashes", batched_flashes)
 	call_deferred("do_batched_floating_text", batched_floating_text)
 	call_deferred("do_batched_hit_effects", batched_hit_effects)
-	
-	var time = buffer.get_float()
-	get_tree().get_current_scene()._wave_timer.time_left
 	
 	var bonus_gold = buffer.get_32()
 	if bonus_gold > 0:
@@ -674,8 +666,6 @@ func get_enemies_state(buffer: StreamPeerBuffer) -> void:
 				buffer.put_32(enemy.max_stats.health)
 
 func get_enemies_arrays(buffer:StreamPeerBuffer) -> Array:
-	var server_enemies = {}
-	
 	var enemies_array = []
 	var num_enemies = buffer.get_u16()
 	for _enemy_index in num_enemies:

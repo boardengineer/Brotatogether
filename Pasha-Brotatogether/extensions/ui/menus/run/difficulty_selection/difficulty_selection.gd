@@ -1,7 +1,11 @@
 extends DifficultySelection
 
 
-func on_element_pressed(element:InventoryElement)->void :
+func on_element_pressed(element:InventoryElement) -> void :
+	if not $"/root".has_node("GameController"):
+		.on_element_pressed(element)
+		return
+	
 	if element.is_special:
 		return 
 	else :

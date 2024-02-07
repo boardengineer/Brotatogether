@@ -29,12 +29,12 @@ func disable_ready_toggle() -> void:
 	ready_toggle.disabled = true
 
 
-func _on_SelectedCharacter_element_pressed(element):
+func _on_SelectedCharacter_element_pressed(_element):
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.character_selection_scene)
 
 
-func _on_SelectedWeapon_element_pressed(element):
+func _on_SelectedWeapon_element_pressed(_element):
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.weapon_selection_scene)
 
@@ -93,7 +93,7 @@ func set_player_selections(selections_dict : Dictionary, is_me:bool = false, loc
 		disable_selections()
 
 
-func _on_select_danger_element_pressed(element):
+func _on_select_danger_element_pressed(_element):
 	$"/root/GameController".back_to_lobby = true
 	var _error = get_tree().change_scene(MenuData.difficulty_selection_scene)
 

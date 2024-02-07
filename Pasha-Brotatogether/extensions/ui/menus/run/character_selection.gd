@@ -2,6 +2,10 @@ extends CharacterSelection
 
 
 func on_element_pressed(element:InventoryElement)->void :
+	if not $"/root".has_node("GameController"):
+		.on_element_pressed(element)
+		return
+	
 	if character_added:
 		return 
 	

@@ -1,6 +1,10 @@
 extends WeaponSelection
 
-func on_element_pressed(element:InventoryElement)->void :
+func on_element_pressed(element:InventoryElement) -> void:
+	if not $"/root".has_node("GameController"):
+		.on_element_pressed(element)
+		return
+	
 	if weapon_added:
 		return 
 	

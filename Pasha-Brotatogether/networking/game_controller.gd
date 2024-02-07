@@ -75,14 +75,7 @@ func _ready():
 
 func _process(_delta):
 	var scene_name = get_tree().get_current_scene().get_name()
-	if is_coop() and is_host:
-		# TODO i can't seem to override Shop.gd because it errors trying to get
-		# a RunData field, we'll do this gargbage instead.
-		if scene_name != current_scene_name:
-			if current_scene_name == "Shop":
-				# First frame where we left the shop
-				var wave_data = {"current_wave":RunData.current_wave, "mode":game_mode}
-#				send_start_game(wave_data)
+	# TODO: NOT THIS
 	if scene_name != current_scene_name:
 		if scene_name == "Shop":
 			enter_async_shop()
@@ -121,7 +114,7 @@ func save_config() -> void:
 			continue
 		config.set_value(CONFIG_SECTION, key, lobby_data[key])
 	
-	config.save(CONFIG_FILENAME)
+	var _unused_save_result = config.save(CONFIG_FILENAME)
 
 
 func load_config() -> void:
