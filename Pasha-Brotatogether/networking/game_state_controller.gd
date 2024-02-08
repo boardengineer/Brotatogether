@@ -128,6 +128,8 @@ func update_game_state(data: PoolByteArray) -> void:
 	call_deferred("do_batched_floating_text", batched_floating_text)
 	call_deferred("do_batched_hit_effects", batched_hit_effects)
 	
+	var _time = buffer.get_float()
+	
 	var bonus_gold = buffer.get_32()
 	if bonus_gold > 0:
 		main._ui_bonus_gold.show()

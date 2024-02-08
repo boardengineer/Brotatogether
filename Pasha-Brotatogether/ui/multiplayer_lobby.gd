@@ -174,12 +174,27 @@ func update_selections(from_ready:bool = false) -> void:
 
 func _on_StartButton_pressed():
 	var game_controller = $"/root/GameController"
+	var steam_connection = $"/root/SteamConnection"
+	
 	if not game_controller.is_host:
 		return
 	
 	var game_mode = game_mode_dropdown.selected
 	game_controller.is_source_of_truth = game_mode == 1
 	var game_info = {"current_wave":1, "mode":game_mode, "danger":0}
+	
+	if game_controller.lobby_data.has("copy_host") and game_controller.lobby_data["copy_host"]:
+		var host = steam_connection.get_lobby_host()
+		var host_dict = {}
+		for player_id in game_controller.tracked_players:
+			if not game_controller.lobby_data["players"].has(player_id):
+				game_controller.lobby_data["players"][player_id] = {}
+			var username = game_controller.tracked_players[player_id].username
+			if username == host:
+				host_dict = game_controller.lobby_data["players"][player_id].duplicate()
+				
+		for player_id in game_controller.lobby_data.players:
+			game_controller.lobby_data.players[player_id] = host_dict
 	
 	game_info["lobby_info"] = game_controller.lobby_data
 	game_controller.send_start_game(game_info)
@@ -188,7 +203,6 @@ func _on_StartButton_pressed():
 	game_controller.save_config()
 	game_controller.start_game(game_info)
 	
-	var steam_connection = $"/root/SteamConnection"
 	steam_connection.close_lobby()
 
 
