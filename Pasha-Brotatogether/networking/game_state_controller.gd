@@ -1113,6 +1113,7 @@ func spawn_player(player_id:int, position:Vector2, speed:float, weapons:Array, a
 	var spawned_player = player_scene.instance()
 	spawned_player.position = position
 	spawned_player.current_stats.speed = speed
+	spawned_player.call_deferred("init", Vector2(0,0), Vector2(0,0))
 
 	for weapon in weapons:
 		spawned_player.call_deferred("add_weapon", load(weapon["path"]), spawned_player.current_weapons.size())
