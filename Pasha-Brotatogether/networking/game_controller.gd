@@ -494,6 +494,7 @@ func send_complete_player(player_id:int) -> void:
 	if not player_dict.has("run_data"):
 		player_dict.run_data = {}
 	player_dict.run_data = player_dict.run_data.duplicate()
+	player_dict.run_data.effects = player_dict.run_data.effects.duplicate()
 	
 	var new_items = []
 	
