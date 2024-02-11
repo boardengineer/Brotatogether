@@ -747,6 +747,19 @@ func receive_bought_item_by_id(item_id:String, player_id:int, value:int) -> void
 		else :
 			var _weapon = run_data_node.add_weapon(player_id, shop_item_data)
 
+
+func send_reroll(price) -> void:
+	if is_host:
+		receive_reroll(price, self_peer_id)
+	else:
+		connection.send_reroll(price)
+
+
+func receive_reroll(price, player_id):
+	var run_data = tracked_players[player_id].run_data
+	run_data.gold -= price
+
+
 func send_bought_item(shop_item:Resource) -> void:
 	if is_host:
 		receive_bought_item(shop_item, self_peer_id)

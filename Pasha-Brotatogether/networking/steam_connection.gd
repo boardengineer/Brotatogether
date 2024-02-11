@@ -84,6 +84,8 @@ func read_p2p_packet() -> bool:
 		elif type == "lobby_update":
 			print_debug("received lobby update")
 			parent.receive_lobby_update(data.lobby_info)
+		elif type == "reroll":
+			parent.receive_reroll(data.price, sender)
 		elif type == "health_update":
 			parent.receive_health_update(data.current_health, data.max_health, sender)
 		elif type == "death":
@@ -433,4 +435,12 @@ func send_mp_lobby_readied(is_ready) -> void:
 	send_data["type"] = "mp_lobby_readied"
 	send_data["player_id"] = parent.self_peer_id
 	send_data["is_ready"] = is_ready
+	send_data_to_all(send_data)
+
+
+func send_reroll(price) -> void:
+	var send_data = {}
+	send_data["type"] = "reroll"
+	send_data["player_id"] = parent.self_peer_id
+	send_data["price"] = price
 	send_data_to_all(send_data)
