@@ -129,6 +129,7 @@ func update_game_state(data: PoolByteArray) -> void:
 	call_deferred("do_batched_hit_effects", batched_hit_effects)
 	
 	var _time = buffer.get_float()
+	main._wave_timer.start(_time)
 	
 	var bonus_gold = buffer.get_32()
 	if bonus_gold > 0:
