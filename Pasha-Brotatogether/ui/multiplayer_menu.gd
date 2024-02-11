@@ -6,6 +6,7 @@ var MAX_PLAYERS = 5
 
 onready var text_box = $"HBoxContainer/InfoBox/Label"
 onready var ip_box = $"HBoxContainer/InfoBox/ServerIp"
+onready var search_box = $"HBoxContainer/ControlBox/Buttons/Search"
 
 var lobby_id = 0
 
@@ -19,6 +20,8 @@ var direct_connection
 var game_controller
 
 var DEBUG = false
+
+var found_lobbies = []
 
 onready var debug_server_button = $HBoxContainer/ControlBox/Buttons/ServerButton
 onready var debug_client_button = $HBoxContainer/ControlBox/Buttons/ClientButton
@@ -34,6 +37,8 @@ func _ready():
 		debug_client_button.hide()
 		debug_start_button.hide()
 		debug_start2_button.hide()
+	
+	search_box.hide()
 	
 	var rooted_steam_connection = null
 	var rooted_direct_connection = null
@@ -140,6 +145,7 @@ func _on_SteamLobbies_pressed():
 	#TODO move this elsewhere
 	game_controller.connection = steam_connection
 	steam_connection.parent = game_controller
+	search_box.show()
 	
 func _on_CreateSteamLobby_pressed():
 	if lobby_id == 0:
@@ -157,14 +163,29 @@ func _on_CreateSteamLobby_pressed():
 		steam_connection.send_handshakes()
 		
 func update_lobbies(lobbies: Array) -> void:
-	for found_lobby_id in lobbies:
+	found_lobbies = lobbies
+	sort_lobbies()
+	
+func sort_lobbies(filter := "") -> void:
+	for old_child in $"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".get_children():
+		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".remove_child(old_child)
+	
+	var created_lobbies = []
+	
+	for found_lobby_id in found_lobbies:
 		var join_button = Button.new()
 		var host_name = Steam.getLobbyData(found_lobby_id, "host")
 		join_button.text = str(host_name)
-		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".add_child(join_button)
 		join_button.connect("pressed", self, "join_button_pressed", [found_lobby_id])
-		# Steam.joinLobby(lobbies[0])
 		
+		created_lobbies.append(join_button)
+	
+	for lobby_button in created_lobbies:
+		if filter == "":
+			$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".add_child(lobby_button)
+		elif filter.to_lower() in lobby_button.text.to_lower():
+			$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".add_child(lobby_button)
+
 func join_button_pressed(joining_lobby_id: int) :
 	Steam.joinLobby(joining_lobby_id)
 
@@ -175,4 +196,8 @@ func manage_back(event:InputEvent)->void :
 	if event.is_action_pressed("ui_cancel"):
 		RunData.current_zone = 0
 		RunData.reload_music = false
+		search_box.hide()
 		var _error = get_tree().change_scene(MenuData.title_screen_scene)
+
+func _on_Search_text_changed(new_text):
+	sort_lobbies(new_text)
