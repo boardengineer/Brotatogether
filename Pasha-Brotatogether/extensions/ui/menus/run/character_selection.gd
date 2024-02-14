@@ -33,3 +33,17 @@ func on_element_pressed(element:InventoryElement)->void :
 		var _error = get_tree().change_scene(MenuData.difficulty_selection_scene)
 	else :
 		var _error = get_tree().change_scene(MenuData.weapon_selection_scene)
+
+
+func manage_back(event:InputEvent)->void :
+	if not $"/root".has_node("GameController"):
+		.manage_back(event)
+		return
+	
+	if event.is_action_pressed("ui_cancel"):
+		var game_controller = $"/root/GameController"
+		if game_controller.back_to_lobby:
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
+			return
+		
+	.manage_back(event)

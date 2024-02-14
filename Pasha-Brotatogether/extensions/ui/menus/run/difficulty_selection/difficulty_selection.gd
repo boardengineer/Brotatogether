@@ -34,6 +34,7 @@ func on_element_pressed(element:InventoryElement) -> void :
 			
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
+
 func get_elements_unlocked()->Array:
 	var unlocked_difficulties = []
 	
@@ -44,3 +45,17 @@ func get_elements_unlocked()->Array:
 			unlocked_difficulties.push_back(diff.my_id)
 	
 	return unlocked_difficulties
+
+
+func manage_back(event:InputEvent)->void :
+	if not $"/root".has_node("GameController"):
+		.manage_back(event)
+		return
+	
+	if event.is_action_pressed("ui_cancel"):
+		var game_controller = $"/root/GameController"
+		if game_controller.back_to_lobby:
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.tscn")
+			return
+		
+	.manage_back(event)
