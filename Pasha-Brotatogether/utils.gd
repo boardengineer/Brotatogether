@@ -40,6 +40,60 @@ func get_game_controller():
 		return null
 	return $"/root/GameController"
 
+
+func convert_stats(player_id, stats:Array, permanent:bool = true) -> void:
+	var game_controller = get_game_controller()
+	var run_data_node = $"/root/MultiplayerRunData"
+	
+	if not game_controller:
+		return
+	
+	var run_data = game_controller.tracked_players[player_id].run_data
+	for stat_to_convert in stats:
+		var pct = stat_to_convert.pct_converted / 100.0
+		var stat_to_remove = stat_to_convert.key
+		var stat_to_add = stat_to_convert.to_stat
+
+		var stat_to_remove_value = run_data.gold if stat_to_remove == "materials" else run_data_node.get_stat(player_id, stat_to_remove) as int
+		var nb_chunks_stat_removed = max(0, floor((stat_to_remove_value * pct) / stat_to_convert.value))
+
+		if nb_chunks_stat_removed == 0:
+			break
+
+		var stat_removed_gain = run_data_node.get_stat_gain(player_id, stat_to_remove)
+		var stat_added_gain = run_data_node.get_stat_gain(player_id, stat_to_add)
+
+		var base_nb_stat_removed = nb_chunks_stat_removed * stat_to_convert.value
+		var base_nb_stat_added = stat_to_convert.to_value * nb_chunks_stat_removed
+		var actual_nb_stat_removed = base_nb_stat_removed
+		var actual_nb_stat_added = base_nb_stat_added
+
+		if stat_removed_gain > 0.0:
+			actual_nb_stat_removed = round(base_nb_stat_removed / stat_removed_gain) as int
+		if stat_added_gain > 0.0:
+			actual_nb_stat_added = round(base_nb_stat_added / stat_added_gain) as int
+
+		if stat_to_remove == "materials":
+			run_data_node.remove_gold(player_id, actual_nb_stat_removed)
+		else :
+			if permanent:
+				run_data_node.remove_stat(player_id, stat_to_remove, actual_nb_stat_removed)
+			else :
+				TempStats.remove_stat(stat_to_remove, actual_nb_stat_removed)
+		
+		if stat_to_add == "materials":
+			run_data_node.add_gold(player_id, actual_nb_stat_added)
+		else :
+			if permanent:
+				run_data_node.add_stat(player_id, stat_to_add, actual_nb_stat_added)
+			else :
+				TempStats.add_stat(stat_to_add, actual_nb_stat_added)
+				RunData.emit_signal("stat_added", stat_to_add, base_nb_stat_added, 0.0)
+	
+	TempStats.emit_updated()
+	RunData.emit_stats_updated()
+
+
 func take_damage(unit:Unit, value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0)->Array:
 	if unit.dead:
 		return [0, 0]

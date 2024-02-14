@@ -284,6 +284,9 @@ func _on_WaveTimer_timeout() -> void:
 		if run_data.effects["stats_end_of_wave"].size() > 0:
 			for stat_end_of_wave in run_data.effects["stats_end_of_wave"]:
 				run_data_node.add_stat(player_id, stat_end_of_wave[0], stat_end_of_wave[1])
+		
+		if run_data.effects["convert_stats_end_of_wave"].size() > 0:
+			multiplayer_utils.convert_stats(player_id, run_data.effects["convert_stats_end_of_wave"])
 
 func _clear_movement_behavior(player:Player) -> void:
 	# Players will only move via client calls, locally make them do

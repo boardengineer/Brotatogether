@@ -256,6 +256,10 @@ func multiplayer_unapply(effect:Effect, run_data:Dictionary) -> void:
 		run_data.effects["weapon_class_bonus"].erase([effect.set_id, effect.stat_name, effect.value])
 		return
 	
+	if effect is ConvertStatEffect:
+		run_data.effects[effect.custom_key].erase(effect)
+		return
+	
 	# Default Effect
 	if effect.custom_key != "" or effect.storage_method == StorageMethod.KEY_VALUE:
 		run_data.effects[effect.custom_key].erase([effect.key, effect.value])
@@ -328,6 +332,10 @@ func multiplayer_apply(effect:Effect, run_data:Dictionary) -> void:
 		return
 	
 	if effect is NullEffect:
+		return
+	
+	if effect is ConvertStatEffect:
+		run_data.effects[effect.custom_key].push_back(effect)
 		return
 	
 	# Default effect.gd
