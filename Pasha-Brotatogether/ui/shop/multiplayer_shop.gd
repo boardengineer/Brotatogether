@@ -9,6 +9,7 @@ func _ready():
 	if game_controller.is_host:
 		game_controller.receive_player_enter_shop(game_controller.self_peer_id)
 	else:
+		_endless_button.hide()
 		game_controller.send_client_entered_shop()
 		yield(game_controller, "complete_player_update")
 	
@@ -156,3 +157,9 @@ func _on_RerollButton_pressed()->void :
 		set_reroll_button_price()
 		
 		_shop_items_container.update_buttons_color()
+
+
+func _on_EndlessButton_pressed()->void :
+	RunData.is_endless_run = true
+	$"/root/GameController"._on_GoButton_pressed()
+
