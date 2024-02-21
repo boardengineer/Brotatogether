@@ -7,7 +7,8 @@ func set_data(set:SetData)->void:
 		return
 		
 	var game_controller = $"/root/GameController"
-	var nb = min(set.set_bonuses.size() + 1, game_controller.tracked_players[game_controller.self_peer_id].run_data.active_sets[set.my_id]) as int if RunData.active_sets.has(set.my_id) else 0
+	var run_data = game_controller.tracked_players[game_controller.self_peer_id].run_data
+	var nb = min(set.set_bonuses.size() + 1, run_data.active_sets[set.my_id]) as int if run_data.active_sets.has(set.my_id) else 0
 
 	_synergy_name.text = tr(set.name)
 
