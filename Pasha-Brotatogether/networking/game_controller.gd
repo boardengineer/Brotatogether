@@ -278,6 +278,7 @@ func start_game(game_info: Dictionary):
 #			var danger = lobby_info.danger
 			var danger = 0
 			
+			var map_size_sum: float = 0.0
 			for player_id in tracked_players:
 				var player_selections_dict = lobby_info.players[player_id]
 				print_debug(player_selections_dict)
@@ -306,34 +307,18 @@ func start_game(game_info: Dictionary):
 				if player_id == self_peer_id:
 					RunData.add_character(character_data)
 				
-	#			RunData.add_starting_items_and_weapons()
 				run_data_node.add_starting_items_and_weapons(player_id)
+				map_size_sum += tracked_players[player_id].run_data.effects.map_size
 				
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/ghost_scepter/1/ghost_scepter_data.tres"), true)
 #				run_data_node.add_item(player_id, load("res://items/all/bloody_hand/bloody_hand_data.tres"))
-
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#
-#				for _i in 30:
-#					run_data_node.add_item(player_id, load("res://items/all/extra_stomach/extra_stomach_data.tres"))
-#				for _i in 30:
-#					run_data_node.add_item(player_id, load("res://items/all/tree/tree_data.tres"))
 #				for _i in 10:
 #					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
-#				for _i in 300:
-#					run_data_node.add_item(player_id, load("res://items/all/medal/medal_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
 			RunData.init_elites_spawn()
+			RunData.effects["map_size"] = map_size_sum / tracked_players.size()
 			
 			for effect in ItemService.difficulties[danger].effects:
 				effect.apply()
