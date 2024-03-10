@@ -105,12 +105,14 @@ func update_game_state(data: PoolByteArray) -> void:
 	update_players(buffer)
 	
 	var enemies_arrays = get_enemies_arrays(buffer)
-	
 	call_deferred("update_enemies", enemies_arrays)
 	
 	update_births(buffer)
 	update_items(buffer)
-	update_player_projectiles(buffer)
+	
+	var player_projectiles_array = get_player_projectiles_array(buffer)
+	call_deferred("update_player_projectiles", player_projectiles_array)
+	
 	update_consumables(buffer)
 	update_neutrals(buffer)
 	update_structures(buffer)
@@ -379,8 +381,11 @@ func get_projectiles_state(buffer: StreamPeerBuffer) -> void:
 			# TODO send conditionally 
 			buffer.put_string(child.filename)
 
-func update_player_projectiles(buffer:StreamPeerBuffer) -> void:
+
+func get_player_projectiles_array(buffer:StreamPeerBuffer) -> Array:
 	var server_player_projectiles = {}
+	
+	var player_projectiles_array = []
 	var num_projectiles = buffer.get_u16()
 	
 	for _projectile_index in num_projectiles:
@@ -388,11 +393,9 @@ func update_player_projectiles(buffer:StreamPeerBuffer) -> void:
 		
 		var pos_x = buffer.get_float()
 		var pos_y = buffer.get_float()
-		var position = Vector2(pos_x, pos_y)
 		
 		var global_pos_x = buffer.get_float()
 		var global_pos_y = buffer.get_float()
-		var global_position = Vector2(global_pos_x, global_pos_y)
 		
 		var rotation = buffer.get_float()
 		var filename = buffer.get_string()
@@ -400,21 +403,47 @@ func update_player_projectiles(buffer:StreamPeerBuffer) -> void:
 		if filename == "":
 			continue
 		
+		player_projectiles_array.push_back([projectile_id, pos_x, pos_y, global_pos_x, global_pos_y, rotation, filename])
+	
+	return player_projectiles_array
+
+
+func update_player_projectiles(player_projectiles_array:Array) -> void:
+	var server_player_projectiles = {}
+	
+	for player_projectile in player_projectiles_array:
+		var projectile_id = player_projectile[0]
+		
+		var pos_x = player_projectile[1]
+		var pos_y = player_projectile[2]
+		var position = Vector2(pos_x, pos_y)
+		
+		var global_pos_x = player_projectile[3]
+		var global_pos_y = player_projectile[4]
+		var global_position = Vector2(global_pos_x, global_pos_y)
+		
+		var rotation = player_projectile[5]
+		var filename = player_projectile[6]
+		
+		if filename == "":
+			continue
+		
 		if not client_player_projectiles.has(projectile_id):
 			client_player_projectiles[projectile_id] = spawn_player_projectile(position, global_position, rotation, filename)
 		
-		var player_projectile = client_player_projectiles[projectile_id]
-		if is_instance_valid(player_projectile):
-			player_projectile.position = position
-			player_projectile.rotation = rotation
+		var client_player_projectile = client_player_projectiles[projectile_id]
+		if is_instance_valid(client_player_projectile):
+			client_player_projectile.position = position
+			client_player_projectile.rotation = rotation
 		server_player_projectiles[projectile_id] = true
 		
-	for projectile_id in client_player_projectiles:
+	for projectile_id in client_player_projectiles.keys():
 		if not server_player_projectiles.has(projectile_id):
 			var player_projectile = client_player_projectiles[projectile_id]
 			client_player_projectiles.erase(projectile_id)
 			if is_instance_valid(player_projectile):
-				get_tree().current_scene.remove_child(player_projectile)
+				player_projectile.queue_free()
+
 
 func spawn_player_projectile(position:Vector2, global_position:Vector2, rotation:float, filename:String):
 	var main = $"/root/ClientMain"
