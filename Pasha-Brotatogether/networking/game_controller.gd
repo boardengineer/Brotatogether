@@ -312,8 +312,8 @@ func start_game(game_info: Dictionary):
 				
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
 #				run_data_node.add_item(player_id, load("res://items/all/bloody_hand/bloody_hand_data.tres"))
-#				for _i in 10:
-#					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
+				for _i in 10:
+					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
@@ -642,7 +642,6 @@ func on_item_combine_button_pressed(weapon_data:WeaponData, is_upgrade:bool = fa
 
 func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 	var run_data_node = $"/root/MultiplayerRunData"
-	var shop = $"/root/Shop"
 	
 	var nb_to_remove = 2
 	var removed_weapons_tracked_value = 0
@@ -670,6 +669,7 @@ func receive_item_combine(weapon_id, is_upgrade, player_id) -> void:
 		new_weapon.dmg_dealt_last_wave = weapon_data.dmg_dealt_last_wave
 
 	if player_id == self_peer_id:
+		var shop = $"/root/Shop"
 		shop._weapons_container._elements.remove_element(weapon_data, nb_to_remove)
 		shop.reset_item_popup_focus()
 		shop._stats_container.update_stats()
