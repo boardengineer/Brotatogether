@@ -312,8 +312,8 @@ func start_game(game_info: Dictionary):
 				
 #				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
 #				run_data_node.add_item(player_id, load("res://items/all/bloody_hand/bloody_hand_data.tres"))
-				for _i in 10:
-					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
+#				for _i in 10:
+#					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
 			
 			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
 			character_difficulty.difficulty_selected_value = danger
@@ -523,10 +523,19 @@ func receive_complete_player(player_id:int, player_dict: Dictionary) -> void:
 		var new_items = []
 		
 		for item in player_dict.run_data.items:
+			var found : bool = false
+	
 			for query_item in ItemService.items:
 				if query_item.my_id == item.my_id:
 					new_items.push_back(query_item.duplicate())
-					
+					found = true
+					break
+			if not found:
+				for query_item in ItemService.characters:
+					if query_item.my_id == item.my_id:
+						new_items.push_back(query_item.duplicate())
+						found = true
+						break
 		tracked_players[player_id]["run_data"]["items"] = new_items
 		
 		for query_character in ItemService.characters:
