@@ -3,7 +3,7 @@
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/player_selections.gd" type="Script" id=1]
 [ext_resource path="res://items/global/inventory_element.tscn" type="PackedScene" id=2]
 [ext_resource path="res://resources/fonts/actual/base/font_menus.tres" type="DynamicFont" id=3]
-[ext_resource path="res://resources/fonts/actual/base/font_small_text.tres" type="DynamicFont" id=4]
+[ext_resource path="res://resources/fonts/actual/base/font_22.tres" type="DynamicFont" id=4]
 [ext_resource path="res://items/global/random_icon.png" type="Texture" id=5]
 
 [node name="PlayerSelections" type="HBoxContainer"]
@@ -14,49 +14,40 @@ script = ExtResource( 1 )
 
 [node name="SelectedCharacter" parent="." instance=ExtResource( 2 )]
 unique_name_in_owner = true
-anchor_right = 0.0
-anchor_bottom = 0.0
-margin_right = 105.0
+margin_right = 108.0
 margin_bottom = 105.0
 rect_min_size = Vector2( 105, 105 )
 size_flags_horizontal = 0
 size_flags_vertical = 0
 icon = ExtResource( 5 )
-icon_align = 1
 expand_icon = false
 
 [node name="SelectedWeapon" parent="." instance=ExtResource( 2 )]
 unique_name_in_owner = true
-anchor_right = 0.0
-anchor_bottom = 0.0
-margin_left = 110.0
-margin_right = 215.0
+margin_left = 113.0
+margin_right = 218.0
 margin_bottom = 105.0
 rect_min_size = Vector2( 105, 105 )
 size_flags_horizontal = 0
 size_flags_vertical = 0
 icon = ExtResource( 5 )
-icon_align = 1
 
 [node name="SelectedDanger" parent="." instance=ExtResource( 2 )]
 unique_name_in_owner = true
-anchor_right = 0.0
-anchor_bottom = 0.0
-margin_left = 220.0
-margin_right = 325.0
+margin_left = 223.0
+margin_right = 328.0
 margin_bottom = 105.0
 rect_min_size = Vector2( 105, 105 )
 size_flags_horizontal = 0
 size_flags_vertical = 0
 icon = ExtResource( 5 )
-icon_align = 1
 
 [node name="Username" type="Label" parent="."]
 unique_name_in_owner = true
-margin_left = 330.0
-margin_top = 25.0
+margin_left = 333.0
+margin_top = 30.0
 margin_right = 970.0
-margin_bottom = 79.0
+margin_bottom = 75.0
 rect_min_size = Vector2( 500, 0 )
 size_flags_horizontal = 3
 custom_fonts/font = ExtResource( 3 )

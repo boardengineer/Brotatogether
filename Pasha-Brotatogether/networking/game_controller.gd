@@ -252,151 +252,7 @@ func init_player_data(player:Dictionary, player_id) -> void:
 	player["run_data"] = run_data
 
 func start_game(game_info: Dictionary):
-	reset_extra_creatures()
-	reset_ready_map()
-	disable_pause = true
-	
-	if not is_host:
-		is_source_of_truth = false
-	
-	game_mode = game_info.mode
-	if is_coop():
-		if game_info.current_wave == 1:
-			var run_data_node = $"/root/MultiplayerRunData"
-			init_all_player_data()
-			
-			# TODO this should go away
-			RunData.weapons = []
-			RunData.items = []
-			RunData.effects = RunData.init_effects()
-#			RunData.current_character = null
-#			RunData.starting_weapon = null
-			
-			print_debug(game_info)
-			var lobby_info = game_info.lobby_info
-			
-#			var danger = lobby_info.danger
-			var danger = 0
-			
-			var map_size_sum: float = 0.0
-			for player_id in tracked_players:
-				var player_selections_dict = lobby_info.players[player_id]
-				print_debug(player_selections_dict)
-				
-				var character_data
-				if player_selections_dict.has("character"):
-					var character_id = player_selections_dict.character
-					for character in ItemService.characters:
-						if character.my_id == character_id:
-							character_data = character
-							break
-				else:
-					character_data = Utils.get_rand_element(ItemService.characters)
-				
-				if player_selections_dict.has("weapon"):
-					var weapon_id = player_selections_dict.weapon
-					for weapon in ItemService.weapons:
-						if weapon.my_id == weapon_id:
-							run_data_node.add_weapon(player_id, weapon, true)
-							break
-				else:
-					if not character_data.starting_weapons.empty():
-						run_data_node.add_weapon(player_id, Utils.get_rand_element(character_data.starting_weapons), true)
-				
-				run_data_node.add_character(player_id, character_data)
-				if player_id == self_peer_id:
-					RunData.add_character(character_data)
-				
-				run_data_node.add_starting_items_and_weapons(player_id)
-				map_size_sum += tracked_players[player_id].run_data.effects.map_size
-				
-#				run_data_node.add_weapon(player_id, load("res://weapons/ranged/shuriken/4/shuriken_4_data.tres"), true)
-#				run_data_node.add_item(player_id, load("res://items/all/bloody_hand/bloody_hand_data.tres"))
-#				for _i in 10:
-#					run_data_node.add_item(player_id, load("res://items/all/piggy_bank/piggy_bank_data.tres"))
-			
-			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-			character_difficulty.difficulty_selected_value = danger
-			RunData.init_elites_spawn()
-			RunData.effects["map_size"] = map_size_sum / tracked_players.size()
-			
-			for effect in ItemService.difficulties[danger].effects:
-				effect.apply()
-			
-			back_to_lobby = false
-			
-			RunData.current_run_accessibility_settings = ProgressData.settings.enemy_scaling.duplicate()
-			RunData.current_run_accessibility_settings.health = lobby_data["enemy_hp"]
-			RunData.current_run_accessibility_settings.damage = lobby_data["enemy_damage"]
-			RunData.current_run_accessibility_settings.speed = lobby_data["enemy_speed"]
-			
-#		tracked_players = {}
-#		RunData.current_wave = game_info.current_wave
-		
-		# MIGRATE reset_client_items()
-		run_updates = true
-		RunData.current_wave = game_info.current_wave
-		if is_host:
-			var _change_error = get_tree().change_scene(MenuData.game_scene)
-		else:
-			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/client/client_main.tscn")
-		
-	elif game_mode == GameMode.VERSUS:
-		if game_info.current_wave == 1:
-			RunData.weapons = []
-			RunData.items = []
-			RunData.effects = RunData.init_effects()
-			RunData.current_character = null
-			RunData.starting_weapon = null
-			
-			var lobby_info = game_info.lobby_info
-			var my_player_selections_dict = lobby_info.players[self_peer_id]
-			var character_data
-			
-			if my_player_selections_dict.has("character"):
-				var character_id = my_player_selections_dict.character
-				for character in ItemService.characters:
-					if character.my_id == character_id:
-						character_data = character
-						break
-			else:
-				character_data = Utils.get_rand_element(ItemService.characters)
-			
-			# Needed for random checks in main
-			RunData.add_character(character_data)
-			
-			if my_player_selections_dict.has("weapon"):
-				var weapon_id = my_player_selections_dict["weapon"]
-				for weapon in ItemService.weapons:
-					if weapon.my_id == weapon_id:
-						var _unused = RunData.add_weapon(weapon, true)
-			else:
-				if character_data.starting_weapons.size() > 0:
-					var _unused = RunData.add_weapon(Utils.get_rand_element(character_data.starting_weapons), true)
-				
-			var danger = game_info.danger
-			RunData.add_starting_items_and_weapons()
-			
-			var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-			character_difficulty.difficulty_selected_value = danger
-			RunData.init_elites_spawn()
-			
-			for effect in ItemService.difficulties[danger].effects:
-				effect.apply()
-			
-			back_to_lobby = false
-			
-			RunData.current_run_accessibility_settings = ProgressData.settings.enemy_scaling.duplicate()
-			RunData.current_run_accessibility_settings.health = lobby_data["enemy_hp"]
-			RunData.current_run_accessibility_settings.damage = lobby_data["enemy_damage"]
-			RunData.current_run_accessibility_settings.speed = lobby_data["enemy_speed"]
-			
-		RunData.current_wave = game_info.current_wave
-		if game_info.has("extra_enemies_next_wave"):
-			extra_enemies_next_wave  = game_info.extra_enemies_next_wave
-		if game_info.has("effects"):
-			effects_next_wave = game_info.effects
-		var _change_error = get_tree().change_scene(MenuData.game_scene)
+	print_debug("game controller game would have started here but we had to remove all the logic")
 
 
 func send_death() -> void:
@@ -583,18 +439,8 @@ func reroll_upgrades() -> void:
 		connection.send_reroll_upgrades(reroll_price)
 
 func receive_reroll_upgrades(player_id:int, reroll_price:int) -> void:
-	if not is_host:
-		return
+	print_debug("receive_reroll_upgrades")
 
-	var run_data_node = $"/root/MultiplayerRunData"
-	run_data_node.remove_gold(player_id, reroll_price)
-	
-	if player_id == self_peer_id:
-		var upgrades_ui = get_tree().get_current_scene()._upgrades_ui
-		upgrades_ui._reroll_price = ItemService.get_reroll_price(RunData.current_wave, reroll_price)
-		upgrades_ui.show_upgrade_options(upgrades_ui._level)
-	else:
-		send_complete_player(player_id)
 
 func on_item_discard_button_pressed(weapon_data:WeaponData) -> void:
 	if is_host:
@@ -813,12 +659,9 @@ func discard_item_box(item_data:ItemParentData) -> void:
 		connection.send_discard_item_box(item_data.my_id)
 	
 func receive_discard_item_box(player_id:int, item_id:String) -> void:
-	var run_data_node = $"/root/MultiplayerRunData"
-	for query_item in ItemService.items:
-		if query_item.my_id == item_id:
-			var actual_value = ItemService.get_recycling_value(RunData.current_wave, query_item.value)
-			run_data_node.add_gold(player_id, actual_value)
-	
+	print_debug("receive_discard_item_box")
+
+
 func end_wave():
 	run_updates = false
 	game_state_controller.reset_client_items()

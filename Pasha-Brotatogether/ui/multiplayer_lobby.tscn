@@ -9,7 +9,7 @@
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_lobby.gd" type="Script" id=8]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/player_selections.tscn" type="PackedScene" id=9]
 [ext_resource path="res://ui/menus/global/slider_option.tscn" type="PackedScene" id=10]
-[ext_resource path="res://resources/fonts/actual/base/font_big_title.tres" type="DynamicFont" id=11]
+[ext_resource path="res://resources/fonts/actual/base/font_22.tres" type="DynamicFont" id=11]
 
 [sub_resource type="DynamicFont" id=1]
 size = 50

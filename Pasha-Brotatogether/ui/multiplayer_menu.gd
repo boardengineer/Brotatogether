@@ -96,38 +96,40 @@ func _on_ClientButton_pressed():
 	text_box.text = str(get_tree().get_current_scene().get_name())
 
 func _on_StartButton_pressed():
-	if game_controller.is_host:
-		game_controller.is_source_of_truth = true
-	var game_mode = game_controller.GameMode.VERSUS
-	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
-	game_controller.game_mode = game_mode
-	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
-	var _weapon_error = RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
-	
-	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
+	print_debug("we pressed the start button but its broken now")
+#	if game_controller.is_host:
+#		game_controller.is_source_of_truth = true
+#	var game_mode = game_controller.GameMode.VERSUS
+#	game_controller.send_start_game({"current_wave":1, "mode":game_mode})
+#	game_controller.game_mode = game_mode
+#	RunData.add_character(preload("res://items/characters/well_rounded/well_rounded_data.tres"))
+#	var _weapon_error = RunData.add_weapon(preload("res://weapons/ranged/minigun/4/minigun_4_data.tres"), true)
+#
+#	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_StartButton2_pressed():
-	var weapon_path = "res://weapons/melee/hatchet/1/hatchet_data.tres"
-	var character_path = "res://items/characters/well_rounded/well_rounded_data.tres"
-	
-	RunData.add_character(load(character_path))
-	var _unused_weapon = RunData.add_weapon(load(weapon_path), true)
-	
-	if game_controller.is_host:
-		game_controller.is_source_of_truth = false
-		
-	var game_mode = game_controller.GameMode.VERSUS
-	
-	var lobby_info = {}
-	
-	lobby_info["character"] = character_path
-	lobby_info["weapon"] = weapon_path
-	lobby_info["danger"] = 5
-		
-	game_controller.send_start_game({"current_wave":1, "mode":game_mode, "lobby_info":lobby_info})
-	game_controller.game_mode = game_mode
-	
-	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
+	print_debug("we pressed the start button 2 but its broken now")
+#	var weapon_path = "res://weapons/melee/hatchet/1/hatchet_data.tres"
+#	var character_path = "res://items/characters/well_rounded/well_rounded_data.tres"
+#
+#	RunData.add_character(load(character_path))
+#	var _unused_weapon = RunData.add_weapon(load(weapon_path), true)
+#
+#	if game_controller.is_host:
+#		game_controller.is_source_of_truth = false
+#
+#	var game_mode = game_controller.GameMode.VERSUS
+#
+#	var lobby_info = {}
+#
+#	lobby_info["character"] = character_path
+#	lobby_info["weapon"] = weapon_path
+#	lobby_info["danger"] = 5
+#
+#	game_controller.send_start_game({"current_wave":1, "mode":game_mode, "lobby_info":lobby_info})
+#	game_controller.game_mode = game_mode
+#
+#	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
 func _on_SteamLobbies_pressed():
 	for old_child in $"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".get_children():
@@ -142,6 +144,7 @@ func _on_SteamLobbies_pressed():
 	steam_connection.parent = game_controller
 	
 func _on_CreateSteamLobby_pressed():
+	print_debug("pressed create steam lobby")
 	if lobby_id == 0:
 		# first param is visibility, 2 for public
 		Steam.createLobby(2, 5)

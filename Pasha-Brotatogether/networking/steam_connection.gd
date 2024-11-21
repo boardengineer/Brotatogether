@@ -8,8 +8,10 @@ var rpcs_by_type = {}
 var prev_sec = 0
 
 func _ready():
+	print_debug("steam connection ready?")
 	lobby_id = 0
 	var _connect_error = Steam.connect("lobby_created", self, "_on_Lobby_Created")
+	print_debug("connect error? ", _connect_error)
 	_connect_error = Steam.connect("lobby_match_list", self, "_on_Lobby_Match_List")
 	_connect_error = Steam.connect("lobby_joined", self, "_on_Lobby_Joined")
 	_connect_error = Steam.connect("lobby_chat_update", self, "_on_Lobby_Chat_Update")
@@ -125,6 +127,7 @@ func _on_Lobby_Match_List(lobbies: Array):
 #	pass
 
 func _on_Lobby_Created(connect: int, connected_lobby_id: int) -> void:
+	print_debug("lobby created")
 	if connect == 1:
 		lobby_id = connected_lobby_id
 		

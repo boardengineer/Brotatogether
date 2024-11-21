@@ -23,69 +23,6 @@ func add_weapon(weapon_data:WeaponData, pos:int)->void :
 	for effect in weapon.effects:
 		run_data_node.effect_to_owner_map[effect] = player_network_id
 
-func take_damage(value:int, hitbox:Hitbox = null, dodgeable:bool = true, armor_applied:bool = true, custom_sound:Resource = null, base_effect_scale:float = 1.0, bypass_invincibility:bool = false)->Array:
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
-		return .take_damage(value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale, bypass_invincibility)
-	
-	var game_controller = $"/root/GameController"
-	if not game_controller.is_host:
-			return [0, 0 ,0]
-			
-	var run_data = game_controller.tracked_players[player_network_id].run_data
-	var multiplayer_utils = $"/root/MultiplayerUtils"
-	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
-	
-	if hitbox and hitbox.is_healing:
-		var _healed = on_healing_effect(value)
-	elif _invincibility_timer.is_stopped() or bypass_invincibility:
-		var dmg_taken = multiplayer_utils.take_damage(self, value, hitbox, dodgeable, armor_applied, custom_sound, base_effect_scale)
-		
-		if dmg_taken.size() >= 3 and dmg_taken[2]:
-			if run_data.effects["dmg_on_dodge"].size() > 0 and hitbox != null and hitbox.from != null and is_instance_valid(hitbox.from):
-				var total_dmg_to_deal = 0
-				for dmg_on_dodge in run_data.effects["dmg_on_dodge"]:
-					if randf() >= dmg_on_dodge[2] / 100.0:
-						continue
-					var dmg_from_stat = max(1, (dmg_on_dodge[1] / 100.0) * Utils.get_stat(dmg_on_dodge[0]))
-					var dmg = RunData.get_dmg(dmg_from_stat) as int
-					total_dmg_to_deal += dmg
-				var _dmg_dealt = hitbox.from.take_damage(total_dmg_to_deal)
-			
-			if run_data.effects["heal_on_dodge"].size() > 0:
-				var total_to_heal = 0
-				for heal_on_dodge in run_data.effects["heal_on_dodge"]:
-					if randf() < heal_on_dodge[2] / 100.0:
-						total_to_heal += heal_on_dodge[1]
-				var _healed = on_healing_effect(total_to_heal, "item_adrenaline", false)
-			
-			if run_data.effects["temp_stats_on_dodge"].size() > 0:
-				for temp_stat_on_hit in run_data.effects["temp_stats_on_dodge"]:
-					game_controller.tracked_players[player_network_id]["temp_stats"]["stats"][temp_stat_on_hit[0]] += temp_stat_on_hit[1]
-					TempStats.emit_signal("temp_stat_updated", temp_stat_on_hit[0], temp_stat_on_hit[1])
-		
-		if dmg_taken[1] > 0 and consumables_in_range.size() > 0:
-			for cons in consumables_in_range:
-				cons.attracted_by = self
-		
-		if dodgeable:
-			disable_hurtbox()
-			_invincibility_timer.start(get_iframes(dmg_taken[1]))
-		
-		if dmg_taken[1] > 0:
-			if run_data.effects["explode_on_hit"].size() > 0:
-				var effect = run_data.effects["explode_on_hit"][0]
-				var stats = _explode_on_hit_stats
-				var _explosion = multiplayer_weapon_service.explode_multiplayer(player_network_id, effect, global_position, stats.damage, stats.accuracy, stats.crit_chance, stats.crit_damage, stats.burning_data)
-				
-			if run_data.effects["temp_stats_on_hit"].size() > 0:
-				for temp_stat_on_hit in run_data.effects["temp_stats_on_hit"]:
-					game_controller.tracked_players[player_network_id]["temp_stats"]["stats"][temp_stat_on_hit[0]] += temp_stat_on_hit[1]
-					TempStats.emit_signal("temp_stat_updated", temp_stat_on_hit[0], temp_stat_on_hit[1])
-			check_hp_regen()
-		
-		return dmg_taken
-	
-	return [0, 0]
 
 func remove_weapon_behaviors():
 	_lose_health_timer.disconnect("timeout", self, "_on_LoseHealthTimer_timeout")
@@ -175,20 +112,6 @@ func apply_items_effects() -> void:
 	
 	emit_signal("health_updated", current_stats.health, max_stats.health)
 
-func on_healing_effect_multiplayer(value:int, tracking_text:String = "", from_torture:bool = false)->int:
-	
-	var actual_value = min(value, max_stats.health - current_stats.health)
-	var value_healed = heal(actual_value, from_torture)
-	
-	if value_healed > 0:
-		SoundManager.play(Utils.get_rand_element(hp_regen_sounds), get_heal_db(), 0.1)
-		emit_signal("health_updated", current_stats.health, max_stats.health)
-		emit_signal("healed", self, actual_value)
-		
-		if tracking_text != "":
-			RunData.tracked_item_effects[tracking_text] += value_healed
-	
-	return value_healed
 
 func update_player_stats_multiplayer()->void :
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
@@ -261,16 +184,7 @@ func maybe_update_animation(movement:Vector2, force_animation:bool)->void :
 	elif _animation_player.current_animation == "move" and movement == Vector2.ZERO:
 		_animation_player.play("idle")
 		_running_smoke.stop()
-	
-func _on_ItemAttractArea_area_entered(area:Area2D) -> void:
-	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
-		._on_ItemAttractArea_area_entered(area)
-		return
-	
-	var game_controller = $"/root/GameController"
-	if game_controller.is_host:
-			._on_ItemAttractArea_area_entered(area)
-	
+
 
 func _on_ItemPickupArea_area_entered(area:Area2D) -> void:
 	if not $"/root".has_node("GameController") or not $"/root/GameController".is_coop():
@@ -313,43 +227,3 @@ func set_hp_regen_timer_value()->void :
 	if run_data.effects["torture"] > 0:
 		_health_regen_timer.wait_time = 1
 
-func on_alien_eyes_timeout() -> void:
-	if not $"/root".has_node("GameController") or not player_network_id:
-		.on_alien_eyes_timeout()
-		return
-	
-	
-	var game_controller = $"/root/GameController"
-	var run_data = game_controller.tracked_players[player_network_id].run_data
-	var multiplayer_weapon_service = $"/root/MultiplayerWeaponService"
-	
-	var projectiles = []
-	var alien_stats = multiplayer_weapon_service.init_ranged_stats_multiplayer(player_network_id, run_data.effects["alien_eyes"][0][1])
-	
-	SoundManager.play(Utils.get_rand_element(alien_sounds), 0, 0.1)
-	
-	for projectile in run_data.effects["alien_eyes"]:
-		for i in projectile[0]:
-			projectiles.push_back(projectile)
-	
-	for i in projectiles.size():
-		var direction = (2 * PI / projectiles.size()) * i
-		
-		var _projectile = WeaponService.manage_special_spawn_projectile(
-			self, 
-			alien_stats, 
-			projectiles[i][2], 
-			_entity_spawner_ref, 
-			direction, 
-			"item_alien_eyes"
-		)
-
-func _on_LoseHealthTimer_timeout()->void :
-	if not $"/root".has_node("GameController") or not player_network_id:
-		._on_LoseHealthTimer_timeout()
-		return
-		
-	var game_controller = $"/root/GameController"
-	var run_data = game_controller.tracked_players[player_network_id].run_data
-	
-	var _dmg_taken = take_damage(run_data.effects["lose_hp_per_second"], null, false, false, null, 1.0, true)

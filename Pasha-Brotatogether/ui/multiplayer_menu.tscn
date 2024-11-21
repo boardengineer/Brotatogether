@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=2]
 
-[ext_resource path="res://resources/fonts/actual/base/font_small_title.tres" type="DynamicFont" id=1]
+[ext_resource path="res://resources/fonts/actual/base/font_22.tres" type="DynamicFont" id=1]
 [ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=2]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.gd" type="Script" id=3]
 
@@ -18,23 +18,23 @@ margin_bottom = 1080.0
 size_flags_vertical = 3
 
 [node name="InfoBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_right = 423.0
+margin_right = 359.0
 margin_bottom = 1080.0
 size_flags_horizontal = 2
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/InfoBox"]
-margin_top = 474.0
-margin_right = 423.0
-margin_bottom = 505.0
+margin_top = 478.0
+margin_right = 359.0
+margin_bottom = 502.0
 custom_fonts/font = ExtResource( 1 )
 text = "[DEBUG] Connection information "
 
 [node name="ServerIp" type="TextEdit" parent="HBoxContainer/InfoBox"]
-margin_top = 555.0
-margin_right = 423.0
-margin_bottom = 605.0
+margin_top = 552.0
+margin_right = 359.0
+margin_bottom = 602.0
 grow_horizontal = 0
 grow_vertical = 0
 rect_min_size = Vector2( 0, 50 )
@@ -43,7 +43,7 @@ text = "127.0.0.1"
 [node name="LobbiesBox" type="ScrollContainer" parent="HBoxContainer"]
 margin_left = 625.0
 margin_top = 190.0
-margin_right = 1118.0
+margin_right = 1043.0
 margin_bottom = 890.0
 rect_min_size = Vector2( 0, 700 )
 size_flags_horizontal = 2
@@ -51,15 +51,15 @@ size_flags_vertical = 6
 scroll_horizontal_enabled = false
 
 [node name="Lobbies" type="VBoxContainer" parent="HBoxContainer/LobbiesBox"]
-margin_right = 493.0
-margin_bottom = 31.0
+margin_right = 418.0
+margin_bottom = 24.0
 size_flags_horizontal = 2
 custom_constants/separation = 50
 alignment = 1
 
 [node name="Label" type="Label" parent="HBoxContainer/LobbiesBox/Lobbies"]
-margin_right = 493.0
-margin_bottom = 31.0
+margin_right = 418.0
+margin_bottom = 24.0
 custom_fonts/font = ExtResource( 1 )
 text = "Lobbies Will Show up Here As Buttons"
 

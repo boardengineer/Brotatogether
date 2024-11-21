@@ -65,6 +65,7 @@ func _on_Lobby_Chat_Update(_lobby_id: int, _change_id: int, _making_change_id: i
 
 
 func update_selections(from_ready:bool = false) -> void:
+	print_debug("update_selections")
 	var game_controller = $"/root/GameController"
 	var steam_connection = $"/root/SteamConnection"
 	var host = steam_connection.get_lobby_host()
@@ -221,16 +222,7 @@ func _on_CharacterButton_pressed():
 
 
 func _on_WeaponButton_pressed():
-	RunData.weapons = []
-	RunData.items = []
-	RunData.appearances_displayed = []
-	
-	RunData.add_character(RunData.current_character)
-	RunData.effects = RunData.init_effects()
-	RunData.starting_weapon = null
-	
-	$"/root/GameController".back_to_lobby = true
-	var _error = get_tree().change_scene(MenuData.weapon_selection_scene)
+	print_debug("weapon button pressed")
 
 
 func _on_DangerButton_pressed():
@@ -247,21 +239,7 @@ func clear_selections() -> void:
 
 
 func remote_update_lobby(lobby_info:Dictionary) -> void:
-	# Remote only
-	if $"/root/GameController".is_host:
-		return
-	
-	if lobby_info.has("character"):
-		RunData.add_character(load(lobby_info.character))
-		
-	if lobby_info.has("weapon"):
-		var _unused_weapon = RunData.add_weapon(load(lobby_info.weapon), true)
-		
-	if lobby_info.has("danger"):
-		var character_difficulty = ProgressData.get_character_difficulty_info(RunData.current_character.my_id, RunData.current_zone)
-		character_difficulty.difficulty_selected_value = lobby_info.danger
-	
-	update_selections()
+	print_debug("remote lobby update")
  
 
 func _input(event:InputEvent)->void :
