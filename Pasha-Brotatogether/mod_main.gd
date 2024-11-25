@@ -15,17 +15,6 @@ func _init():
 #	modLoader.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/birth.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/neutral/neutral.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/enemy.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/unit/unit.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/structures/structure.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/structures/turret/turret.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/structures/landmine/landmine.gd")
-	
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/follow_player_movement_behavior.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/attack_behaviors/charging_attack_behavior.gd")
-	
 	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "items/consumables/consumable.gd")
@@ -71,11 +60,8 @@ func _init():
 	
 	
 func _ready():
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/item_attract_area.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/player/player.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/attack_behaviors/shooting_attack_behavior.gd")
-		
+	
 	var run_data = load("res://mods-unpacked/Pasha-Brotatogether/run_data.gd")
 	var run_data_node = run_data.new()
 	run_data_node.set_name("MultiplayerRunData")
