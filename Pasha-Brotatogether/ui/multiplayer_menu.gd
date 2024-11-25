@@ -1,13 +1,12 @@
-extends VBoxContainer
+extends Control
 
 # must be greater than 1024
 var SERVER_PORT = 11111
 var MAX_PLAYERS = 5
 
-onready var text_box = $"HBoxContainer/InfoBox/Label"
-onready var ip_box = $"HBoxContainer/InfoBox/ServerIp"
-
 var lobby_id = 0
+
+const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
 
 const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/steam_connection.gd")
 const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/direct_connection.gd")
@@ -20,52 +19,12 @@ var game_controller
 
 var DEBUG = false
 
-onready var debug_server_button = $HBoxContainer/ControlBox/Buttons/ServerButton
-onready var debug_client_button = $HBoxContainer/ControlBox/Buttons/ClientButton
-onready var debug_start_button = $HBoxContainer/ControlBox/Buttons/StartButton
-onready var debug_start2_button = $HBoxContainer/ControlBox/Buttons/StartButton2
-onready var debug_info_box = $HBoxContainer/InfoBox
+onready var chat_messages = $"%ChatMessages"
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	if not DEBUG:
-		debug_info_box.hide()
-		debug_server_button.hide()
-		debug_client_button.hide()
-		debug_start_button.hide()
-		debug_start2_button.hide()
-	
-	var rooted_steam_connection = null
-	var rooted_direct_connection = null
-	var rooted_game_controller = null
-	
-	for root_child in $"/root".get_children():
-		if root_child is SteamConnection:
-			rooted_steam_connection = root_child
-		if root_child is GameController:
-			rooted_game_controller = root_child
-		if root_child is DirectConnection:
-			rooted_direct_connection = root_child
-
-	if not rooted_steam_connection:
-		rooted_steam_connection = SteamConnection.new()
-		rooted_steam_connection.set_name("SteamConnection")
-		$"/root".add_child(rooted_steam_connection)
-	if not rooted_game_controller:
-		rooted_game_controller = GameController.new()
-		rooted_game_controller.set_name("GameController")
-		$"/root".add_child(rooted_game_controller)
-	if not rooted_direct_connection:
-		rooted_direct_connection = DirectConnection.new()
-		rooted_direct_connection.set_name("DirectConnection")
-		$"/root".add_child(rooted_direct_connection)
-
-	game_controller = rooted_game_controller
-	steam_connection = rooted_steam_connection
-	direct_connection = rooted_direct_connection
-	
-	game_controller.is_host = false
-#	game_controller.is_source_of_truth = false
+	pass
 
 
 func _on_ServerButton_pressed():
@@ -74,7 +33,7 @@ func _on_ServerButton_pressed():
 	
 #	var connection = 
 	var peer = NetworkedMultiplayerENet.new()
-	var error = peer.create_server(SERVER_PORT, MAX_PLAYERS)
+	var _error = peer.create_server(SERVER_PORT, MAX_PLAYERS)
 	
 	game_controller.self_peer_id = 1
 	game_controller.is_host = true
@@ -83,17 +42,9 @@ func _on_ServerButton_pressed():
 	get_tree().network_peer = peer
 	
 	direct_connection.rpc_id(1, "register_player")
-	text_box.text = str(error)
 
 func _on_ClientButton_pressed():
-	var peer = NetworkedMultiplayerENet.new()
-	var _error = peer.create_client(ip_box.text, SERVER_PORT)
-	
-	game_controller.connection = direct_connection
-	direct_connection.parent = game_controller
-	
-	get_tree().network_peer = peer
-	text_box.text = str(get_tree().get_current_scene().get_name())
+	pass
 
 func _on_StartButton_pressed():
 	print_debug("we pressed the start button but its broken now")
@@ -179,3 +130,15 @@ func manage_back(event:InputEvent)->void :
 		RunData.current_zone = 0
 		RunData.reload_music = false
 		var _error = get_tree().change_scene(MenuData.title_screen_scene)
+
+
+func _on_back_button_pressed():
+	RunData.reload_music = false
+	var _error = get_tree().change_scene(MenuData.title_screen_scene)
+
+
+func _on_chat_input_text_entered(new_text):
+	var new_message = ChatMessage.instance()
+	new_message.message = new_text
+	new_message.username = "pasha"
+	chat_messages.add_child(new_message)

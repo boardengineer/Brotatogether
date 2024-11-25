@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.gd" type="Script" id=1]
+
+[node name="ChatMessage" type="HBoxContainer"]
+margin_right = 710.0
+margin_bottom = 45.0
+custom_constants/separation = 35
+script = ExtResource( 1 )
+
+[node name="Username" type="Label" parent="."]
+unique_name_in_owner = true
+margin_top = 42.0
+margin_right = 64.0
+margin_bottom = 56.0
+text = "username"
+
+[node name="Message" type="Label" parent="."]
+unique_name_in_owner = true
+margin_left = 99.0
+margin_right = 710.0
+margin_bottom = 99.0
+size_flags_horizontal = 3
+text = "Very Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long TextVery Long Text
+"
+autowrap = true
+percent_visible = -0.00308642

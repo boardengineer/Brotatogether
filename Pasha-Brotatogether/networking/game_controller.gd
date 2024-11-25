@@ -251,7 +251,7 @@ func init_player_data(player:Dictionary, player_id) -> void:
 	player["temp_stats"]["stats"] = RunData.init_stats(true)
 	player["run_data"] = run_data
 
-func start_game(game_info: Dictionary):
+func start_game(_game_info: Dictionary):
 	print_debug("game controller game would have started here but we had to remove all the logic")
 
 
@@ -438,7 +438,7 @@ func reroll_upgrades() -> void:
 	else:
 		connection.send_reroll_upgrades(reroll_price)
 
-func receive_reroll_upgrades(player_id:int, reroll_price:int) -> void:
+func receive_reroll_upgrades(_player_id:int, _reroll_price:int) -> void:
 	print_debug("receive_reroll_upgrades")
 
 
@@ -658,7 +658,7 @@ func discard_item_box(item_data:ItemParentData) -> void:
 	else:
 		connection.send_discard_item_box(item_data.my_id)
 	
-func receive_discard_item_box(player_id:int, item_id:String) -> void:
+func receive_discard_item_box(_player_id:int, _item_id:String) -> void:
 	print_debug("receive_discard_item_box")
 
 

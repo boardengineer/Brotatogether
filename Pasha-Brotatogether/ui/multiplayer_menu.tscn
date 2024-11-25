@@ -1,129 +1,53 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://resources/fonts/actual/base/font_22.tres" type="DynamicFont" id=1]
+[ext_resource path="res://resources/fonts/actual/base/font_26.tres" type="DynamicFont" id=1]
 [ext_resource path="res://resources/themes/base_theme.tres" type="Theme" id=2]
 [ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.gd" type="Script" id=3]
+[ext_resource path="res://ui/menus/global/my_menu_button.gd" type="Script" id=4]
 
-[node name="MultiplayerMenu" type="VBoxContainer"]
+[node name="MultiplayerMenu" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-margin_left = 47.0
+margin_left = -3.0
+margin_bottom = 10.0
 theme = ExtResource( 2 )
-alignment = 1
 script = ExtResource( 3 )
 
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
-margin_right = 1873.0
-margin_bottom = 1080.0
-size_flags_vertical = 3
-
-[node name="InfoBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_right = 359.0
-margin_bottom = 1080.0
-size_flags_horizontal = 2
-custom_constants/separation = 50
-alignment = 1
-
-[node name="Label" type="Label" parent="HBoxContainer/InfoBox"]
-margin_top = 478.0
-margin_right = 359.0
-margin_bottom = 502.0
-custom_fonts/font = ExtResource( 1 )
-text = "[DEBUG] Connection information "
-
-[node name="ServerIp" type="TextEdit" parent="HBoxContainer/InfoBox"]
-margin_top = 552.0
-margin_right = 359.0
-margin_bottom = 602.0
-grow_horizontal = 0
-grow_vertical = 0
-rect_min_size = Vector2( 0, 50 )
-text = "127.0.0.1"
-
-[node name="LobbiesBox" type="ScrollContainer" parent="HBoxContainer"]
-margin_left = 625.0
-margin_top = 190.0
-margin_right = 1043.0
-margin_bottom = 890.0
-rect_min_size = Vector2( 0, 700 )
-size_flags_horizontal = 2
-size_flags_vertical = 6
-scroll_horizontal_enabled = false
-
-[node name="Lobbies" type="VBoxContainer" parent="HBoxContainer/LobbiesBox"]
-margin_right = 418.0
-margin_bottom = 24.0
-size_flags_horizontal = 2
-custom_constants/separation = 50
-alignment = 1
-
-[node name="Label" type="Label" parent="HBoxContainer/LobbiesBox/Lobbies"]
-margin_right = 418.0
-margin_bottom = 24.0
-custom_fonts/font = ExtResource( 1 )
-text = "Lobbies Will Show up Here As Buttons"
-
-[node name="ControlBox" type="VBoxContainer" parent="HBoxContainer"]
-margin_left = 1262.0
-margin_right = 1862.0
-margin_bottom = 1080.0
-size_flags_horizontal = 6
-custom_constants/separation = 50
-alignment = 1
-
-[node name="Buttons" type="VBoxContainer" parent="HBoxContainer/ControlBox"]
-margin_top = 282.0
-margin_right = 600.0
-margin_bottom = 797.0
-rect_min_size = Vector2( 600, 0 )
+[node name="BackButton" type="Button" parent="."]
+unique_name_in_owner = true
+self_modulate = Color( 1, 1, 1, 0.862745 )
+margin_left = 48.0
+margin_top = 48.0
+margin_right = 233.0
+margin_bottom = 99.0
 size_flags_horizontal = 4
-custom_constants/separation = 25
-alignment = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
+size_flags_vertical = 4
+custom_fonts/font = ExtResource( 1 )
+text = "MENU_BACK"
+script = ExtResource( 4 )
 
-[node name="ServerButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_right = 600.0
-margin_bottom = 65.0
-text = "[DEBUG] Start Server"
+[node name="ChatContainer" type="VBoxContainer" parent="."]
+margin_left = 1171.0
+margin_top = 76.0
+margin_right = 1881.0
+margin_bottom = 1039.0
 
-[node name="ClientButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_top = 90.0
-margin_right = 600.0
-margin_bottom = 155.0
-text = "[DEBUG] Start Client"
+[node name="ScrollContainer" type="ScrollContainer" parent="ChatContainer"]
+margin_right = 710.0
+margin_bottom = 800.0
+rect_min_size = Vector2( 0, 800 )
 
-[node name="StartButton" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_top = 180.0
-margin_right = 600.0
-margin_bottom = 245.0
-rect_pivot_offset = Vector2( 13, 259 )
-text = "[DEBUG] Start Sync Game"
+[node name="ChatMessages" type="VBoxContainer" parent="ChatContainer/ScrollContainer"]
+unique_name_in_owner = true
+margin_right = 710.0
+size_flags_horizontal = 3
+custom_constants/separation = 15
 
-[node name="StartButton2" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_top = 270.0
-margin_right = 600.0
-margin_bottom = 335.0
-rect_pivot_offset = Vector2( 13, 259 )
-text = "[DEBUG] Start Async Game"
+[node name="ChatInput" type="LineEdit" parent="ChatContainer"]
+margin_top = 804.0
+margin_right = 710.0
+margin_bottom = 858.0
+placeholder_text = "Type to Chat..."
 
-[node name="SteamLobbies" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_top = 360.0
-margin_right = 600.0
-margin_bottom = 425.0
-custom_colors/font_color_disabled = Color( 0, 0, 0, 1 )
-text = "Show Steam Lobbies"
-
-[node name="CreateSteamLobby" type="Button" parent="HBoxContainer/ControlBox/Buttons"]
-margin_top = 450.0
-margin_right = 600.0
-margin_bottom = 515.0
-text = "Start Steam Lobby"
-
-[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ServerButton" to="." method="_on_ServerButton_pressed"]
-[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/ClientButton" to="." method="_on_ClientButton_pressed"]
-[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton" to="." method="_on_StartButton_pressed"]
-[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/StartButton2" to="." method="_on_StartButton2_pressed"]
-[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/SteamLobbies" to="." method="_on_SteamLobbies_pressed"]
-[connection signal="pressed" from="HBoxContainer/ControlBox/Buttons/CreateSteamLobby" to="." method="_on_CreateSteamLobby_pressed"]
+[connection signal="pressed" from="BackButton" to="." method="_on_back_button_pressed"]
+[connection signal="text_entered" from="ChatContainer/ChatInput" to="." method="_on_chat_input_text_entered"]
