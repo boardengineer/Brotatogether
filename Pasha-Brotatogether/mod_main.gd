@@ -1,5 +1,7 @@
 extends Node
 
+const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/steam_connection.gd")
+
 const MOD_DIR = "Pasha-Brotatogether/"
 
 var dir = ""
@@ -13,3 +15,9 @@ func _init():
 	
 	# Add extensions
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
+
+
+func _ready():
+	var steam_connection = SteamConnection.new()
+	steam_connection.set_name("SteamConnection")
+	add_child(steam_connection)
