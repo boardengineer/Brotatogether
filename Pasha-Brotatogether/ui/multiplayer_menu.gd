@@ -8,23 +8,25 @@ var lobby_id = 0
 
 const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
 
-const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/steam_connection.gd")
 const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/direct_connection.gd")
 
 var GameController = load("res://mods-unpacked/Pasha-Brotatogether/networking/game_controller.gd")
 
-var steam_connection
 var direct_connection
 var game_controller
 
 var DEBUG = false
 
 onready var chat_messages = $"%ChatMessages"
+onready var chat_input : LineEdit = $"%ChatInput"
 
+# Manual on ready vars
+var steam_connection
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	pass
+	steam_connection = $"/root/SteamConnection"
+	steam_connection.connect("global_chat_received", self, "_received_global_chat")
 
 
 func _on_ServerButton_pressed():
@@ -82,6 +84,7 @@ func _on_StartButton2_pressed():
 #
 #	var _change_scene_error = get_tree().change_scene(MenuData.game_scene)
 
+
 func _on_SteamLobbies_pressed():
 	for old_child in $"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".get_children():
 		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".remove_child(old_child)
@@ -93,7 +96,8 @@ func _on_SteamLobbies_pressed():
 	#TODO move this elsewhere
 	game_controller.connection = steam_connection
 	steam_connection.parent = game_controller
-	
+
+
 func _on_CreateSteamLobby_pressed():
 	print_debug("pressed create steam lobby")
 	if lobby_id == 0:
@@ -109,7 +113,8 @@ func _on_CreateSteamLobby_pressed():
 		steam_connection.parent = game_controller
 	else:
 		steam_connection.send_handshakes()
-		
+
+
 func update_lobbies(lobbies: Array) -> void:
 	for found_lobby_id in lobbies:
 		var join_button = Button.new()
@@ -118,12 +123,15 @@ func update_lobbies(lobbies: Array) -> void:
 		$"/root/MultiplayerMenu/HBoxContainer/LobbiesBox/Lobbies".add_child(join_button)
 		join_button.connect("pressed", self, "join_button_pressed", [found_lobby_id])
 		# Steam.joinLobby(lobbies[0])
-		
+
+
 func join_button_pressed(joining_lobby_id: int) :
 	Steam.joinLobby(joining_lobby_id)
 
+
 func _input(event:InputEvent)->void :
 	manage_back(event)
+
 
 func manage_back(event:InputEvent)->void :
 	if event.is_action_pressed("ui_cancel"):
@@ -137,8 +145,13 @@ func _on_back_button_pressed():
 	var _error = get_tree().change_scene(MenuData.title_screen_scene)
 
 
-func _on_chat_input_text_entered(new_text):
-	var new_message = ChatMessage.instance()
-	new_message.message = new_text
-	new_message.username = "pasha"
-	chat_messages.add_child(new_message)
+func _on_chat_input_text_entered(message):
+	steam_connection.send_global_chat_message(message)
+	chat_input.clear()
+
+
+func _received_global_chat(user, message) -> void:
+	var new_message_node = ChatMessage.instance()
+	new_message_node.message = message
+	new_message_node.username = user
+	chat_messages.add_child(new_message_node)

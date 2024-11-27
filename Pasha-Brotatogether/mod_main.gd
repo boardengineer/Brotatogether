@@ -20,4 +20,4 @@ func _init():
 func _ready():
 	var steam_connection = SteamConnection.new()
 	steam_connection.set_name("SteamConnection")
-	add_child(steam_connection)
+	$"/root".call_deferred("add_child",steam_connection)
