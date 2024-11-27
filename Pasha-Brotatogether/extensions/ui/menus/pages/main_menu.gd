@@ -5,7 +5,7 @@ var multiplayer_button: Button
 
 # Add a multiplayer button to the main menu
 func _ready():
-	var buttons_node = $"HBoxContainer/ButtonsLeft"
+	var buttons_node = $"MarginContainer/VBoxContainer/HBoxContainer/ButtonsLeft"
 
 	# Duplicate a Button to get the styling
 	multiplayer_button = start_button.duplicate()

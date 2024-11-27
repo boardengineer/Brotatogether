@@ -119,5 +119,5 @@ func _on_lobby_chat_update(_lobby_id: int, change_id: int, _making_change_id: in
 		print("%s did... something." % changer_name)
 
 
-func _on_lobby_message(lobby_id : int, user_id : int, buffer : String, chat_type : int) -> void:
+func _on_lobby_message(_lobby_id : int, user_id : int, buffer : String, _chat_type : int) -> void:
 	emit_signal("global_chat_received", Steam.getFriendPersonaName(user_id), buffer)
