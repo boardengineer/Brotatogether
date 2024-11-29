@@ -1,0 +1,75 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://resources/fonts/actual/base/font_26_outline.tres" type="DynamicFont" id=1]
+[ext_resource path="res://ui/menus/global/arrow_right.png" type="Texture" id=3]
+[ext_resource path="res://ui/menus/global/arrow_left.png" type="Texture" id=4]
+
+[node name="ChatPanel" type="PanelContainer"]
+margin_left = 1540.0
+margin_right = 1853.0
+margin_bottom = 500.0
+rect_min_size = Vector2( 0, 500 )
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 343.0
+margin_bottom = 493.0
+custom_constants/margin_right = 25
+custom_constants/margin_top = 25
+custom_constants/margin_left = 25
+custom_constants/margin_bottom = 25
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+margin_left = 25.0
+margin_top = 25.0
+margin_right = 311.0
+margin_bottom = 461.0
+custom_constants/separation = 25
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+margin_right = 286.0
+margin_bottom = 34.0
+custom_constants/separation = 15
+alignment = 1
+
+[node name="LeftArrow" type="TextureButton" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+margin_right = 33.0
+margin_bottom = 34.0
+texture_normal = ExtResource( 4 )
+
+[node name="ChatTitle" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+margin_left = 48.0
+margin_top = 1.0
+margin_right = 238.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 190, 0 )
+custom_fonts/font = ExtResource( 1 )
+text = "Global Chat"
+clip_text = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="RightArrow" type="TextureButton" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+margin_left = 253.0
+margin_right = 286.0
+margin_bottom = 34.0
+texture_normal = ExtResource( 3 )
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
+margin_top = 59.0
+margin_right = 286.0
+margin_bottom = 387.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+scroll_horizontal_enabled = false
+
+[node name="ChatMessages" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer"]
+margin_right = 286.0
+size_flags_horizontal = 3
+
+[node name="ChatInput" type="LineEdit" parent="MarginContainer/VBoxContainer"]
+margin_top = 412.0
+margin_right = 286.0
+margin_bottom = 436.0

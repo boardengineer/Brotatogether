@@ -26,29 +26,100 @@ custom_fonts/font = ExtResource( 1 )
 text = "MENU_BACK"
 script = ExtResource( 4 )
 
-[node name="ChatContainer" type="VBoxContainer" parent="."]
-margin_left = 1171.0
-margin_top = 76.0
-margin_right = 1881.0
-margin_bottom = 1039.0
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+margin_left = 300.0
+margin_top = 173.0
+margin_right = 1883.0
+margin_bottom = 1066.0
 
-[node name="ScrollContainer" type="ScrollContainer" parent="ChatContainer"]
-margin_right = 710.0
-margin_bottom = 800.0
+[node name="ChatContainer2" type="VBoxContainer" parent="HBoxContainer"]
+margin_right = 789.0
+margin_bottom = 893.0
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/ChatContainer2"]
+margin_right = 789.0
+margin_bottom = 893.0
+custom_constants/separation = 28
+
+[node name="CreateLobbyButton" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer"]
+margin_right = 789.0
+margin_bottom = 65.0
+text = "Create Lobby"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer"]
+margin_top = 93.0
+margin_right = 789.0
+margin_bottom = 893.0
 rect_min_size = Vector2( 0, 800 )
 
-[node name="ChatMessages" type="VBoxContainer" parent="ChatContainer/ScrollContainer"]
-unique_name_in_owner = true
-margin_right = 710.0
+[node name="ChatMessages" type="VBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer"]
+margin_right = 789.0
+margin_bottom = 145.0
 size_flags_horizontal = 3
 custom_constants/separation = 15
 
-[node name="ChatInput" type="LineEdit" parent="ChatContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages"]
+margin_right = 789.0
+margin_bottom = 65.0
+custom_constants/separation = 30
+
+[node name="Button" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer"]
+margin_right = 114.0
+margin_bottom = 65.0
+text = "Join"
+
+[node name="Label" type="Label" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer"]
+margin_left = 144.0
+margin_top = 10.0
+margin_right = 387.0
+margin_bottom = 55.0
+text = "Lobby Name"
+align = 1
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages"]
+margin_top = 80.0
+margin_right = 789.0
+margin_bottom = 145.0
+custom_constants/separation = 30
+
+[node name="Button" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer2"]
+margin_right = 114.0
+margin_bottom = 65.0
+text = "Join"
+
+[node name="Label" type="Label" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer2"]
+margin_left = 144.0
+margin_top = 10.0
+margin_right = 419.0
+margin_bottom = 55.0
+text = "Lobby Name 2"
+align = 1
+
+[node name="ChatContainer" type="VBoxContainer" parent="HBoxContainer"]
+margin_left = 793.0
+margin_right = 1583.0
+margin_bottom = 893.0
+size_flags_horizontal = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="HBoxContainer/ChatContainer"]
+margin_right = 790.0
+margin_bottom = 800.0
+rect_min_size = Vector2( 0, 800 )
+
+[node name="ChatMessages" type="VBoxContainer" parent="HBoxContainer/ChatContainer/ScrollContainer"]
+unique_name_in_owner = true
+margin_right = 790.0
+size_flags_horizontal = 3
+custom_constants/separation = 15
+
+[node name="ChatInput" type="LineEdit" parent="HBoxContainer/ChatContainer"]
 unique_name_in_owner = true
 margin_top = 804.0
-margin_right = 710.0
+margin_right = 790.0
 margin_bottom = 858.0
 placeholder_text = "Type to Chat..."
 
 [connection signal="pressed" from="BackButton" to="." method="_on_back_button_pressed"]
-[connection signal="text_entered" from="ChatContainer/ChatInput" to="." method="_on_chat_input_text_entered"]
+[connection signal="pressed" from="HBoxContainer/ChatContainer2/VBoxContainer/CreateLobbyButton" to="." method="_on_create_lobby_button_pressed"]
+[connection signal="text_entered" from="HBoxContainer/ChatContainer/ChatInput" to="." method="_on_chat_input_text_entered"]
