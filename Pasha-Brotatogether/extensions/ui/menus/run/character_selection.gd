@@ -31,6 +31,8 @@ func _ready():
 	brotatogether_options.joining_multiplayer_lobby = false
 	
 	if is_multiplayer_lobby:
+		ProgressData.settings.coop_mode_toggled = true
+		_coop_button.init()
 		var run_options_top_panel = _run_options_panel.get_node("MarginContainer/VBoxContainer/HBoxContainer")
 		run_options_top_panel.remove_child(run_options_top_panel.get_node("Icon"))
 		
