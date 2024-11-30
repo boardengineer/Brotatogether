@@ -7,6 +7,7 @@ var MAX_PLAYERS = 5
 var lobby_id = 0
 
 const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
+const LobbyEntry = preload("res://mods-unpacked/Pasha-Brotatogether/ui/lobby_entry.tscn")
 
 const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/direct_connection.gd")
 
@@ -18,6 +19,7 @@ var game_controller
 var DEBUG = false
 
 onready var chat_messages = $"%ChatMessages"
+onready var lobbies_list = $"%Lobbies"
 onready var chat_input : LineEdit = $"%ChatInput"
 
 # Manual on ready vars
@@ -28,6 +30,7 @@ var brotatogether_options
 func _ready():
 	steam_connection = $"/root/SteamConnection"
 	steam_connection.connect("global_chat_received", self, "_received_global_chat")
+	steam_connection.connect("game_lobby_found", self, "_game_lobby_found")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 
@@ -62,5 +65,16 @@ func _received_global_chat(user, message) -> void:
 
 func _on_create_lobby_button_pressed():
 	steam_connection.create_new_game_lobby()
-#	brotatogether_options.joining_multiplayer_lobby = true
-#	var _error = get_tree().change_scene(MenuData.character_selection_scene)
+
+
+func _on_refresh_lobbies_button_pressed():
+	for child in lobbies_list.get_children():
+		lobbies_list.remove_child(child)
+	steam_connection.request_lobby_search()
+
+
+func _game_lobby_found(lobby_id, lobby_name) -> void:
+	var new_lobby_entry = LobbyEntry.instance()
+	new_lobby_entry.lobby_id = lobby_id
+	new_lobby_entry.lobby_name = lobby_name
+	lobbies_list.add_child(new_lobby_entry)

@@ -42,10 +42,20 @@ margin_right = 789.0
 margin_bottom = 893.0
 custom_constants/separation = 28
 
-[node name="CreateLobbyButton" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer"]
 margin_right = 789.0
 margin_bottom = 65.0
+
+[node name="CreateLobbyButton" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/HBoxContainer"]
+margin_right = 303.0
+margin_bottom = 65.0
 text = "Create Lobby"
+
+[node name="RefreshLobbiesButton" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/HBoxContainer"]
+margin_left = 307.0
+margin_right = 666.0
+margin_bottom = 65.0
+text = "Refresh Lobbies"
 
 [node name="ScrollContainer" type="ScrollContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer"]
 margin_top = 93.0
@@ -53,48 +63,11 @@ margin_right = 789.0
 margin_bottom = 893.0
 rect_min_size = Vector2( 0, 800 )
 
-[node name="ChatMessages" type="VBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer"]
+[node name="Lobbies" type="VBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer"]
+unique_name_in_owner = true
 margin_right = 789.0
-margin_bottom = 145.0
 size_flags_horizontal = 3
 custom_constants/separation = 15
-
-[node name="HBoxContainer" type="HBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages"]
-margin_right = 789.0
-margin_bottom = 65.0
-custom_constants/separation = 30
-
-[node name="Button" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer"]
-margin_right = 114.0
-margin_bottom = 65.0
-text = "Join"
-
-[node name="Label" type="Label" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer"]
-margin_left = 144.0
-margin_top = 10.0
-margin_right = 387.0
-margin_bottom = 55.0
-text = "Lobby Name"
-align = 1
-
-[node name="HBoxContainer2" type="HBoxContainer" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages"]
-margin_top = 80.0
-margin_right = 789.0
-margin_bottom = 145.0
-custom_constants/separation = 30
-
-[node name="Button" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer2"]
-margin_right = 114.0
-margin_bottom = 65.0
-text = "Join"
-
-[node name="Label" type="Label" parent="HBoxContainer/ChatContainer2/VBoxContainer/ScrollContainer/ChatMessages/HBoxContainer2"]
-margin_left = 144.0
-margin_top = 10.0
-margin_right = 419.0
-margin_bottom = 55.0
-text = "Lobby Name 2"
-align = 1
 
 [node name="ChatContainer" type="VBoxContainer" parent="HBoxContainer"]
 margin_left = 793.0
@@ -121,5 +94,6 @@ margin_bottom = 858.0
 placeholder_text = "Type to Chat..."
 
 [connection signal="pressed" from="BackButton" to="." method="_on_back_button_pressed"]
-[connection signal="pressed" from="HBoxContainer/ChatContainer2/VBoxContainer/CreateLobbyButton" to="." method="_on_create_lobby_button_pressed"]
+[connection signal="pressed" from="HBoxContainer/ChatContainer2/VBoxContainer/HBoxContainer/CreateLobbyButton" to="." method="_on_create_lobby_button_pressed"]
+[connection signal="pressed" from="HBoxContainer/ChatContainer2/VBoxContainer/HBoxContainer/RefreshLobbiesButton" to="." method="_on_refresh_lobbies_button_pressed"]
 [connection signal="text_entered" from="HBoxContainer/ChatContainer/ChatInput" to="." method="_on_chat_input_text_entered"]

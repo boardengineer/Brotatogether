@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://mods-unpacked/Pasha-Brotatogether/ui/lobby_entry.gd" type="Script" id=1]
+
+[node name="HBoxContainer" type="HBoxContainer"]
+margin_right = 789.0
+margin_bottom = 65.0
+custom_constants/separation = 30
+script = ExtResource( 1 )
+
+[node name="Button" type="Button" parent="."]
+margin_right = 35.0
+margin_bottom = 65.0
+text = "Join"
+
+[node name="Label" type="Label" parent="."]
+margin_left = 65.0
+margin_top = 25.0
+margin_right = 145.0
+margin_bottom = 39.0
+text = "Lobby Name"
+align = 1

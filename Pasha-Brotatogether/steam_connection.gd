@@ -14,6 +14,7 @@ var global_chat_check_timer : Timer
 
 signal global_chat_received (username, message)
 signal game_lobby_chat_received (username, message)
+signal game_lobby_found (lobby_id, lobby_name)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -53,18 +54,30 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 	
 	for lobby_id in lobbies:
 		var lobby_data : Dictionary = Steam.getAllLobbyData(lobby_id)
+		
+		var is_game_lobby : bool = false
+		var game_lobby_name : String
+		
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
 			var value = lobby_data[kvpair_index]["value"]
-			if key == "lobby_type" and value == GLOBAL_CHAT_TYPE:
-				if not found_global_chat_lobby:
-					min_chat_lobby_id = lobby_id
-			
-				if lobby_id < min_chat_lobby_id:
-					min_chat_lobby_id = lobby_id
+			if key == "lobby_type":
+				if value == GLOBAL_CHAT_TYPE:
+					if not found_global_chat_lobby:
+						min_chat_lobby_id = lobby_id
 				
-				found_global_chat_lobby = true
+					if lobby_id < min_chat_lobby_id:
+						min_chat_lobby_id = lobby_id
+					
+					found_global_chat_lobby = true
+				elif value == GAME_LOBBY_TYPE:
+					is_game_lobby = true
+			elif key == "lobby_name":
+				game_lobby_name = value
 	
+		if is_game_lobby:
+			emit_signal("game_lobby_found", lobby_id, game_lobby_name)
+		
 	if min_chat_lobby_id < global_chat_lobby_id:
 		print_debug("Not sure how this happened but we should rejoin the lower id chat room")
 	
@@ -85,12 +98,18 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 		else:
 			game_lobby_id = created_lobby_id
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
+			_err = Steam.setLobbyData(created_lobby_id,"lobby_name", Steam.getFriendPersonaName(Steam.getSteamID()))
 
 
 func _request_global_chat_search() -> void:
 	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	Steam.addRequestLobbyListStringFilter("lobby_type", GLOBAL_CHAT_TYPE, Steam.LOBBY_COMPARISON_EQUAL)
-	
+	Steam.requestLobbyList()
+
+
+func request_lobby_search() -> void:
+	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
+	Steam.addRequestLobbyListStringFilter("lobby_type", GAME_LOBBY_TYPE, Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.requestLobbyList()
 
 
