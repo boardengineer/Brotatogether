@@ -64,6 +64,8 @@ func _ready():
 	_err = Steam.connect("lobby_joined", self, "_on_lobby_joined")
 	_err = Steam.connect("lobby_message", self, "_on_lobby_message")
 	_err = Steam.connect("lobby_chat_update", self, "_on_lobby_chat_update")
+	_err = Steam.connect("p2p_session_request", self, "_on_p2p_session_request")
+	_err = Steam.connect("p2p_session_connect_fail", self, "_on_p2p_session_connect_fail")
 	
 	global_chat_check_timer = Timer.new()
 	_err = global_chat_check_timer.connect("timeout", self, "_request_global_chat_search")
@@ -190,6 +192,8 @@ func _on_lobby_chat_update(_lobby_id: int, change_id: int, _making_change_id: in
 
 	# If a player has joined the lobby
 	if chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_ENTERED:
+		if not lobby_members.has(change_id):
+			lobby_members.push_back(change_id)
 		print("%s has joined the lobby." % changer_name)
 
 	# Else if a player has left the lobby
@@ -209,6 +213,36 @@ func _on_lobby_chat_update(_lobby_id: int, change_id: int, _making_change_id: in
 		print("%s did... something." % changer_name)
 
 
+func _on_p2p_session_connect_fail(steam_id: int, session_error: int) -> void:
+	# If no error was given
+	if session_error == 0:
+		print("WARNING: Session failure with %s: no error given" % steam_id)
+
+	# Else if target user was not running the same game
+	elif session_error == 1:
+		print("WARNING: Session failure with %s: target user not running the same game" % steam_id)
+
+	# Else if local user doesn't own app / game
+	elif session_error == 2:
+		print("WARNING: Session failure with %s: local user doesn't own app / game" % steam_id)
+
+	# Else if target user isn't connected to Steam
+	elif session_error == 3:
+		print("WARNING: Session failure with %s: target user isn't connected to Steam" % steam_id)
+
+	# Else if connection timed out
+	elif session_error == 4:
+		print("WARNING: Session failure with %s: connection timed out" % steam_id)
+
+	# Else if unused
+	elif session_error == 5:
+		print("WARNING: Session failure with %s: unused" % steam_id)
+
+	# Else no known error
+	else:
+		print("WARNING: Session failure with %s: unknown error %s" % [steam_id, session_error])
+
+
 func _on_lobby_message(lobby_id : int, user_id : int, buffer : String, _chat_type : int) -> void:
 	if lobby_id == global_chat_lobby_id:
 		emit_signal("global_chat_received", Steam.getFriendPersonaName(user_id), buffer)
@@ -222,10 +256,6 @@ func create_new_game_lobby() -> void:
 
 # Sends data to a receipient or to all others if target_id is -1
 func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1) -> void:
-	if not data.has("type"):
-		print("WARNING - Attempting to send message with a type:\n")
-		return
-	
 	# Set the send_type and channel
 	var send_type: int = Steam.P2P_SEND_RELIABLE
 	var channel: int = message_type
@@ -263,7 +293,7 @@ func read_p2p_packet() -> void:
 				continue
 			
 			var sender_id : int = packet["remote_steam_id"]
-			var data : Dictionary = bytes2var(packet["data"])
+			var data : Dictionary = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
 			
 			if channel == MessageType.MESSAGE_TYPE_PING:
 				_respond_to_ping(data, sender_id)
@@ -271,6 +301,8 @@ func read_p2p_packet() -> void:
 				_respond_to_pong(data)
 			elif channel == MessageType.MESSAGE_TYPE_LATENCY_REPORT:
 				_accept_latency_report(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_PLAYER_STATUS:
+				_receive_player_statuses(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -320,7 +352,7 @@ func _respond_to_pong(data : Dictionary) -> void:
 		print("WARNING - Ping response key doesn't match")
 		return
 	
-	if ping_start_time_msec != -1:
+	if ping_start_time_msec == -1:
 		print("WARNING - Ping request send without starting timer")
 		return
 	
@@ -363,3 +395,16 @@ func _receive_player_statuses(data : Dictionary) -> void:
 	
 	player_latencies =  data["PLAYER_LATENCIES"]
 	print_debug("received player latencies: ", player_latencies)
+
+
+func _on_p2p_session_request(remote_id: int) -> void:
+	# Get the requester's name
+	var this_requester: String = Steam.getFriendPersonaName(remote_id)
+	print("%s is requesting a P2P session" % this_requester)
+
+	# Accept the P2P session; can apply logic to deny this request if needed
+	Steam.acceptP2PSessionWithUser(remote_id)
+
+	# Make the initial handshake
+	if not game_lobby_owner_id == steam_id:
+		_initiate_ping()
