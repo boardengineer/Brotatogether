@@ -4,8 +4,6 @@ extends Control
 var SERVER_PORT = 11111
 var MAX_PLAYERS = 5
 
-var lobby_id = 0
-
 const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
 const LobbyEntry = preload("res://mods-unpacked/Pasha-Brotatogether/ui/lobby_entry.tscn")
 

@@ -3,14 +3,51 @@ extends Node
 const GLOBAL_CHAT_TYPE := "BROTATOGETHER_GLOBAL_CHAT"
 const GAME_LOBBY_TYPE := "BROTATOGETHER_GAME_LOBBY"
 
+enum PlayerStatus {CONNECTING, LOBBYING, PLAYING, SELF}
+
+# Channels will be mapped 1:1 with channels
+enum MessageType {
+	# Start a latency ping. client -> host
+	MESSAGE_TYPE_PING,
+	
+	# Respond to a latency ping. host -> client
+	MESSAGE_TYPE_PONG,
+	
+	# Report the results of a latency ping. client -> host
+	MESSAGE_TYPE_LATENCY_REPORT,
+	
+	# Report the status of all players to clients. host -> client
+	MESSAGE_TYPE_PLAYER_STATUS,
+}
 
 var global_chat_lobby_id : int = -1
+var steam_id : int
+
 var game_lobby_id : int = -1
+var lobby_members : Array = []
+
+# Player latencies will be populated as people join and start sending statuses.
+var player_latencies : Dictionary = {} 
+var game_lobby_owner_id : int = -1
 
 var is_querying_global_chat := false
 
 var is_creating_global_chat_lobby : bool = false
+
+# Regularly ensure that we're connected to the lowest id global chat channel.
 var global_chat_check_timer : Timer
+
+# Regularly all players to make sure they're till connected and to update
+# latency readings.
+#
+# Clients will use this timer to initiate ping exchanges.
+#
+# The Host will use this timer to send latency status to all clients.
+var ping_timer : Timer
+
+# Random string to map ping requests
+var ping_key
+var ping_start_time_msec = -1
 
 signal global_chat_received (username, message)
 signal game_lobby_chat_received (username, message)
@@ -33,11 +70,20 @@ func _ready():
 	add_child(global_chat_check_timer)
 	global_chat_check_timer.start(3.0)
 	
+	ping_timer = Timer.new()
+	_err = ping_timer.connect("timeout", self, "_ping_timer_timeout")
+	add_child(ping_timer)
+	ping_timer.start(2.0)
+	
 	_request_global_chat_search()
+	steam_id = Steam.getSteamID()
 
 
 func _process(_delta: float) -> void:
 	Steam.run_callbacks()
+	
+	if game_lobby_id > 0:
+		read_p2p_packet()
 
 
 func send_global_chat_message(message : String) -> void:
@@ -97,6 +143,7 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GLOBAL_CHAT_TYPE)
 		else:
 			game_lobby_id = created_lobby_id
+			game_lobby_owner_id = Steam.getLobbyOwner(game_lobby_id) # This should be me but query to make sure
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
 			_err = Steam.setLobbyData(created_lobby_id,"lobby_name", Steam.getFriendPersonaName(Steam.getSteamID()))
 
@@ -126,7 +173,15 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 				elif value == GAME_LOBBY_TYPE:
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
 					game_lobby_id = lobby_id
+					
 					var _error = get_tree().change_scene(MenuData.character_selection_scene)
+					
+					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
+					
+					for member_index in Steam.getNumLobbyMembers(lobby_id):
+						lobby_members.push_back(Steam.getLobbyMemberByIndex(lobby_id, member_index))
+					
+					_initiate_ping()
 
 
 func _on_lobby_chat_update(_lobby_id: int, change_id: int, _making_change_id: int, chat_state: int) -> void:
@@ -163,3 +218,148 @@ func _on_lobby_message(lobby_id : int, user_id : int, buffer : String, _chat_typ
 
 func create_new_game_lobby() -> void:
 	Steam.createLobby(Steam.LOBBY_TYPE_PUBLIC, 4)
+
+
+# Sends data to a receipient or to all others if target_id is -1
+func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1) -> void:
+	if not data.has("type"):
+		print("WARNING - Attempting to send message with a type:\n")
+		return
+	
+	# Set the send_type and channel
+	var send_type: int = Steam.P2P_SEND_RELIABLE
+	var channel: int = message_type
+	
+	if game_lobby_id == -1:
+		
+		return
+		
+	var packet_data: PoolByteArray = PoolByteArray()
+	# Compress the PoolByteArray we create from our dictionary  using the GZIP compression method
+	var compressed_data: PoolByteArray = var2bytes(data).compress(File.COMPRESSION_GZIP)
+	packet_data.append_array(compressed_data)
+	
+	if target_id == -1:
+		for lobby_member_id in lobby_members:
+			if lobby_member_id != steam_id:
+				var _err = Steam.sendP2PPacket(lobby_member_id, packet_data, send_type, channel)
+	else:
+		if target_id == steam_id:
+			print("WARNING - Attempting to send data to myself:\n", data)
+			return
+		
+		var _err = Steam.sendP2PPacket(target_id, packet_data, send_type, channel)
+
+
+func read_p2p_packet() -> void:
+	for channel in MessageType.values():
+		var packet_size: int = Steam.getAvailableP2PPacketSize(channel)
+		
+		while packet_size > 0:
+			var packet : Dictionary = Steam.readP2PPacket(packet_size, channel)
+		
+			if packet == null or packet.empty():
+				packet_size = 0
+				continue
+			
+			var sender_id : int = packet["remote_steam_id"]
+			var data : Dictionary = bytes2var(packet["data"])
+			
+			if channel == MessageType.MESSAGE_TYPE_PING:
+				_respond_to_ping(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_PONG:
+				_respond_to_pong(data)
+			elif channel == MessageType.MESSAGE_TYPE_LATENCY_REPORT:
+				_accept_latency_report(data, sender_id)
+			
+			packet_size = Steam.getAvailableP2PPacketSize(channel)
+
+
+func _generate_ping_key() -> String:
+	var characters : String = "abcdefghijklmnopqrstuvwxyz"
+	var word : String = ""
+	for _i in 5:
+		word += characters[randi() % len(characters)]
+	return word
+
+
+func _ping_timer_timeout() -> void:
+	if game_lobby_id == -1 or game_lobby_owner_id == -1:
+		return
+		
+	if steam_id == game_lobby_owner_id:
+		_send_player_statuses()
+	else:
+		_initiate_ping()
+
+
+func _initiate_ping() -> void:
+	if game_lobby_owner_id == -1:
+		print("WARNING - Attempting to send ping to unknown lobby host")
+		return
+	
+	ping_key = _generate_ping_key()
+	ping_start_time_msec = Time.get_ticks_msec()
+	send_p2p_packet({ "PING_KEY": ping_key}, MessageType.MESSAGE_TYPE_PING, game_lobby_owner_id)
+
+
+func _respond_to_ping(data : Dictionary, sender_id : int) -> void:
+	if not data.has("PING_KEY"):
+		print("WARNING - Ping sent without key")
+		return
+		
+	send_p2p_packet({"PING_KEY": data["PING_KEY"]}, MessageType.MESSAGE_TYPE_PONG, sender_id)
+
+
+func _respond_to_pong(data : Dictionary) -> void:
+	if not data.has("PING_KEY"):
+		print("WARNING - Pong sent without key")
+		return
+		
+	if data["PING_KEY"] != ping_key:
+		print("WARNING - Ping response key doesn't match")
+		return
+	
+	if ping_start_time_msec != -1:
+		print("WARNING - Ping request send without starting timer")
+		return
+	
+	var current_time_msec = Time.get_ticks_msec()
+	var latency_msec = current_time_msec - ping_start_time_msec
+	
+	send_p2p_packet({"LATENCY": str(latency_msec)}, MessageType.MESSAGE_TYPE_LATENCY_REPORT, game_lobby_owner_id)
+
+
+func _accept_latency_report(data : Dictionary, sender_id : int) -> void:
+	if not data.has("LATENCY"):
+		print("WARNING - Received latency report without result")
+		return
+		
+	player_latencies[sender_id] = int(data["LATENCY"])
+
+
+func _send_player_statuses() -> void:
+	if game_lobby_id == -1 or game_lobby_owner_id == -1:
+		print("WARNING - Attempting to send player latencies to unknown lobby or unknown lobby owner")
+		return
+	
+	if game_lobby_owner_id != steam_id:
+		print("WARNING - Attempting to send player latencies when not the lobby owner")
+		return
+	
+	print_debug("sending player latencies : ", player_latencies)
+	
+	for player_id in lobby_members:
+		if player_id == steam_id:
+			continue
+		
+		send_p2p_packet({"PLAYER_LATENCIES": player_latencies}, MessageType.MESSAGE_TYPE_PLAYER_STATUS)
+
+
+func _receive_player_statuses(data : Dictionary) -> void:
+	if not data.has("PLAYER_LATENCIES"):
+		print("WARNING - player statuses returned without latencies")
+		return
+	
+	player_latencies =  data["PLAYER_LATENCIES"]
+	print_debug("received player latencies: ", player_latencies)
