@@ -18,6 +18,15 @@ enum MessageType {
 	
 	# Report the status of all players to clients. host -> client
 	MESSAGE_TYPE_PLAYER_STATUS,
+	
+	# Report a change in focus of the currently selected character. client -> host
+	MESSAGE_TYPE_CHARACTER_FOCUS,
+	
+	# Report that a character has been selected (clicked). client -> host
+	MESSAGE_TYPE_CHARACTER_SELECTED,
+	
+	# Report the state of all player selections so far 
+	MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE,
 }
 
 var global_chat_lobby_id : int = -1
@@ -27,7 +36,7 @@ var game_lobby_id : int = -1
 var lobby_members : Array = []
 
 # Player latencies will be populated as people join and start sending statuses.
-var player_latencies : Dictionary = {} 
+var player_latencies : Dictionary = {}
 var game_lobby_owner_id : int = -1
 
 var is_querying_global_chat := false
@@ -37,7 +46,7 @@ var is_creating_global_chat_lobby : bool = false
 # Regularly ensure that we're connected to the lowest id global chat channel.
 var global_chat_check_timer : Timer
 
-# Regularly all players to make sure they're till connected and to update
+# Regularly all players to make sure they're still connected and to update
 # latency readings.
 #
 # Clients will use this timer to initiate ping exchanges.
@@ -49,9 +58,24 @@ var ping_timer : Timer
 var ping_key
 var ping_start_time_msec = -1
 
+# Received a global chat, should be connected to chat panels to display the new chat message.
 signal global_chat_received (username, message)
+
+# Received a lobby chat, should be connected to lobby chat panels ot display the new chat message.
 signal game_lobby_chat_received (username, message)
+
+# A new game lobby was found, display the game lobby, probably with a join button
 signal game_lobby_found (lobby_id, lobby_name)
+
+# A player changed the focus in the character selection screen.  Connect to update the ui
+signal player_focused_character(player_index, character)
+
+# A player has confrimed their character selection.  Connect to update the ui
+signal player_selected_character(player_index, character)
+
+# Clients should update to this state of the character selection screen.  Clients should only update
+# others' character selections to maintain responsive control over their own UI.
+signal character_lobby_update(player_characters, has_player_selected)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -176,12 +200,12 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
 					game_lobby_id = lobby_id
 					
-					var _error = get_tree().change_scene(MenuData.character_selection_scene)
-					
 					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
 					
 					for member_index in Steam.getNumLobbyMembers(lobby_id):
 						lobby_members.push_back(Steam.getLobbyMemberByIndex(lobby_id, member_index))
+					
+					var _error = get_tree().change_scene(MenuData.character_selection_scene)
 					
 					_initiate_ping()
 
@@ -213,34 +237,9 @@ func _on_lobby_chat_update(_lobby_id: int, change_id: int, _making_change_id: in
 		print("%s did... something." % changer_name)
 
 
-func _on_p2p_session_connect_fail(steam_id: int, session_error: int) -> void:
-	# If no error was given
-	if session_error == 0:
-		print("WARNING: Session failure with %s: no error given" % steam_id)
-
-	# Else if target user was not running the same game
-	elif session_error == 1:
-		print("WARNING: Session failure with %s: target user not running the same game" % steam_id)
-
-	# Else if local user doesn't own app / game
-	elif session_error == 2:
-		print("WARNING: Session failure with %s: local user doesn't own app / game" % steam_id)
-
-	# Else if target user isn't connected to Steam
-	elif session_error == 3:
-		print("WARNING: Session failure with %s: target user isn't connected to Steam" % steam_id)
-
-	# Else if connection timed out
-	elif session_error == 4:
-		print("WARNING: Session failure with %s: connection timed out" % steam_id)
-
-	# Else if unused
-	elif session_error == 5:
-		print("WARNING: Session failure with %s: unused" % steam_id)
-
-	# Else no known error
-	else:
-		print("WARNING: Session failure with %s: unknown error %s" % [steam_id, session_error])
+func _on_p2p_session_connect_fail(_steam_id: int, session_error: int) -> void:
+	if session_error != 0:
+		print_debug("error connecting to p2p session")
 
 
 func _on_lobby_message(lobby_id : int, user_id : int, buffer : String, _chat_type : int) -> void:
@@ -303,6 +302,12 @@ func read_p2p_packet() -> void:
 				_accept_latency_report(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_PLAYER_STATUS:
 				_receive_player_statuses(data)
+			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_FOCUS:
+				_receive_character_focus(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_SELECTED:
+				_receive_character_select(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE:
+				_receive_character_lobby_update(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -393,7 +398,7 @@ func _receive_player_statuses(data : Dictionary) -> void:
 		print("WARNING - player statuses returned without latencies")
 		return
 	
-	player_latencies =  data["PLAYER_LATENCIES"]
+	player_latencies = data["PLAYER_LATENCIES"]
 	print_debug("received player latencies: ", player_latencies)
 
 
@@ -403,8 +408,89 @@ func _on_p2p_session_request(remote_id: int) -> void:
 	print("%s is requesting a P2P session" % this_requester)
 
 	# Accept the P2P session; can apply logic to deny this request if needed
-	Steam.acceptP2PSessionWithUser(remote_id)
+	var _err = Steam.acceptP2PSessionWithUser(remote_id)
 
 	# Make the initial handshake
 	if not game_lobby_owner_id == steam_id:
 		_initiate_ping()
+
+
+func is_host() -> bool:
+	return game_lobby_owner_id == steam_id
+
+
+# Character select screen functions
+func character_focused(character_key : String) -> void:
+	if is_host():
+		_send_character_lobby_update()
+	else:
+		send_p2p_packet({"CHARACTER": character_key}, MessageType.MESSAGE_TYPE_CHARACTER_FOCUS, game_lobby_owner_id)
+
+
+func _receive_character_focus(data : Dictionary, sender_id : int) -> void:
+	if not data.has("CHARACTER"):
+		print("WARNING - received character focus for player ", sender_id)
+		return
+	
+	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
+		print("WARNING - received character focus for player ", sender_id)
+		return
+	
+	emit_signal("player_focused_character", sender_id, data["CHARACTER"])
+	_send_character_lobby_update()
+
+
+func character_selected(character_key : String) -> void:
+	if is_host():
+		_send_character_lobby_update()
+	else:
+		send_p2p_packet({"CHARACTER": character_key}, MessageType.MESSAGE_TYPE_CHARACTER_SELECTED, game_lobby_owner_id)
+
+
+func _receive_character_select(data : Dictionary, sender_id : int) -> void:
+	if not data.has("CHARACTER"):
+		print("WARNING - received character select for player ", sender_id)
+		return
+	
+	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
+		print("WARNING - received character select for player ", sender_id)
+		return
+	
+	var player_index = _get_lobby_index_for_player(sender_id)
+	if player_index == -1:
+		return
+	
+	emit_signal("player_selected_character", player_index, data["CHARACTER"])
+	_send_character_lobby_update()
+
+
+func _send_character_lobby_update() -> void:
+	if not get_tree().current_scene.name == "CharacterSelection":
+		print("WARNING - attempting to send character selection when no longer in the character scene actual scene: ", get_tree().current_scene.name)
+		return
+	
+	var character_select_scene = get_tree().current_scene
+	
+	var data = {
+		"SELECTED_CHARACTERS": character_select_scene._player_characters,
+		"SELECTIONS_CONFIRMED": character_select_scene._has_player_selected,
+	}
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE)
+
+
+func _receive_character_lobby_update(data : Dictionary) -> void:
+	if not data.has("SELECTED_CHARACTERS") or not data.has("SELECTIONS_CONFIRMED"):
+		print("WARNING - received lobby player update wihtout player selections", data)
+		return
+	
+	emit_signal("character_lobby_update", data["SELECTED_CHARACTERS"], data["SELECTIONS_CONFIRMED"])
+
+
+# returns -1 if the player isn't in the lobby
+func _get_lobby_index_for_player(player_id : int) -> int:
+	for index in lobby_members.size():
+		if lobby_members[index] == player_id:
+			return index
+	
+	return -1

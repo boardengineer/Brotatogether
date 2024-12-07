@@ -2,6 +2,7 @@ extends "res://ui/menus/run/character_selection.gd"
 
 const ChatPanel = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat_panel.tscn")
 const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
+const MULTIPLAYER_CLIENT_PLAYER_TYPE = 10
 
 var steam_connection
 var brotatogether_options
@@ -21,10 +22,14 @@ var panel_parent_container
 var panels_array
 var visible_panel_index : int = 0
 
+var inventory_by_string_key : Dictionary
+
 func _ready():
 	steam_connection = $"/root/SteamConnection"
 	steam_connection.connect("global_chat_received", self, "_received_global_chat")
 	steam_connection.connect("game_lobby_chat_received", self, "_received_lobby_chat")
+	steam_connection.connect("player_focused_character", self, "_player_focused_character")
+	steam_connection.connect("player_selected_character", self, "_player_selected_character")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
@@ -76,6 +81,18 @@ func _ready():
 		
 		panels_array = [_run_options_panel, global_chat_panel, lobby_chat_panel]
 		update_panel_visiblility()
+		
+		if steam_connection.is_host():
+			CoopService._add_player(CoopService.KEYBOARD_REMAPPED_DEVICE_ID, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+		else:
+			for member_id in steam_connection.lobby_members:
+				if member_id == steam_connection.steam_id:
+					CoopService._add_player(CoopService.KEYBOARD_REMAPPED_DEVICE_ID, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+				else:
+					CoopService._add_player(100, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+			
+		for character_data in _get_all_possible_elements(0):
+			inventory_by_string_key[_character_item_to_string(character_data)] = character_data
 
 
 func _on_pressed_left_menu_arrow() -> void:
@@ -97,7 +114,6 @@ func update_panel_visiblility() -> void:
 
 
 func _received_global_chat(user, message) -> void:
-	print_debug("received global chat")
 	var new_message_node = ChatMessage.instance()
 	new_message_node.message = message
 	new_message_node.username = user
@@ -105,7 +121,6 @@ func _received_global_chat(user, message) -> void:
 
 
 func _received_lobby_chat(user, message) -> void:
-	print_debug("received lobby chat")
 	var new_message_node = ChatMessage.instance()
 	new_message_node.message = message
 	new_message_node.username = user
@@ -120,3 +135,39 @@ func _on_global_chat_text_entered(message):
 func _on_lobby_chat_text_entered(message):
 	steam_connection.send_lobby_chat_message(message)
 	lobby_chat_input.clear()
+
+
+func _on_element_focused(element:InventoryElement, inventory_player_index:int) -> void:
+	._on_element_focused(element, inventory_player_index)
+	
+	if is_multiplayer_lobby:
+		var element_string = ""
+		if element.item != null:
+			element_string = element.item.name
+		elif element.is_random:
+			element_string = "RANDOM"
+		print_debug("focused on ", element_string)
+		steam_connection.character_focused(element_string)
+
+
+func _character_item_to_string(item : Resource) -> String:
+	if item == null:
+		return "RANDOM"
+	return item.name
+
+
+func _player_focused_character(player_index : int , character : String) -> void:
+	var selected_item = inventory_by_string_key[character]
+	_player_characters[player_index] = selected_item
+	
+	var locked_panel = _get_locked_panels()[player_index]
+	if locked_panel.visible:
+		locked_panel.player_color_index = player_index if RunData.is_coop_run else - 1
+		locked_panel.set_element(selected_item, _get_reward_type())
+
+
+func _player_selected_character(player_index : int, character: String) -> void:
+	var selected_item = inventory_by_string_key[character]
+	_player_characters[player_index] = selected_item
+	
+	_set_selected_element(player_index)
