@@ -30,6 +30,10 @@ func _ready():
 	steam_connection.connect("game_lobby_chat_received", self, "_received_lobby_chat")
 	steam_connection.connect("player_focused_character", self, "_player_focused_character")
 	steam_connection.connect("player_selected_character", self, "_player_selected_character")
+	steam_connection.connect("character_lobby_update", self, "_lobby_characters_updated")
+	
+	# TODO gracefully add new players
+	steam_connection.connect("lobby_players_updated", self, "reload_scene")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
@@ -82,14 +86,11 @@ func _ready():
 		panels_array = [_run_options_panel, global_chat_panel, lobby_chat_panel]
 		update_panel_visiblility()
 		
-		if steam_connection.is_host():
-			CoopService._add_player(CoopService.KEYBOARD_REMAPPED_DEVICE_ID, MULTIPLAYER_CLIENT_PLAYER_TYPE)
-		else:
-			for member_id in steam_connection.lobby_members:
-				if member_id == steam_connection.steam_id:
-					CoopService._add_player(CoopService.KEYBOARD_REMAPPED_DEVICE_ID, MULTIPLAYER_CLIENT_PLAYER_TYPE)
-				else:
-					CoopService._add_player(100, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+		for member_id in steam_connection.lobby_members:
+			if member_id == steam_connection.steam_id:
+				CoopService._add_player(CoopService.KEYBOARD_REMAPPED_DEVICE_ID, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+			else:
+				CoopService._add_player(100, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			
 		for character_data in _get_all_possible_elements(0):
 			inventory_by_string_key[_character_item_to_string(character_data)] = character_data
@@ -157,13 +158,16 @@ func _character_item_to_string(item : Resource) -> String:
 
 
 func _player_focused_character(player_index : int , character : String) -> void:
-	var selected_item = inventory_by_string_key[character]
+	var selected_item = null
+	if inventory_by_string_key.has(character):
+		selected_item = inventory_by_string_key[character]
 	_player_characters[player_index] = selected_item
 	
-	var locked_panel = _get_locked_panels()[player_index]
-	if locked_panel.visible:
-		locked_panel.player_color_index = player_index if RunData.is_coop_run else - 1
-		locked_panel.set_element(selected_item, _get_reward_type())
+	var panel = _get_panels()[player_index]
+	if panel.visible:
+		# TODO handle randoms
+		if selected_item != null:
+			panel.set_data(selected_item, player_index)
 
 
 func _player_selected_character(player_index : int, character: String) -> void:
@@ -171,3 +175,15 @@ func _player_selected_character(player_index : int, character: String) -> void:
 	_player_characters[player_index] = selected_item
 	
 	_set_selected_element(player_index)
+
+
+func reload_scene() -> void:
+	$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
+	var _error = get_tree().change_scene(MenuData.character_selection_scene)
+
+
+func _lobby_characters_updated(player_characters : Array, has_player_selected : Array) -> void:
+	for player_index in player_characters.size():
+		_player_focused_character(player_index, player_characters[player_index])
+		
+	# TODO handle player selections too

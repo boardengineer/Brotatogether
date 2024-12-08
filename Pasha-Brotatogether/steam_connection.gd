@@ -67,6 +67,9 @@ signal game_lobby_chat_received (username, message)
 # A new game lobby was found, display the game lobby, probably with a join button
 signal game_lobby_found (lobby_id, lobby_name)
 
+# A player has entered or left the lobby
+signal lobby_players_updated()
+
 # A player changed the focus in the character selection screen.  Connect to update the ui
 signal player_focused_character(player_index, character)
 
@@ -199,7 +202,6 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 				elif value == GAME_LOBBY_TYPE:
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
 					game_lobby_id = lobby_id
-					
 					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
 					
 					for member_index in Steam.getNumLobbyMembers(lobby_id):
@@ -210,15 +212,18 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 					_initiate_ping()
 
 
-func _on_lobby_chat_update(_lobby_id: int, change_id: int, _making_change_id: int, chat_state: int) -> void:
+func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int, chat_state: int) -> void:
 	# Get the user who has made the lobby change
 	var changer_name: String = Steam.getFriendPersonaName(change_id)
 
 	# If a player has joined the lobby
 	if chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_ENTERED:
-		if not lobby_members.has(change_id):
-			lobby_members.push_back(change_id)
-		print("%s has joined the lobby." % changer_name)
+		if lobby_id == game_lobby_id and game_lobby_id != -1:
+			if not lobby_members.has(change_id):
+				lobby_members.push_back(change_id)
+				emit_signal("lobby_players_updated")
+			print("%s has joined the lobby." % changer_name)
+			print_debug("steam lobby : ", lobby_members)
 
 	# Else if a player has left the lobby
 	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_LEFT:
@@ -436,7 +441,11 @@ func _receive_character_focus(data : Dictionary, sender_id : int) -> void:
 		print("WARNING - received character focus for player ", sender_id)
 		return
 	
-	emit_signal("player_focused_character", sender_id, data["CHARACTER"])
+	var player_index = _get_lobby_index_for_player(sender_id)
+	if player_index == -1:
+		return
+	
+	emit_signal("player_focused_character", player_index, data["CHARACTER"])
 	_send_character_lobby_update()
 
 
