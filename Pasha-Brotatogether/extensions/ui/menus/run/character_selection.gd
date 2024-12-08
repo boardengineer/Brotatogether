@@ -184,6 +184,7 @@ func reload_scene() -> void:
 
 func _lobby_characters_updated(player_characters : Array, has_player_selected : Array) -> void:
 	for player_index in player_characters.size():
-		_player_focused_character(player_index, player_characters[player_index])
+		if player_characters[player_index] != null:
+			_player_focused_character(player_index, player_characters[player_index])
 		
 	# TODO handle player selections too

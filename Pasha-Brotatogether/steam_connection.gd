@@ -480,10 +480,14 @@ func _send_character_lobby_update() -> void:
 	
 	var character_select_scene = get_tree().current_scene
 	
+	var currently_focused_characters = []
+	
 	var data = {
-		"SELECTED_CHARACTERS": character_select_scene._player_characters,
+		"SELECTED_CHARACTERS": character_select_scene._latest_focused_element,
 		"SELECTIONS_CONFIRMED": character_select_scene._has_player_selected,
 	}
+	
+	print_debug("sending lobby update ", data)
 	
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE)
 
