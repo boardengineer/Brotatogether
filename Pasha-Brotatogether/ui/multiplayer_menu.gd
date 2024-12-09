@@ -1,5 +1,7 @@
 extends Control
 
+signal back_button_pressed
+
 # must be greater than 1024
 var SERVER_PORT = 11111
 var MAX_PLAYERS = 5
@@ -37,20 +39,20 @@ func init():
 	$BackButton.grab_focus()
 
 
-func _input(event:InputEvent)->void :
-	manage_back(event)
-
-
-func manage_back(event:InputEvent)->void :
+func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		RunData.current_zone = 0
-		RunData.reload_music = false
-		var _error = get_tree().change_scene(MenuData.title_screen_scene)
+		manage_back()
+
+
+func manage_back() -> void:
+	RunData.current_zone = 0
+	RunData.reload_music = false
+	emit_signal("back_button_pressed")
 
 
 func _on_back_button_pressed():
 	RunData.reload_music = false
-	var _error = get_tree().change_scene(MenuData.title_screen_scene)
+	emit_signal("back_button_pressed")
 
 
 func _on_chat_input_text_entered(message):

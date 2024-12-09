@@ -34,6 +34,7 @@ func init() -> void:
 func _on_MultiplayerButton_pressed():
 	emit_signal("multiplayer_button_pressed")
 
+
 func remove_game_controller():
 	if $"/root".has_node("GameController"):
 		var game_controller = $"/root/GameController"
