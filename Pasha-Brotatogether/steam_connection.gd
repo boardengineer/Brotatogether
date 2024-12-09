@@ -441,7 +441,7 @@ func _receive_character_focus(data : Dictionary, sender_id : int) -> void:
 		print("WARNING - received character focus for player ", sender_id)
 		return
 	
-	var player_index = _get_lobby_index_for_player(sender_id)
+	var player_index = get_lobby_index_for_player(sender_id)
 	if player_index == -1:
 		return
 	
@@ -449,27 +449,23 @@ func _receive_character_focus(data : Dictionary, sender_id : int) -> void:
 	_send_character_lobby_update()
 
 
-func character_selected(character_key : String) -> void:
+func character_selected() -> void:
 	if is_host():
 		_send_character_lobby_update()
 	else:
-		send_p2p_packet({"CHARACTER": character_key}, MessageType.MESSAGE_TYPE_CHARACTER_SELECTED, game_lobby_owner_id)
+		send_p2p_packet({}, MessageType.MESSAGE_TYPE_CHARACTER_SELECTED, game_lobby_owner_id)
 
 
 func _receive_character_select(data : Dictionary, sender_id : int) -> void:
-	if not data.has("CHARACTER"):
-		print("WARNING - received character select for player ", sender_id)
-		return
-	
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received character select for player ", sender_id)
 		return
 	
-	var player_index = _get_lobby_index_for_player(sender_id)
+	var player_index = get_lobby_index_for_player(sender_id)
 	if player_index == -1:
 		return
 	
-	emit_signal("player_selected_character", player_index, data["CHARACTER"])
+	emit_signal("player_selected_character", player_index)
 	_send_character_lobby_update()
 
 
@@ -481,9 +477,14 @@ func _send_character_lobby_update() -> void:
 	var character_select_scene = get_tree().current_scene
 	
 	var currently_focused_characters = []
+	for selected_item in character_select_scene._latest_focused_element:
+		if selected_item == null:
+			currently_focused_characters.push_back("RANDOM")
+		else:
+			currently_focused_characters.push_back(character_select_scene.character_item_to_string(selected_item.item))
 	
 	var data = {
-		"SELECTED_CHARACTERS": character_select_scene._latest_focused_element,
+		"SELECTED_CHARACTERS": currently_focused_characters,
 		"SELECTIONS_CONFIRMED": character_select_scene._has_player_selected,
 	}
 	
@@ -501,7 +502,7 @@ func _receive_character_lobby_update(data : Dictionary) -> void:
 
 
 # returns -1 if the player isn't in the lobby
-func _get_lobby_index_for_player(player_id : int) -> int:
+func get_lobby_index_for_player(player_id : int) -> int:
 	for index in lobby_members.size():
 		if lobby_members[index] == player_id:
 			return index

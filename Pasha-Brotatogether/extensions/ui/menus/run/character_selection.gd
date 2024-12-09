@@ -93,7 +93,7 @@ func _ready():
 				CoopService._add_player(100, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			
 		for character_data in _get_all_possible_elements(0):
-			inventory_by_string_key[_character_item_to_string(character_data)] = character_data
+			inventory_by_string_key[character_item_to_string(character_data)] = character_data
 
 
 func _on_pressed_left_menu_arrow() -> void:
@@ -151,7 +151,7 @@ func _on_element_focused(element:InventoryElement, inventory_player_index:int) -
 		steam_connection.character_focused(element_string)
 
 
-func _character_item_to_string(item : Resource) -> String:
+func character_item_to_string(item : Resource) -> String:
 	if item == null:
 		return "RANDOM"
 	return item.name
@@ -162,6 +162,7 @@ func _player_focused_character(player_index : int , character : String) -> void:
 	if inventory_by_string_key.has(character):
 		selected_item = inventory_by_string_key[character]
 	_player_characters[player_index] = selected_item
+	_clear_selected_element(player_index)
 	
 	var panel = _get_panels()[player_index]
 	if panel.visible:
@@ -170,10 +171,7 @@ func _player_focused_character(player_index : int , character : String) -> void:
 			panel.set_data(selected_item, player_index)
 
 
-func _player_selected_character(player_index : int, character: String) -> void:
-	var selected_item = inventory_by_string_key[character]
-	_player_characters[player_index] = selected_item
-	
+func _player_selected_character(player_index : int) -> void:
 	_set_selected_element(player_index)
 
 
@@ -186,5 +184,19 @@ func _lobby_characters_updated(player_characters : Array, has_player_selected : 
 	for player_index in player_characters.size():
 		if player_characters[player_index] != null:
 			_player_focused_character(player_index, player_characters[player_index])
-		
-	# TODO handle player selections too
+	
+	for player_index in has_player_selected.size():
+		if has_player_selected[player_index]:
+			_set_selected_element(player_index)
+		else:
+			_clear_selected_element(player_index)
+
+
+func _set_selected_element(p_player_index:int) -> void:
+	if _has_player_selected[p_player_index]:
+		return
+	
+	._set_selected_element(p_player_index)
+	
+	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == p_player_index:
+		steam_connection.character_selected()
