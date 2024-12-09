@@ -33,6 +33,10 @@ func _ready():
 	brotatogether_options = $"/root/BrotogetherOptions"
 
 
+func init():
+	$BackButton.grab_focus()
+
+
 func _input(event:InputEvent)->void :
 	manage_back(event)
 

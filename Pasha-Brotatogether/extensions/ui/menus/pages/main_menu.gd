@@ -1,5 +1,6 @@
 extends "res://ui/menus/pages/main_menu.gd"
 
+signal multiplayer_button_pressed
 
 var multiplayer_button: Button
 
@@ -31,7 +32,7 @@ func init() -> void:
 
 
 func _on_MultiplayerButton_pressed():
-	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
+	emit_signal("multiplayer_button_pressed")
 
 func remove_game_controller():
 	if $"/root".has_node("GameController"):
