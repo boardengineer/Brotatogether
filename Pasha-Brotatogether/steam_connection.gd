@@ -590,6 +590,8 @@ func _send_weapon_lobby_update() -> void:
 	
 	var currently_focused_weapons = []
 	for selected_item in weapon_select_scene._latest_focused_element:
+		if currently_focused_weapons.size() >= lobby_members.size():
+			break
 		if selected_item == null:
 			currently_focused_weapons.push_back("RANDOM")
 		else:

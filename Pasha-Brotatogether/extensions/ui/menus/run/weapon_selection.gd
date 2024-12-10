@@ -70,6 +70,13 @@ func _player_focused_weapon(player_index : int , weapon : String) -> void:
 
 func _player_selected_weapon(player_index : int) -> void:
 	_set_selected_element(player_index)
+
+
+func _set_selected_element(p_player_index:int) -> void:
+	if _has_player_selected[p_player_index]:
+		return
 	
-	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == player_index:
-		steam_connection.character_selected()
+	._set_selected_element(p_player_index)
+	
+	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == p_player_index:
+		steam_connection.weapon_selected()
