@@ -18,9 +18,10 @@ func _ready():
 	buttons_node.add_child_below_node(buttons_node.get_children()[0], multiplayer_button)
 	buttons_node.move_child(multiplayer_button, 0)
 
-
 	remove_game_controller()
-
+	
+	$"/root/BrotogetherOptions".joining_multiplayer_lobby = false
+	
 
 func init() -> void:
 	.init()

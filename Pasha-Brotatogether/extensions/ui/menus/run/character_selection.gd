@@ -37,7 +37,6 @@ func _ready():
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
-	brotatogether_options.joining_multiplayer_lobby = false
 	
 	if is_multiplayer_lobby:
 		ProgressData.settings.coop_mode_toggled = true

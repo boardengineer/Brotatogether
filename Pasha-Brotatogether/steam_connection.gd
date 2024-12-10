@@ -27,6 +27,25 @@ enum MessageType {
 	
 	# Report the state of all player selections so far 
 	MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE,
+	
+	# Report a change in focus of the currently selected weapon.  client -> host
+	MESSAGE_TYPE_WEAPON_FOCUS,
+	
+	# Report that a weapon has been selected (clicked). client -> host
+	MESSAGE_TYPE_WEAPON_SELECTED,
+	
+	# Report the state of all player selections for weapons.
+	MESSAGE_TYPE_WEAPON_LOBBY_UPDATE,
+	
+	# Used for both the host reporting to clients that they should enter
+	# Weapon select and clients reporting that they have done so.
+	MESSAGE_TYPE_ENTERED_WEAPON_SELECT,
+	
+	# Announce that the user has enetered the difficulty selection screen.
+	MESSAGE_TYPE_ENTERED_DIFFICULTY_SELECT,
+	
+	# Announce that the user has entered the main (battle) scene. 
+	MESSAGE_TYPE_ENTERED_WAVE,
 }
 
 var global_chat_lobby_id : int = -1
@@ -79,6 +98,16 @@ signal player_selected_character(player_index, character)
 # Clients should update to this state of the character selection screen.  Clients should only update
 # others' character selections to maintain responsive control over their own UI.
 signal character_lobby_update(player_characters, has_player_selected)
+
+# A player changed the focus in the weapon selection screen.  Connect to update the ui
+signal player_focused_weapon(player_index, weapon)
+
+# A player confirmed their selected weapon.  Connect to update the ui
+signal player_selected_weapon(player_index, weapon)
+
+# Client should update to this state of the weapons selections screen.  Clients should ignore updates
+# To their own state
+signal weapon_lobby_update(player_weapons, has_player_selected)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -313,6 +342,12 @@ func read_p2p_packet() -> void:
 				_receive_character_select(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE:
 				_receive_character_lobby_update(data)
+			elif channel == MessageType.MESSAGE_TYPE_WEAPON_FOCUS:
+				_receive_weapon_focus(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_WEAPON_SELECTED:
+				_receive_weapon_select(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_WEAPON_LOBBY_UPDATE:
+				_receive_weapon_lobby_update(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -499,6 +534,83 @@ func _receive_character_lobby_update(data : Dictionary) -> void:
 		return
 	
 	emit_signal("character_lobby_update", data["SELECTED_CHARACTERS"], data["SELECTIONS_CONFIRMED"])
+
+
+# Weapon select screen functions
+func weapon_focused(weapon_key : String) -> void:
+	if is_host():
+		_send_weapon_lobby_update()
+	else:
+		send_p2p_packet({"WEAPON": weapon_key}, MessageType.MESSAGE_TYPE_WEAPON_FOCUS, game_lobby_owner_id)
+
+
+func _receive_weapon_focus(data : Dictionary, sender_id : int) -> void:
+	if not data.has("WEAPON"):
+		print("WARNING - received weapon focus for player without weapon id ", sender_id)
+		return
+	
+	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
+		print("WARNING - received weapon focus for player ", sender_id)
+		return
+	
+	var player_index = get_lobby_index_for_player(sender_id)
+	if player_index == -1:
+		return
+	
+	emit_signal("player_focused_weapon", player_index, data["WEAPON"])
+	_send_weapon_lobby_update()
+
+
+func weapon_selected() -> void:
+	if is_host():
+		_send_weapon_lobby_update()
+	else:
+		send_p2p_packet({}, MessageType.MESSAGE_TYPE_WEAPON_SELECTED, game_lobby_owner_id)
+
+
+func _receive_weapon_select(data : Dictionary, sender_id : int) -> void:
+	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
+		print("WARNING - received character select for player ", sender_id)
+		return
+	
+	var player_index = get_lobby_index_for_player(sender_id)
+	if player_index == -1:
+		return
+	
+	emit_signal("player_selected_weapon", player_index)
+	_send_character_lobby_update()
+
+
+func _send_weapon_lobby_update() -> void:
+	if not get_tree().current_scene.name == "WeaponSelection":
+		print("WARNING - attempting to send weapon selection when no longer in the character scene actual scene: ", get_tree().current_scene.name)
+		return
+	
+	var weapon_select_scene = get_tree().current_scene
+	
+	var currently_focused_weapons = []
+	for selected_item in weapon_select_scene._latest_focused_element:
+		if selected_item == null:
+			currently_focused_weapons.push_back("RANDOM")
+		else:
+			currently_focused_weapons.push_back(weapon_select_scene.weapon_item_to_string(selected_item.item))
+	
+	var data = {
+		"SELECTED_WEAPONS": currently_focused_weapons,
+		"SELECTIONS_CONFIRMED": weapon_select_scene._has_player_selected,
+	}
+	
+	print_debug("sending lobby update ", data)
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_LOBBY_UPDATE)
+
+
+func _receive_weapon_lobby_update(data : Dictionary) -> void:
+	if not data.has("SELECTED_WEAPONS") or not data.has("SELECTIONS_CONFIRMED"):
+		print("WARNING - received lobby player update wihtout player selections", data)
+		return
+	
+	emit_signal("weapon_lobby_update", data["SELECTED_WEAPONS"], data["SELECTIONS_CONFIRMED"])
 
 
 # returns -1 if the player isn't in the lobby
