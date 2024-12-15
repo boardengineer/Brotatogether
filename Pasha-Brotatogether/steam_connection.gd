@@ -105,9 +105,13 @@ signal player_focused_weapon(player_index, weapon)
 # A player confirmed their selected weapon.  Connect to update the ui
 signal player_selected_weapon(player_index, weapon)
 
-# Client should update to this state of the weapons selections screen.  Clients should ignore updates
+# Client should update to this state of the weapons selection screen.  Clients should ignore updates
 # To their own state
 signal weapon_lobby_update(player_weapons, has_player_selected)
+
+# Clients shoulda update to this state of the difficulty selection screen.  There is only one
+# difficulty item to select and it controlled by the host.
+signal difficulty_lobby_update(lobby_difficulty)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -583,7 +587,7 @@ func _receive_weapon_select(data : Dictionary, sender_id : int) -> void:
 
 func _send_weapon_lobby_update() -> void:
 	if not get_tree().current_scene.name == "WeaponSelection":
-		print("WARNING - attempting to send weapon selection when no longer in the character scene actual scene: ", get_tree().current_scene.name)
+		print("WARNING - attempting to send weapon selection when no longer in the weapon select; scene actual scene: ", get_tree().current_scene.name)
 		return
 	
 	var weapon_select_scene = get_tree().current_scene
@@ -612,7 +616,21 @@ func _receive_weapon_lobby_update(data : Dictionary) -> void:
 		print("WARNING - received lobby player update wihtout player selections", data)
 		return
 	
+	var difficulty_select_scene = get_tree().current_scene
+	
 	emit_signal("weapon_lobby_update", data["SELECTED_WEAPONS"], data["SELECTIONS_CONFIRMED"])
+
+
+# Difficulty Selection functions, there are fewer of these since clients don't make choices.
+func send_difficulty_lobby_update() -> void:
+	if not get_tree().current_scene.name == "DifficultySelection":
+		print("WARNING - attempting to send difficulty selection when no longer in the scene, actual scene: ", get_tree().current_scene.name)
+		return
+	
+
+
+func difficulty_focused(difficulty_key : String) -> void:
+	_send_weapon_lobby_update()
 
 
 # returns -1 if the player isn't in the lobby

@@ -17,6 +17,7 @@ func _init():
 	# Add extensions
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/global/focus_emulator.gd")
 
