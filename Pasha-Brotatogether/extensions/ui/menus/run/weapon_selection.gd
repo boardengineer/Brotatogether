@@ -35,7 +35,7 @@ func _lobby_weapons_updated(player_weapons : Array, has_player_selected : Array)
 			_player_focused_weapon(player_index, player_weapons[player_index])
 	
 	var all_selected = true
-	for player_index in has_player_selected.size():
+	for player_index in RunData.get_player_count():
 		if has_player_selected[player_index]:
 			_set_selected_element(player_index)
 		else:
