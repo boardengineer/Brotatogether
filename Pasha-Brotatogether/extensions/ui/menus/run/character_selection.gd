@@ -160,8 +160,8 @@ func _player_focused_character(player_index : int , character : String) -> void:
 	var selected_item = null
 	if inventory_by_string_key.has(character):
 		selected_item = inventory_by_string_key[character]
-	_player_characters[player_index] = selected_item
 	_clear_selected_element(player_index)
+	_player_characters[player_index] = selected_item
 	
 	var panel = _get_panels()[player_index]
 	if panel.visible:
@@ -184,18 +184,22 @@ func _lobby_characters_updated(player_characters : Array, has_player_selected : 
 		if player_characters[player_index] != null:
 			_player_focused_character(player_index, player_characters[player_index])
 	
+	var all_selected = true
 	for player_index in has_player_selected.size():
 		if has_player_selected[player_index]:
 			_set_selected_element(player_index)
 		else:
 			_clear_selected_element(player_index)
+	
+	if all_selected:
+		_selections_completed_timer.start()
 
 
-func _set_selected_element(p_player_index:int) -> void:
-	if _has_player_selected[p_player_index]:
+func _set_selected_element(player_index:int) -> void:
+	if _has_player_selected[player_index]:
 		return
 	
-	._set_selected_element(p_player_index)
+	._set_selected_element(player_index)
 	
-	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == p_player_index:
+	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == player_index:
 		steam_connection.character_selected()

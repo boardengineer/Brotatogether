@@ -516,11 +516,12 @@ func _send_character_lobby_update() -> void:
 	var character_select_scene = get_tree().current_scene
 	
 	var currently_focused_characters = []
-	for selected_item in character_select_scene._latest_focused_element:
+	for panel in character_select_scene._get_panels():
+		var selected_item = panel.item_data
 		if selected_item == null:
 			currently_focused_characters.push_back("RANDOM")
 		else:
-			currently_focused_characters.push_back(character_select_scene.character_item_to_string(selected_item.item))
+			currently_focused_characters.push_back(character_select_scene.character_item_to_string(selected_item))
 	
 	var data = {
 		"SELECTED_CHARACTERS": currently_focused_characters,
