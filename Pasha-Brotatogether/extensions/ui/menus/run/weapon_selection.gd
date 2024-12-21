@@ -34,11 +34,16 @@ func _lobby_weapons_updated(player_weapons : Array, has_player_selected : Array)
 		if player_weapons[player_index] != null:
 			_player_focused_weapon(player_index, player_weapons[player_index])
 	
+	var all_selected = true
 	for player_index in has_player_selected.size():
 		if has_player_selected[player_index]:
 			_set_selected_element(player_index)
 		else:
+			all_selected = false
 			_clear_selected_element(player_index)
+	
+	if all_selected:
+		_selections_completed_timer.start()
 
 
 func _on_element_focused(element:InventoryElement, inventory_player_index:int) -> void:

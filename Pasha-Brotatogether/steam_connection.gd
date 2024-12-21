@@ -594,13 +594,14 @@ func _send_weapon_lobby_update() -> void:
 	var weapon_select_scene = get_tree().current_scene
 	
 	var currently_focused_weapons = []
-	for selected_item in weapon_select_scene._latest_focused_element:
+	for panel in weapon_select_scene._get_panels():
+		var selected_item = panel.item_data
 		if currently_focused_weapons.size() >= lobby_members.size():
 			break
 		if selected_item == null:
 			currently_focused_weapons.push_back("RANDOM")
 		else:
-			currently_focused_weapons.push_back(weapon_select_scene.weapon_item_to_string(selected_item.item))
+			currently_focused_weapons.push_back(weapon_select_scene.weapon_item_to_string(selected_item))
 	
 	var data = {
 		"SELECTED_WEAPONS": currently_focused_weapons,
