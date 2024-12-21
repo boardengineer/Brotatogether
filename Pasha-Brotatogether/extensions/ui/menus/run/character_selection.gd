@@ -185,10 +185,11 @@ func _lobby_characters_updated(player_characters : Array, has_player_selected : 
 			_player_focused_character(player_index, player_characters[player_index])
 	
 	var all_selected = true
-	for player_index in has_player_selected.size():
+	for player_index in RunData.get_player_count():
 		if has_player_selected[player_index]:
 			_set_selected_element(player_index)
 		else:
+			all_selected = false
 			_clear_selected_element(player_index)
 	
 	if all_selected:
