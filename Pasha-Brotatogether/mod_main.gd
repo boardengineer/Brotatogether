@@ -10,6 +10,8 @@ var ext_dir = ""
 var trans_dir = ""
 
 func _init():
+	Steam.steamInit()
+	
 	dir = ModLoaderMod.get_unpacked_dir() + MOD_DIR
 	ext_dir = dir + "extensions/"
 	trans_dir = dir + "translations/"
