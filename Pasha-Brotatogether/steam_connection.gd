@@ -37,15 +37,11 @@ enum MessageType {
 	# Report the state of all player selections for weapons.
 	MESSAGE_TYPE_WEAPON_LOBBY_UPDATE,
 	
-	# Used for both the host reporting to clients that they should enter
-	# Weapon select and clients reporting that they have done so.
-	MESSAGE_TYPE_ENTERED_WEAPON_SELECT,
+	# Report that the host has focused on a difficulty
+	MESSAGE_TYPE_DIFFICULTY_FOCUSED,
 	
-	# Announce that the user has enetered the difficulty selection screen.
-	MESSAGE_TYPE_ENTERED_DIFFICULTY_SELECT,
-	
-	# Announce that the user has entered the main (battle) scene. 
-	MESSAGE_TYPE_ENTERED_WAVE,
+	# Report that the host has selected a difficulty
+	MESSAGE_TYPE_DIFFICULTY_SELECTED,
 }
 
 var global_chat_lobby_id : int = -1
@@ -111,7 +107,9 @@ signal weapon_lobby_update(player_weapons, has_player_selected)
 
 # Clients shoulda update to this state of the difficulty selection screen.  There is only one
 # difficulty item to select and it controlled by the host.
-signal difficulty_lobby_update(lobby_difficulty)
+signal difficulty_focused(lobby_difficulty)
+
+signal difficulty_selected(lobby_difficulty)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -352,6 +350,8 @@ func read_p2p_packet() -> void:
 				_receive_weapon_select(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_WEAPON_LOBBY_UPDATE:
 				_receive_weapon_lobby_update(data)
+			elif channel == MessageType.MESSAGE_TYPE_DIFFICULTY_FOCUSED:
+				pass
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -631,8 +631,12 @@ func send_difficulty_lobby_update() -> void:
 	
 
 
-func difficulty_focused(difficulty_key : String) -> void:
-	_send_weapon_lobby_update()
+func difficulty_focused() -> void:
+	var difficulty_selection_scene = get_tree().current_scene
+	var focused_difficulty : int = difficulty_selection_scene._get_panels()[0].item_data.value
+	print_debug("difficulty focused: ", focused_difficulty)
+	
+	send_difficulty_lobby_update()
 
 
 # returns -1 if the player isn't in the lobby

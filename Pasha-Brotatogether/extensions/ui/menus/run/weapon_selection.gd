@@ -16,7 +16,6 @@ func _ready():
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
-	brotatogether_options.joining_multiplayer_lobby = false
 	
 	if is_multiplayer_lobby:
 		for weapon_data in ItemService.weapons:
