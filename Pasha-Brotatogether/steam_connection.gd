@@ -351,7 +351,7 @@ func read_p2p_packet() -> void:
 			elif channel == MessageType.MESSAGE_TYPE_WEAPON_LOBBY_UPDATE:
 				_receive_weapon_lobby_update(data)
 			elif channel == MessageType.MESSAGE_TYPE_DIFFICULTY_FOCUSED:
-				pass
+				_receive_difficutly_focus_update(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -634,9 +634,27 @@ func send_difficulty_lobby_update() -> void:
 func difficulty_focused() -> void:
 	var difficulty_selection_scene = get_tree().current_scene
 	var focused_difficulty : int = difficulty_selection_scene._get_panels()[0].item_data.value
-	print_debug("difficulty focused: ", focused_difficulty)
 	
-	send_difficulty_lobby_update()
+	print_debug("emitting signal difficulty focused: ", focused_difficulty)
+	
+	var data = {
+		"FOCUSED_DIFFICULTY": focused_difficulty,
+	}
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_DIFFICULTY_FOCUSED)
+
+
+func _receive_difficutly_focus_update(data : Dictionary) -> void:
+	if not data.has("FOCUSED_DIFFICULTY"):
+		print("WARNING - received lobby player update wihtout difficulty focus; data:", data)
+		return
+	
+	if not get_tree().current_scene.name == "DifficultySelection":
+		print("WARNING - Received difficulty focus update when not in the current scene, current scene:", get_tree().current_scene.name)
+		return
+	
+	print_debug("received difficulty, emittign signal with data", data)
+	emit_signal("difficulty_focused", data["FOCUSED_DIFFICULTY"])
 
 
 # returns -1 if the player isn't in the lobby

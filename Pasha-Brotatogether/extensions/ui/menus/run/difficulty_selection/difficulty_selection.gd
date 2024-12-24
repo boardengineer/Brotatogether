@@ -33,7 +33,9 @@ func _on_element_focused(element:InventoryElement, inventory_player_index:int) -
 		steam_connection.difficulty_focused()
 
 
-func _difficulty_focused(difficutly : String) -> void:
+func _difficulty_focused(difficutly : int) -> void:
+	print_debug("received difficulty focus update: ", difficutly)
+	
 	# Hosts don't respect update calls
 	if is_multiplayer_lobby:
 		if steam_connection.is_host():
@@ -42,7 +44,8 @@ func _difficulty_focused(difficutly : String) -> void:
 	var selected_item = null
 	if inventory_by_string_key.has(difficutly):
 		selected_item = inventory_by_string_key[difficutly]
-	_display_element_panel_data(selected_item, 0)
+	if selected_item != null:
+		_display_element_panel_data(selected_item, 0)
 
 
 func _difficulty_selected(difficulty : int) -> void:
