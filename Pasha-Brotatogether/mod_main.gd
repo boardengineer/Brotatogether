@@ -16,11 +16,20 @@ func _init():
 	ext_dir = dir + "extensions/"
 	trans_dir = dir + "translations/"
 	
+	InputMap.add_action("ltrigger_100")
+	
 	# Add extensions
+	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/player_movement_behavior.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
+	
+	ModLoaderMod.install_script_extension(ext_dir + "singletons/coop_service.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "singletons/utils.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/global/focus_emulator.gd")
 
 

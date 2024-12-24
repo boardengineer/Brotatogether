@@ -17,3 +17,10 @@ func _handle_input(event:InputEvent) -> bool:
 	if global_focused_control != null and global_focused_control is LineEdit:
 		return false
 	return ._handle_input(event)
+
+
+func _get_focus_neighbour_for_event(event: InputEvent, target: Control)->GetFocusNeighbourForEventResult:
+	if _device >= 50:
+		return GetFocusNeighbourForEventResult.new()
+	
+	return ._get_focus_neighbour_for_event(event,target)
