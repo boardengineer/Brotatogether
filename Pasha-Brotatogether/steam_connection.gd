@@ -41,7 +41,7 @@ enum MessageType {
 	MESSAGE_TYPE_DIFFICULTY_FOCUSED,
 	
 	# Report that the host has selected a difficulty
-	MESSAGE_TYPE_DIFFICULTY_SELECTED,
+	MESSAGE_TYPE_DIFFICULTY_PRESSED,
 }
 
 var global_chat_lobby_id : int = -1
@@ -109,6 +109,7 @@ signal weapon_lobby_update(player_weapons, has_player_selected)
 # difficulty item to select and it controlled by the host.
 signal difficulty_focused(lobby_difficulty)
 
+# The difficulty was selected, proceed out of the difficulty selection screen
 signal difficulty_selected(lobby_difficulty)
 
 func _ready():
@@ -352,6 +353,8 @@ func read_p2p_packet() -> void:
 				_receive_weapon_lobby_update(data)
 			elif channel == MessageType.MESSAGE_TYPE_DIFFICULTY_FOCUSED:
 				_receive_difficutly_focus_update(data)
+			elif channel == MessageType.MESSAGE_TYPE_DIFFICULTY_PRESSED:
+				_receive_difficutly_pressed(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -653,9 +656,30 @@ func _receive_difficutly_focus_update(data : Dictionary) -> void:
 		print("WARNING - Received difficulty focus update when not in the current scene, current scene:", get_tree().current_scene.name)
 		return
 	
-	print_debug("received difficulty, emittign signal with data", data)
 	emit_signal("difficulty_focused", data["FOCUSED_DIFFICULTY"])
 
+
+func difficulty_pressed() -> void:
+	var difficulty_selection_scene = get_tree().current_scene
+	var selected_difficulty : int = difficulty_selection_scene._get_panels()[0].item_data.value
+	
+	var data = {
+		"SELECTED_DIFFICULTY": selected_difficulty,
+	}
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_DIFFICULTY_PRESSED)
+
+
+func _receive_difficutly_pressed(data : Dictionary) -> void:
+	if not data.has("SELECTED_DIFFICULTY"):
+		print("WARNING - received lobby player update wihtout difficulty focus; data:", data)
+		return
+		
+	if not get_tree().current_scene.name == "DifficultySelection":
+		print("WARNING - Received difficulty focus update when not in the current scene, current scene:", get_tree().current_scene.name)
+		return
+		
+	emit_signal("difficulty_selected", data["SELECTED_DIFFICULTY"])
 
 # returns -1 if the player isn't in the lobby
 func get_lobby_index_for_player(player_id : int) -> int:
