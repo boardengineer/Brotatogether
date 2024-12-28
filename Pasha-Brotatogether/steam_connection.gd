@@ -42,6 +42,10 @@ enum MessageType {
 	
 	# Report that the host has selected a difficulty
 	MESSAGE_TYPE_DIFFICULTY_PRESSED,
+	
+	MESSAGE_TYPE_SHOP_ITEM_FOCUS,
+	
+	MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED,
 }
 
 var global_chat_lobby_id : int = -1
@@ -111,6 +115,22 @@ signal difficulty_focused(lobby_difficulty)
 
 # The difficulty was selected, proceed out of the difficulty selection screen
 signal difficulty_selected(lobby_difficulty)
+
+signal client_shop_focus_updated(shop_item_string, player_index)
+
+signal client_shop_go_button_pressed(current_state, player_index)
+
+signal client_shop_discard_pressed(weapon_string, player_index)
+
+signal client_shop_buy_item(item_string, player_index)
+
+signal client_shop_locked_item(item_string, player_index)
+
+signal client_shop_buy_weapon(weapon_string, player_index)
+
+signal client_shop_combine_weapon(weapon_string, player_index)
+
+signal shop_lobby_update()
 
 func _ready():
 	if not Steam.loggedOn():
@@ -688,3 +708,59 @@ func get_lobby_index_for_player(player_id : int) -> int:
 			return index
 	
 	return -1
+
+
+func send_shop_update() -> void:
+	pass
+
+
+func shop_item_focused(shop_item_string : String) -> void:
+	if is_host():
+		send_shop_update()
+	else:
+		var data = {
+			"FOCUSED_ITEM": shop_item_string,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_ITEM_FOCUS, game_lobby_owner_id)
+
+
+func _receive_shop_item_focus(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop item focus as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("FOCUSED_ITEM"):
+		print("WARNING - received shop item focus message without focused item; data:", data)
+		return
+	
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_focus_updated", data["FOCUSED_ITEM"], player_index)
+
+
+func shop_go_button_pressed(current_state : bool) -> void:
+	if is_host():
+		send_shop_update()
+	else:
+		var data = {
+			"CURRENT_STATE": current_state,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED, game_lobby_owner_id)
+
+
+func _receieve_shop_go_button_pressed(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop go button press as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("CURRENT_STATE"):
+		print("WARNING - received shop go button press without CURRENT_STATE; data:", data)
+		return
+		
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_go_button_pressed", data["CURRENT_STATE"], player_index)
+
+
+func shop_go_button_exited() -> void:
+	shop_go_button_pressed(false)
