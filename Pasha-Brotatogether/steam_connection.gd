@@ -46,6 +46,18 @@ enum MessageType {
 	MESSAGE_TYPE_SHOP_ITEM_FOCUS,
 	
 	MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED,
+	
+	MESSAGE_TYPE_SHOP_WEAPON_DISCARD,
+	
+	MESSAGE_TYPE_SHOP_BUY_ITEM,
+	
+	MESSAGE_TYPE_SHOP_LOCK_ITEM,
+	
+	MESSAGE_TYPE_SHOP_UNLOCK_ITEM,
+	
+	MESSAGE_TYPE_SHOP_COMBINE_WEAPON,
+	
+	MESSAGE_TYPE_SHOP_LOBBY_UPDATE,
 }
 
 var global_chat_lobby_id : int = -1
@@ -120,17 +132,17 @@ signal client_shop_focus_updated(shop_item_string, player_index)
 
 signal client_shop_go_button_pressed(current_state, player_index)
 
-signal client_shop_discard_pressed(weapon_string, player_index)
-
 signal client_shop_buy_item(item_string, player_index)
 
-signal client_shop_locked_item(item_string, player_index)
+signal client_shop_lock_item(item_string, wave_value, player_index)
 
-signal client_shop_buy_weapon(weapon_string, player_index)
+signal client_shop_unlock_item(item_string, player_index)
 
-signal client_shop_combine_weapon(weapon_string, player_index)
+signal client_shop_combine_weapon(weapon_string, is_upgrade, player_index)
 
-signal shop_lobby_update()
+signal client_shop_discard_weapon(weapon_string, player_index)
+
+signal shop_lobby_update(shop_string)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -375,6 +387,20 @@ func read_p2p_packet() -> void:
 				_receive_difficutly_focus_update(data)
 			elif channel == MessageType.MESSAGE_TYPE_DIFFICULTY_PRESSED:
 				_receive_difficutly_pressed(data)
+			
+			# Shop channels
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_WEAPON_DISCARD:
+				_receive_shop_weapon_discard(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_BUY_ITEM:
+				_receive_shop_buy_item(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_COMBINE_WEAPON:
+				_receive_shop_combine_weapon(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_ITEM_FOCUS:
+				_receive_shop_item_focus(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED:
+				_receive_shop_go_button_pressed(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_LOCK_ITEM:
+				_receive_shop_lock_item(data, sender_id)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -710,13 +736,17 @@ func get_lobby_index_for_player(player_id : int) -> int:
 	return -1
 
 
-func send_shop_update() -> void:
+func request_shop_update() -> void:
 	pass
+
+
+func send_shop_update(shop_data : Dictionary) -> void:
+	send_p2p_packet(shop_data, MessageType.MESSAGE_TYPE_SHOP_LOBBY_UPDATE)
 
 
 func shop_item_focused(shop_item_string : String) -> void:
 	if is_host():
-		send_shop_update()
+		request_shop_update()
 	else:
 		var data = {
 			"FOCUSED_ITEM": shop_item_string,
@@ -740,7 +770,7 @@ func _receive_shop_item_focus(data : Dictionary, sender_id : int) -> void:
 
 func shop_go_button_pressed(current_state : bool) -> void:
 	if is_host():
-		send_shop_update()
+		request_shop_update()
 	else:
 		var data = {
 			"CURRENT_STATE": current_state,
@@ -749,7 +779,7 @@ func shop_go_button_pressed(current_state : bool) -> void:
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED, game_lobby_owner_id)
 
 
-func _receieve_shop_go_button_pressed(data : Dictionary, sender_id : int) -> void:
+func _receive_shop_go_button_pressed(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop go button press as non-host, ignroing; data:", data)
 		return
@@ -764,3 +794,125 @@ func _receieve_shop_go_button_pressed(data : Dictionary, sender_id : int) -> voi
 
 func shop_go_button_exited() -> void:
 	shop_go_button_pressed(false)
+
+
+func shop_buy_item(item_string : String) -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		var data = {
+			"ITEM": item_string,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_BUY_ITEM, game_lobby_owner_id)
+
+
+func _receive_shop_buy_item(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop item buy as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("ITEM"):
+		print("WARNING - received shop buy item without ITEM; data:", data)
+		return
+	
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_buy_item", data["ITEM"], player_index)
+
+
+func shop_weapon_discard(weapon_string : String) -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		var data = {
+			"WEAPON": weapon_string,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_WEAPON_DISCARD, game_lobby_owner_id)
+
+
+func _receive_shop_weapon_discard(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop discard as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("CURRENT_STATE"):
+		print("WARNING - received shop discard without WEAPON; data:", data)
+		return
+	
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_discard_pressed", data["WEAPON"], player_index)
+
+
+func shop_lock_item(item_string : String, wave_value : int) -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		var data = {
+			"ITEM": item_string,
+			"WAVE_VALUE": wave_value,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_LOCK_ITEM, game_lobby_owner_id)
+
+
+func _receive_shop_lock_item(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop lock as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("ITEM") or not data.has("WAVE_VALUE"):
+		print("WARNING - received shop item lock without item or wave_value; data:", data)
+		return
+	
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_lock_item", data["ITEM"], data["WAVE_VALUE"], player_index)
+
+
+func shop_unlock_item(item_string : String) -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		var data = {
+			"ITEM": item_string,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_UNLOCK_ITEM, game_lobby_owner_id)
+
+
+func _receive_shop_unlock_item(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop unlock as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("ITEM"):
+		print("WARNING - received shop item unlock without item; data:", data)
+		return
+	
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_unlock_item", data["ITEM"], player_index)
+
+
+func shop_combine_weapon(weapon_string : String, is_upgrade : bool) -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		var data = {
+			"WEAPON": weapon_string,
+			"IS_UPGRADE": is_upgrade,
+		}
+		
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_WEAPON_DISCARD, game_lobby_owner_id)
+
+
+func _receive_shop_combine_weapon(data : Dictionary, sender_id : int) -> void:
+	if not is_host():
+		print("WARNING - received shop weapon combine as non-host, ignroing; data:", data)
+		return
+	
+	if not data.has("WEAPON") or not data.has("IS_UPGRADE"):
+		print("WARNING - received shop weapon combine without weapon or is_upgrade; data:", data)
+		return
+	
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	emit_signal("client_shop_combine_weapon", data["WEAPON"], data["IS_UPGRADE"], player_index)
