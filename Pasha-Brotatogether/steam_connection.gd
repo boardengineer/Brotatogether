@@ -25,6 +25,8 @@ enum MessageType {
 	# Report that a character has been selected (clicked). client -> host
 	MESSAGE_TYPE_CHARACTER_SELECTED,
 	
+	MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED,
+	
 	# Report the state of all player selections so far 
 	MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE,
 	
@@ -107,9 +109,13 @@ signal player_focused_character(player_index, character)
 # A player has confrimed their character selection.  Connect to update the ui
 signal player_selected_character(player_index, character)
 
+signal request_character_lobby_update()
+
 # Clients should update to this state of the character selection screen.  Clients should only update
 # others' character selections to maintain responsive control over their own UI.
 signal character_lobby_update(player_characters, has_player_selected)
+
+signal character_selection_complete(some_player_has_weapon_slots, selected_characters)
 
 # A player changed the focus in the weapon selection screen.  Connect to update the ui
 signal player_focused_weapon(player_index, weapon)
@@ -401,6 +407,8 @@ func read_p2p_packet() -> void:
 				_receive_shop_go_button_pressed(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_LOCK_ITEM:
 				_receive_shop_lock_item(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED:
+				_receive_character_selection_completed(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -515,7 +523,7 @@ func is_host() -> bool:
 # Character select screen functions
 func character_focused(character_key : String) -> void:
 	if is_host():
-		_send_character_lobby_update()
+		emit_signal("request_character_lobby_update")
 	else:
 		send_p2p_packet({"CHARACTER": character_key}, MessageType.MESSAGE_TYPE_CHARACTER_FOCUS, game_lobby_owner_id)
 
@@ -534,14 +542,30 @@ func _receive_character_focus(data : Dictionary, sender_id : int) -> void:
 		return
 	
 	emit_signal("player_focused_character", player_index, data["CHARACTER"])
-	_send_character_lobby_update()
+	emit_signal("request_character_lobby_update")
 
 
 func character_selected() -> void:
 	if is_host():
-		_send_character_lobby_update()
+		emit_signal("request_character_lobby_update")
 	else:
 		send_p2p_packet({}, MessageType.MESSAGE_TYPE_CHARACTER_SELECTED, game_lobby_owner_id)
+
+
+func send_character_selection_completed(some_player_has_weapon_slots : bool, currently_focused_characters : Array) -> void:
+	if not is_host():
+		return
+	
+	var data = {
+		"HAS_WEAPON_SLOTS" : some_player_has_weapon_slots,
+		"SELECTED_CHARACTERS": currently_focused_characters,
+	}
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED)
+
+
+func _receive_character_selection_completed(data : Dictionary) -> void:
+	emit_signal("character_selection_complete", data["HAS_WEAPON_SLOTS"], data["SELECTED_CHARACTERS"])
 
 
 func _receive_character_select(data : Dictionary, sender_id : int) -> void:
@@ -554,27 +578,13 @@ func _receive_character_select(data : Dictionary, sender_id : int) -> void:
 		return
 	
 	emit_signal("player_selected_character", player_index)
-	_send_character_lobby_update()
+	emit_signal("request_character_lobby_update")
 
 
-func _send_character_lobby_update() -> void:
-	if not get_tree().current_scene.name == "CharacterSelection":
-		print("WARNING - attempting to send character selection when no longer in the character scene actual scene: ", get_tree().current_scene.name)
-		return
-	
-	var character_select_scene = get_tree().current_scene
-	
-	var currently_focused_characters = []
-	for panel in character_select_scene._get_panels():
-		var selected_item = panel.item_data
-		if selected_item == null:
-			currently_focused_characters.push_back("RANDOM")
-		else:
-			currently_focused_characters.push_back(character_select_scene.character_item_to_string(selected_item))
-	
+func send_character_lobby_update(currently_focused_characters : Array, has_player_selected: Array) -> void:
 	var data = {
 		"SELECTED_CHARACTERS": currently_focused_characters,
-		"SELECTIONS_CONFIRMED": character_select_scene._has_player_selected,
+		"SELECTIONS_CONFIRMED": has_player_selected,
 	}
 	
 	print_debug("sending lobby update ", data)
@@ -632,7 +642,6 @@ func _receive_weapon_select(data : Dictionary, sender_id : int) -> void:
 		return
 	
 	emit_signal("player_selected_weapon", player_index)
-	_send_character_lobby_update()
 
 
 func _send_weapon_lobby_update() -> void:

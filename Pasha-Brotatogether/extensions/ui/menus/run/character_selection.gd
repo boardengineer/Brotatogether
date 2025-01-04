@@ -31,6 +31,8 @@ func _ready():
 	steam_connection.connect("player_focused_character", self, "_player_focused_character")
 	steam_connection.connect("player_selected_character", self, "_player_selected_character")
 	steam_connection.connect("character_lobby_update", self, "_lobby_characters_updated")
+	steam_connection.connect("request_character_lobby_update", self, "_character_lobby_update_requested")
+	steam_connection.connect("character_selection_complete", self, "_host_character_selection_complete")
 	
 	# TODO gracefully add new players
 	steam_connection.connect("lobby_players_updated", self, "reload_scene")
@@ -93,6 +95,11 @@ func _ready():
 			
 		for character_data in _get_all_possible_elements(0):
 			inventory_by_string_key[character_item_to_string(character_data)] = character_data
+		
+		# Find the random element in the inventory
+		for character_data in _get_inventories()[0].get_children():
+			if character_data.is_random:
+				inventory_by_string_key[character_item_to_string(character_data)] = character_data
 
 
 func _on_pressed_left_menu_arrow() -> void:
@@ -164,10 +171,13 @@ func _player_focused_character(player_index : int , character : String) -> void:
 	_player_characters[player_index] = selected_item
 	
 	var panel = _get_panels()[player_index]
+	
 	if panel.visible:
-		# TODO handle randoms
 		if selected_item != null:
-			panel.set_data(selected_item, player_index)
+			if character == "RANDOM":
+				panel.set_custom_data("RANDOM", selected_item.get_inventory_icon())
+			else:
+				panel.set_data(selected_item, player_index)
 
 
 func _player_selected_character(player_index : int) -> void:
@@ -192,7 +202,7 @@ func _lobby_characters_updated(player_characters : Array, has_player_selected : 
 			all_selected = false
 			_clear_selected_element(player_index)
 	
-	if all_selected:
+	if all_selected and steam_connection.is_host():
 		_selections_completed_timer.start()
 
 
@@ -204,3 +214,63 @@ func _set_selected_element(player_index:int) -> void:
 	
 	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == player_index:
 		steam_connection.character_selected()
+
+
+func _character_lobby_update_requested() -> void:
+	var currently_focused_characters = []
+	for panel in _get_panels():
+		var selected_item = panel.item_data
+		if selected_item == null:
+			currently_focused_characters.push_back("RANDOM")
+		else:
+			currently_focused_characters.push_back(character_item_to_string(selected_item))
+	
+	steam_connection.send_character_lobby_update(currently_focused_characters, _has_player_selected)
+
+
+func _on_selections_completed() -> void:
+	if is_multiplayer_lobby:
+		if not steam_connection.is_host():
+			return
+	else:
+		._on_selections_completed()
+		return
+	
+	var currently_focused_characters = []
+	# Sad dupe of inner logic to make things simpler
+	for player_index in RunData.get_player_count():
+		var chosen_item = _get_panels()[player_index]
+		
+		var character = _player_characters[player_index]
+		if chosen_item.item_data == null:
+			var available_elements: = []
+			for element in ItemService.characters:
+				if not element.is_locked:
+					available_elements.push_back(element)
+			character = Utils.get_rand_element(available_elements)
+			_player_characters[player_index] = character
+		
+		RunData.add_character(character, player_index)
+		currently_focused_characters.push_back(character_item_to_string(character))
+	
+	steam_connection.send_character_selection_completed(RunData.some_player_has_weapon_slots(), currently_focused_characters)
+	if RunData.some_player_has_weapon_slots():
+		_change_scene(MenuData.weapon_selection_scene)
+	else:
+		_change_scene(MenuData.difficulty_selection_scene)
+	
+
+func _host_character_selection_complete(some_player_has_weapon_slots : bool, selected_characters : Array) -> void:
+	# Sad dupe of inner logic to make things simpler
+	for player_index in selected_characters.size():
+		if selected_characters[player_index] != null:
+			_player_focused_character(player_index, selected_characters[player_index])
+	
+	for player_index in RunData.get_player_count():
+		var character = _player_characters[player_index]
+		RunData.add_character(character, player_index)
+	
+	if some_player_has_weapon_slots:
+		_change_scene(MenuData.weapon_selection_scene)
+	else:
+		_change_scene(MenuData.difficulty_selection_scene)
