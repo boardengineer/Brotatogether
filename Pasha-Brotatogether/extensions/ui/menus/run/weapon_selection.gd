@@ -12,7 +12,7 @@ func _ready():
 	steam_connection.connect("player_focused_weapon", self, "_player_focused_weapon")
 	steam_connection.connect("player_selected_weapon", self, "_player_selected_weapon")
 	steam_connection.connect("weapon_lobby_update", self, "_lobby_weapons_updated")
-	
+	steam_connection.connect("weapon_selection_completed", self, "_weapon_selection_completed")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
@@ -26,6 +26,7 @@ func weapon_item_to_string(item : Resource) -> String:
 	if item == null:
 		return "RANDOM"
 	return item.name
+
 
 
 func _lobby_weapons_updated(player_weapons : Array, has_player_selected : Array) -> void:
@@ -84,3 +85,41 @@ func _set_selected_element(p_player_index:int) -> void:
 	
 	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == p_player_index:
 		steam_connection.weapon_selected()
+
+
+func _on_selections_completed() -> void:
+	if is_multiplayer_lobby:
+		if not steam_connection.is_host():
+			return
+	else:
+		._on_selections_completed()
+	
+	var selected_weapons = []
+	
+	for player_index in RunData.get_player_count():
+		var chosen_item = _get_panels()[player_index]
+		var weapon = _player_weapons[player_index]
+		
+		if chosen_item.item_data == null or weapon == null:
+			var available_elements: = []
+			for element in displayed_elements[player_index]:
+				if not element.is_locked:
+					available_elements.push_back(element)
+			weapon = Utils.get_rand_element(available_elements)
+			_player_weapons[player_index] = weapon
+		
+		var _weapon = RunData.add_weapon(weapon, player_index, true)
+		selected_weapons.push_back(weapon_item_to_string(weapon))
+	
+	RunData.add_starting_items_and_weapons()
+	steam_connection.send_weapon_selection_completed(selected_weapons)
+	
+	_change_scene(MenuData.difficulty_selection_scene)
+
+
+func _weapon_selection_completed(selected_weapons : Array) -> void:
+	for player_index in RunData.get_player_count():
+		var weapon = inventory_by_string_key[selected_weapons[player_index]]
+		var _weapon = RunData.add_weapon(weapon, player_index, true)
+	
+	_change_scene(MenuData.difficulty_selection_scene)

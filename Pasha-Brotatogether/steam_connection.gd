@@ -39,6 +39,8 @@ enum MessageType {
 	# Report the state of all player selections for weapons.
 	MESSAGE_TYPE_WEAPON_LOBBY_UPDATE,
 	
+	MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED,
+	
 	# Report that the host has focused on a difficulty
 	MESSAGE_TYPE_DIFFICULTY_FOCUSED,
 	
@@ -126,6 +128,8 @@ signal player_selected_weapon(player_index, weapon)
 # Client should update to this state of the weapons selection screen.  Clients should ignore updates
 # To their own state
 signal weapon_lobby_update(player_weapons, has_player_selected)
+
+signal weapon_selection_completed(selected_weapons)
 
 # Clients shoulda update to this state of the difficulty selection screen.  There is only one
 # difficulty item to select and it controlled by the host.
@@ -409,6 +413,8 @@ func read_p2p_packet() -> void:
 				_receive_shop_lock_item(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED:
 				_receive_character_selection_completed(data)
+			elif channel == MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED:
+				_receive_weapon_selection_completed(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -485,7 +491,7 @@ func _send_player_statuses() -> void:
 		print("WARNING - Attempting to send player latencies when not the lobby owner")
 		return
 	
-	print_debug("sending player latencies : ", player_latencies)
+#	print_debug("sending player latencies : ", player_latencies)
 	
 	for player_id in lobby_members:
 		if player_id == steam_id:
@@ -687,6 +693,23 @@ func send_difficulty_lobby_update() -> void:
 		print("WARNING - attempting to send difficulty selection when no longer in the scene, actual scene: ", get_tree().current_scene.name)
 		return
 	
+
+
+func send_weapon_selection_completed(selected_weapons : Array) -> void:
+	if not is_host():
+		return
+	
+	var data = {
+		"SELECTED_WEAPONS" : selected_weapons,
+	}
+	
+	print_debug("sending weapon completion message ", data)
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED)
+
+
+func _receive_weapon_selection_completed(data : Dictionary) -> void:
+	emit_signal("weapon_selection_completed", data["SELECTED_WEAPONS"])
 
 
 func difficulty_focused() -> void:
