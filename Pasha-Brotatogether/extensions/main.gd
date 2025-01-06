@@ -49,3 +49,25 @@ func _client_status_received(client_data : Dictionary, player_index : int) -> vo
 func _host_starts_round() -> void:
 	waiting_to_start_round = false
 	_wave_timer.start()
+
+
+func _on_WaveTimer_timeout() -> void:
+	if in_multiplayer_game:
+		print_debug("wave timer ended")
+#		if steam_connection.is_host():
+#			._on_WaveTimer_timeout()
+		# TODO wave cleanup and stuff
+		_end_wave_timer.start()
+	else:
+		._on_WaveTimer_timeout()
+
+
+func _on_EndWaveTimer_timeout()->void :
+	if in_multiplayer_game:
+		print_debug("post-wave timer ended")
+#		if steam_connection.is_host():
+#			._on_EndWaveTimer_timeout()
+		# TODO process upgrades and items
+		_change_scene(RunData.get_shop_scene_path())
+	else:
+		._on_EndWaveTimer_timeout()
