@@ -19,6 +19,8 @@ func _init():
 	# Add extensions
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/player_movement_behavior.gd")
 	
+	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/coop_service.gd")

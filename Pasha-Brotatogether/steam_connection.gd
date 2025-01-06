@@ -62,6 +62,8 @@ enum MessageType {
 	MESSAGE_TYPE_SHOP_COMBINE_WEAPON,
 	
 	MESSAGE_TYPE_SHOP_LOBBY_UPDATE,
+	
+	MESSAGE_TYPE_HOST_ROUND_START,
 }
 
 var global_chat_lobby_id : int = -1
@@ -153,6 +155,10 @@ signal client_shop_combine_weapon(weapon_string, is_upgrade, player_index)
 signal client_shop_discard_weapon(weapon_string, player_index)
 
 signal shop_lobby_update(shop_string)
+
+signal client_status_received(status_dict, player_index)
+
+signal host_starts_round()
 
 func _ready():
 	if not Steam.loggedOn():
@@ -415,6 +421,8 @@ func read_p2p_packet() -> void:
 				_receive_character_selection_completed(data)
 			elif channel == MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED:
 				_receive_weapon_selection_completed(data)
+			elif channel == MessageType.MESSAGE_TYPE_HOST_ROUND_START:
+				_receive_host_round_start()
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -444,14 +452,21 @@ func _initiate_ping() -> void:
 	
 	ping_key = _generate_ping_key()
 	ping_start_time_msec = Time.get_ticks_msec()
-	send_p2p_packet({ "PING_KEY": ping_key}, MessageType.MESSAGE_TYPE_PING, game_lobby_owner_id)
+	
+	var data = {
+		"PING_KEY": ping_key,
+		"CURRENT_SCENE": get_tree().current_scene.name,
+	}
+	
+	send_p2p_packet(data, MessageType.MESSAGE_TYPE_PING, game_lobby_owner_id)
 
 
 func _respond_to_ping(data : Dictionary, sender_id : int) -> void:
 	if not data.has("PING_KEY"):
 		print("WARNING - Ping sent without key")
 		return
-		
+	
+	emit_signal("client_status_received", data, get_lobby_index_for_player(sender_id))
 	send_p2p_packet({"PING_KEY": data["PING_KEY"]}, MessageType.MESSAGE_TYPE_PONG, sender_id)
 
 
@@ -948,3 +963,11 @@ func _receive_shop_combine_weapon(data : Dictionary, sender_id : int) -> void:
 	
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_combine_weapon", data["WEAPON"], data["IS_UPGRADE"], player_index)
+
+
+func send_round_start() -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_HOST_ROUND_START)
+
+
+func _receive_host_round_start() -> void:
+	emit_signal("host_starts_round")
