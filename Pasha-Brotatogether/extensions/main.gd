@@ -13,8 +13,8 @@ func _ready():
 	in_multiplayer_game = brotatogether_options.in_multiplayer_game
 	
 	if in_multiplayer_game:
-		steam_connection.connect("client_status_received", "_client_status_received")
-		steam_connection.connect("host_starts_round", "_host_starts_round")
+		steam_connection.connect("client_status_received", self, "_client_status_received")
+		steam_connection.connect("host_starts_round", self, "_host_starts_round")
 		
 		
 		call_deferred("multiplayer_ready")
@@ -32,12 +32,12 @@ func _process(delta):
 				if all_players_entered:
 					waiting_to_start_round = false
 					_wave_timer.start()
+					steam_connection.send_round_start()
 
 
 func multiplayer_ready():
 	_wave_timer.stop()
 	waiting_to_start_round = true
-	steam_connection.send_round_start()
 
 
 func _client_status_received(client_data : Dictionary, player_index : int) -> void:
