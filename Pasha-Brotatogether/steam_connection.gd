@@ -49,6 +49,8 @@ enum MessageType {
 	
 	MESSAGE_TYPE_SHOP_ITEM_FOCUS,
 	
+	MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS,
+	
 	MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED,
 	
 	MESSAGE_TYPE_SHOP_WEAPON_DISCARD,
@@ -140,7 +142,11 @@ signal difficulty_focused(lobby_difficulty)
 # The difficulty was selected, proceed out of the difficulty selection screen
 signal difficulty_selected(lobby_difficulty)
 
+# For shop item focus
 signal client_shop_focus_updated(shop_item_string, player_index)
+
+# For inventory (item or weapon) focus
+signal client_shop_focus_inventory_element(element_dict, player_index)
 
 signal client_shop_go_button_pressed(current_state, player_index)
 
@@ -405,6 +411,8 @@ func read_p2p_packet() -> void:
 				_receive_difficutly_pressed(data)
 			
 			# Shop channels
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_LOBBY_UPDATE:
+				_receive_shop_update(data)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_WEAPON_DISCARD:
 				_receive_shop_weapon_discard(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_BUY_ITEM:
@@ -423,6 +431,8 @@ func read_p2p_packet() -> void:
 				_receive_weapon_selection_completed(data)
 			elif channel == MessageType.MESSAGE_TYPE_HOST_ROUND_START:
 				_receive_host_round_start()
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS:
+				_receive_shop_focus_inventory_element(data, sender_id)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -465,7 +475,7 @@ func _respond_to_ping(data : Dictionary, sender_id : int) -> void:
 	if not data.has("PING_KEY"):
 		print("WARNING - Ping sent without key")
 		return
-	
+		
 	emit_signal("client_status_received", data, get_lobby_index_for_player(sender_id))
 	send_p2p_packet({"PING_KEY": data["PING_KEY"]}, MessageType.MESSAGE_TYPE_PONG, sender_id)
 
@@ -791,6 +801,10 @@ func send_shop_update(shop_data : Dictionary) -> void:
 	send_p2p_packet(shop_data, MessageType.MESSAGE_TYPE_SHOP_LOBBY_UPDATE)
 
 
+func _receive_shop_update(data : Dictionary) -> void:
+	emit_signal("shop_lobby_update", data)
+
+
 func shop_item_focused(shop_item_string : String) -> void:
 	if is_host():
 		request_shop_update()
@@ -971,3 +985,15 @@ func send_round_start() -> void:
 
 func _receive_host_round_start() -> void:
 	emit_signal("host_starts_round")
+
+
+func shop_focus_inventory_element(inventory_item_dict : Dictionary) -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		send_p2p_packet(inventory_item_dict, MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS)
+
+
+func _receive_shop_focus_inventory_element(data : Dictionary, sender_id : int) -> void:
+	print_debug("received inventory focus ", data)
+	emit_signal("client_shop_focus_inventory_element", data, get_lobby_index_for_player(sender_id))
