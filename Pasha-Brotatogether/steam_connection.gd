@@ -160,7 +160,9 @@ signal client_shop_combine_weapon(weapon_string, is_upgrade, player_index)
 
 signal client_shop_discard_weapon(weapon_string, player_index)
 
-signal shop_lobby_update(shop_string)
+signal client_shop_requested()
+
+signal shop_lobby_update(shop_dict)
 
 signal client_status_received(status_dict, player_index)
 
@@ -794,7 +796,7 @@ func get_lobby_index_for_player(player_id : int) -> int:
 
 
 func request_shop_update() -> void:
-	pass
+	emit_signal("client_shop_requested")
 
 
 func send_shop_update(shop_data : Dictionary) -> void:
@@ -813,6 +815,7 @@ func shop_item_focused(shop_item_string : String) -> void:
 			"FOCUSED_ITEM": shop_item_string,
 		}
 		
+		print_debug("sending self focus ", data)
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_ITEM_FOCUS, game_lobby_owner_id)
 
 
@@ -826,6 +829,7 @@ func _receive_shop_item_focus(data : Dictionary, sender_id : int) -> void:
 		return
 	
 	var player_index : int = get_lobby_index_for_player(sender_id)
+	print_debug("received focus for client ", player_index, " ", data, " ", sender_id, " ", steam_id)
 	emit_signal("client_shop_focus_updated", data["FOCUSED_ITEM"], player_index)
 
 
@@ -997,3 +1001,7 @@ func shop_focus_inventory_element(inventory_item_dict : Dictionary) -> void:
 func _receive_shop_focus_inventory_element(data : Dictionary, sender_id : int) -> void:
 	print_debug("received inventory focus ", data)
 	emit_signal("client_shop_focus_inventory_element", data, get_lobby_index_for_player(sender_id))
+
+
+func get_my_index() -> int:
+	return get_lobby_index_for_player(steam_id)

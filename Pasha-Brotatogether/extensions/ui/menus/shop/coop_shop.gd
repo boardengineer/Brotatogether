@@ -30,6 +30,7 @@ func _ready():
 		steam_connection.connect("client_shop_buy_item", self, "_client_shop_buy_item")
 		steam_connection.connect("client_shop_lock_item", self, "_client_shop_lock_item")
 		steam_connection.connect("client_shop_focus_inventory_element", self, "_client_focused_inventory_element")
+		steam_connection.connect("client_shop_requested", self, "send_shop_state")
 
 
 func _process(delta):
@@ -56,21 +57,20 @@ func _on_element_focused(element: InventoryElement, player_index: int)->void :
 	._on_element_focused(element,player_index)
 	
 	if in_multiplayer_game:
-		steam_connection.shop_focus_inventory_element(_dictionary_for_focus_inventory_element(element, player_index))
+		if is_self_call:
+			is_self_call = false
+		else:
+			steam_connection.shop_focus_inventory_element(_dictionary_for_focus_inventory_element(element, player_index))
 
 
 func _client_shop_focus_updated(shop_item_string : String, player_index : int) -> void:
-	print_debug("received client focus from ", player_index, " ", shop_item_string)
 	is_self_call = true
 	
 	var shop_item : ShopItem = _shop_item_for_string(shop_item_string, player_index)
 	Utils.get_focus_emulator(player_index).focused_control = shop_item._button
-	_on_shop_item_focused(shop_item, player_index)
 
 
 func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
-	print_debug("shop item focused")
-	
 	._on_shop_item_focused(shop_item, player_index)
 	
 	if in_multiplayer_game:
@@ -185,7 +185,7 @@ func send_shop_state() -> void:
 	
 	result_dict["PLAYERS"] = players_array
 	
-	print_debug("sending shop state with dict ", result_dict)
+#	print_debug("sending shop state with dict ", result_dict)
 	steam_connection.send_shop_update(result_dict)
 
 
@@ -222,8 +222,10 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 			RunData.players_data[player_index].items.push_back(_inventory_item_for_dictionary(item))
 		player_gear_container.set_items_data(RunData.players_data[player_index].items)
 		
+		
 		if player_dict.has("FOCUS"):
-			_set_client_focus_for_player(player_dict["FOCUS"], player_index)
+			if player_index != steam_connection.get_my_index():
+				_set_client_focus_for_player(player_dict["FOCUS"], player_index)
 		else:
 			print_debug("WARN - missing focus for player ", player_index, " ", player_dict)
 		
@@ -240,8 +242,8 @@ func _dictionary_for_inventory_item(item : ItemData) -> Dictionary:
 func _client_focused_inventory_element(data : Dictionary, player_index : int) -> void:
 	var focused_element = _focus_inventory_item_for_dictionary(data, player_index)
 	
+	is_self_call = true
 	Utils.get_focus_emulator(player_index).focused_control = focused_element
-	_on_element_focused(focused_element, player_index)
 
 
 func _dictionary_for_focus_inventory_element(element: InventoryElement, player_index : int) -> Dictionary:
@@ -348,6 +350,8 @@ func _string_for_shop_item(shop_item : ShopItem) -> String:
 
 func _shop_item_for_string(shop_item_string : String, player_index : int) -> ShopItem:
 	for item in _get_shop_items_container(player_index).get_children():
+		if not item is ShopItem:
+			continue
 		if item.item_data.name == shop_item_string:
 			return item
 	
@@ -366,6 +370,8 @@ func fill_shop_items(player_locked_items: Array, player_index: int, just_entered
 func _focus_dictionary_for_player(player_index : int) -> Dictionary:
 	var focused_control : Control = Utils.get_focus_emulator(player_index).focused_control
 	for shop_item in _get_shop_items_container(player_index).get_children():
+		if not shop_item is ShopItem:
+			continue
 		if shop_item._button == focused_control:
 			return {
 				"TYPE" : "SHOP_ITEM",
@@ -395,12 +401,14 @@ func _focus_dictionary_for_player(player_index : int) -> Dictionary:
 func _set_client_focus_for_player(focus_dict : Dictionary, player_index : int) -> void:
 	if not focus_dict.has("TYPE"):
 		print_debug("ERR - unkown client focus ", player_index, " ", focus_dict)
+		return
 	
 	var focus_type : String = focus_dict["TYPE"]
 	
 	if focus_type == "ITEM" or focus_type == "WEAPON":
 		_client_focused_inventory_element(focus_dict, player_index)
 	elif focus_type == "SHOP_ITEM":
+		print_debug("setting for client sync")
 		_client_shop_focus_updated(focus_dict["ID"], player_index)
 	else:
 		print_debug("ERR - Invalid focus dict", focus_dict, " ", player_index)
