@@ -124,7 +124,7 @@ func on_shop_item_bought(shop_item: ShopItem, player_index: int) -> void:
 
 
 func _client_shop_buy_item(item_string : String, player_index : int) -> void:
-	on_shop_item_bought(_shop_item_for_string(item_string, player_index), player_index)
+	_get_shop_items_container(player_index).on_shop_item_buy_button_pressed(_shop_item_for_string(item_string, player_index))
 
 
 func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int, is_upgrade: bool = false)->void :
