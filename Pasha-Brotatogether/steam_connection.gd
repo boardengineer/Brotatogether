@@ -829,7 +829,7 @@ func _receive_shop_item_focus(data : Dictionary, sender_id : int) -> void:
 		return
 	
 	var player_index : int = get_lobby_index_for_player(sender_id)
-	print_debug("received focus for client ", player_index, " ", data, " ", sender_id, " ", steam_id)
+	
 	emit_signal("client_shop_focus_updated", data["FOCUSED_ITEM"], player_index)
 
 
@@ -999,7 +999,6 @@ func shop_focus_inventory_element(inventory_item_dict : Dictionary) -> void:
 
 
 func _receive_shop_focus_inventory_element(data : Dictionary, sender_id : int) -> void:
-	print_debug("received inventory focus ", data)
 	emit_signal("client_shop_focus_inventory_element", data, get_lobby_index_for_player(sender_id))
 
 

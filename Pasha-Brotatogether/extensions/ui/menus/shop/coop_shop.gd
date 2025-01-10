@@ -12,6 +12,10 @@ var is_self_call = false
 var player_in_scene = [true, false, false, false]
 var waiting_to_start_shop = false
 
+var focusing_reroll_button = false
+var focusing_go_button = false
+
+
 func _ready():
 	steam_connection = $"/root/SteamConnection"
 	
@@ -45,6 +49,7 @@ func _process(delta):
 				if all_players_entered:
 					waiting_to_start_shop = false
 					send_shop_state()
+		_check_for_focus_change()
 
 
 func _client_status_received(client_data : Dictionary, player_index : int) -> void:
@@ -268,16 +273,25 @@ func _dictionary_for_focus_inventory_element(element: InventoryElement, player_i
 	return {}
 
 
-func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index : int) -> InventoryElement:
+func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index : int) -> Control:
 	var gear_container : PlayerGearContainer = _get_gear_container(player_index)
 	
-	if item_dict["TYPE"] == "WEAPON":
+	var focus_type = item_dict["TYPE"]
+	if focus_type == "WEAPON":
 		return gear_container.weapons_container._elements.get_children()[item_dict["INDEX"]]
-	elif item_dict["TYPE"] == "ITEM":
+	elif focus_type == "ITEM":
 		return gear_container.items_container._elements.get_children()[item_dict["INDEX"]]
+	elif focus_type == "GO":
+		return _get_go_button(player_index)
+	elif focus_type == "REROLL":
+		return _get_reroll_button(player_index)
+	elif focus_type == "SHOP_ITEM":
+		var shop_item : ShopItem = _shop_item_for_string(item_dict["ID"], player_index)
+		return shop_item._button
 	else:
 		print("ERR - Focusing inventgory element of unknown type ", item_dict)
 	
+	print("ERR - failed to found focus for dict ", item_dict, " ", player_index)
 	return null
 
 
@@ -395,20 +409,52 @@ func _focus_dictionary_for_player(player_index : int) -> Dictionary:
 				"INDEX" : item_index
 			}
 	
+	if focused_control == _get_go_button(player_index):
+		return {
+			"TYPE" : "GO",
+		}
+	
+	if focused_control == _get_reroll_button(player_index):
+		return {
+			"TYPE" : "REROLL",
+		}
+	
 	return {}
 
 
 func _set_client_focus_for_player(focus_dict : Dictionary, player_index : int) -> void:
 	if not focus_dict.has("TYPE"):
-		print_debug("ERR - unkown client focus ", player_index, " ", focus_dict)
+		print("ERR - unkown client focus ", player_index, " ", focus_dict)
 		return
 	
-	var focus_type : String = focus_dict["TYPE"]
-	
-	if focus_type == "ITEM" or focus_type == "WEAPON":
-		_client_focused_inventory_element(focus_dict, player_index)
-	elif focus_type == "SHOP_ITEM":
-		print_debug("setting for client sync")
-		_client_shop_focus_updated(focus_dict["ID"], player_index)
+	var focus_control = _focus_inventory_item_for_dictionary(focus_dict, player_index)
+	if focus_control != null:
+		var focus_type : String = focus_dict["TYPE"]
+		if focus_type in ["SHOP_ITEM", "ITEM", "WEAPON"]:
+			is_self_call = true
+		
+		Utils.get_focus_emulator(player_index).focused_control = focus_control
 	else:
-		print_debug("ERR - Invalid focus dict", focus_dict, " ", player_index)
+		print("ERR - Invalid focus dict", focus_dict, " ", player_index)
+
+
+# Process time check for focusing reroll or go buttons which don't have 
+# exisiting connected functions
+func _check_for_focus_change() -> void:
+	var player_index : int = steam_connection.get_my_index()
+	var focused_control = Utils.get_focus_emulator(player_index).focused_control
+	
+	if focused_control == _get_reroll_button(player_index):
+		if not focusing_reroll_button:
+			steam_connection.shop_focus_inventory_element(_focus_dictionary_for_player(player_index))
+		focusing_reroll_button = true
+	else:
+		focusing_reroll_button = false
+		
+	if focused_control == _get_go_button(player_index):
+		if not focusing_go_button:
+			steam_connection.shop_focus_inventory_element(_focus_dictionary_for_player(player_index))
+		focusing_go_button = true
+	else:
+		focusing_go_button = false
+	
