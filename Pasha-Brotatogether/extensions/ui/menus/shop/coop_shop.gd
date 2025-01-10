@@ -186,6 +186,10 @@ func send_shop_state() -> void:
 		player_dict["GOLD"] = RunData.get_player_gold(player_index)
 		player_dict["FOCUS"] = _focus_dictionary_for_player(player_index)
 		
+		player_dict["REROLL_PRICE"] = _reroll_price[player_index]
+		player_dict["REROLL_DICSOUNT"] = _reroll_discount[player_index]
+		player_dict["HAS_BONUS_FREE_REROLL"] = _has_bonus_free_reroll[player_index]
+		
 		players_array.push_back(player_dict)
 	
 	result_dict["PLAYERS"] = players_array
@@ -233,6 +237,11 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 				_set_client_focus_for_player(player_dict["FOCUS"], player_index)
 		else:
 			print_debug("WARN - missing focus for player ", player_index, " ", player_dict)
+		
+		_reroll_price[player_index] = player_dict["REROLL_PRICE"]
+		_reroll_discount[player_index] = player_dict["REROLL_DICSOUNT"]
+		_has_bonus_free_reroll[player_index] = player_dict["HAS_BONUS_FREE_REROLL"]
+		set_reroll_button_price(player_index)
 		
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
