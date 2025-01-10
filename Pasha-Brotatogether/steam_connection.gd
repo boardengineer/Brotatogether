@@ -57,6 +57,8 @@ enum MessageType {
 	
 	MESSAGE_TYPE_SHOP_BUY_ITEM,
 	
+	MESSAGE_TYPE_SHOP_REROLL,
+	
 	MESSAGE_TYPE_SHOP_LOCK_ITEM,
 	
 	MESSAGE_TYPE_SHOP_UNLOCK_ITEM,
@@ -148,9 +150,11 @@ signal client_shop_focus_updated(shop_item_string, player_index)
 # For inventory (item or weapon) focus
 signal client_shop_focus_inventory_element(element_dict, player_index)
 
-signal client_shop_go_button_pressed(current_state, player_index)
-
 signal client_shop_buy_item(item_string, player_index)
+
+signal client_shop_reroll(player_index)
+
+signal client_shop_go_button_pressed(current_state, player_index)
 
 signal client_shop_lock_item(item_string, wave_value, player_index)
 
@@ -419,6 +423,8 @@ func read_p2p_packet() -> void:
 				_receive_shop_weapon_discard(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_BUY_ITEM:
 				_receive_shop_buy_item(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_REROLL:
+				_receive_shop_reroll(sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_COMBINE_WEAPON:
 				_receive_shop_combine_weapon(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_ITEM_FOCUS:
@@ -883,6 +889,22 @@ func _receive_shop_buy_item(data : Dictionary, sender_id : int) -> void:
 	
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_buy_item", data["ITEM"], player_index)
+
+
+func shop_reroll() -> void:
+	if is_host():
+		request_shop_update()
+	else:
+		send_p2p_packet({}, MessageType.MESSAGE_TYPE_SHOP_REROLL, game_lobby_owner_id)
+
+
+func _receive_shop_reroll(sender_id : int) -> void:
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	if not is_host():
+		print("WARNING : client received reroll from client signal ", player_index)
+		return
+	
+	emit_signal("client_shop_reroll", player_index)
 
 
 func shop_weapon_discard(weapon_string : String) -> void:

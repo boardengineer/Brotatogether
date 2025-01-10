@@ -32,6 +32,7 @@ func _ready():
 		steam_connection.connect("client_shop_discard_weapon", self, "_client_shop_discard_weapon")
 		steam_connection.connect("client_shop_combine_weapon", self, "_client_shop_combine_weapon")
 		steam_connection.connect("client_shop_buy_item", self, "_client_shop_buy_item")
+		steam_connection.connect("client_shop_reroll", self, "_client_shop_reroll")
 		steam_connection.connect("client_shop_lock_item", self, "_client_shop_lock_item")
 		steam_connection.connect("client_shop_focus_inventory_element", self, "_client_focused_inventory_element")
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
@@ -466,4 +467,16 @@ func _check_for_focus_change() -> void:
 		focusing_go_button = true
 	else:
 		focusing_go_button = false
-	
+
+
+func _client_shop_reroll(player_index : int) -> void:
+	_on_RerollButton_pressed(player_index)
+
+
+func _on_RerollButton_pressed(player_index: int)->void :
+	if in_multiplayer_game:
+		if steam_connection.is_host():
+			._on_RerollButton_pressed(player_index)
+		steam_connection.shop_reroll()
+	else:
+		._on_RerollButton_pressed( player_index)
