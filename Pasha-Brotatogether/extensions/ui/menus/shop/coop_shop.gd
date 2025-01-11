@@ -34,6 +34,7 @@ func _ready():
 		steam_connection.connect("client_shop_buy_item", self, "_client_shop_buy_item")
 		steam_connection.connect("client_shop_reroll", self, "_client_shop_reroll")
 		steam_connection.connect("client_shop_lock_item", self, "_client_shop_lock_item")
+		steam_connection.connect("client_shop_unlock_item", self, "_client_shop_unlock_item")
 		steam_connection.connect("client_shop_focus_inventory_element", self, "_client_focused_inventory_element")
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
 
@@ -142,11 +143,11 @@ func _client_shop_combine_weapon(weapon_string : String, is_upgrade: bool, playe
 
 
 func _client_shop_lock_item(item_string : String, wave_value: int, player_index: int) -> void:
-	RunData.lock_player_shop_item(_shop_item_for_string(item_string, player_index).item_data, wave_value, player_index)
+	_shop_item_for_string(item_string, player_index).change_lock_status(true)
 
 
 func _client_shop_unlock_item(item_string : String, player_index : int) -> void:
-	RunData.unlock_player_shop_item(_shop_item_for_string(item_string, player_index).item_data, player_index)
+	_shop_item_for_string(item_string, player_index).change_lock_status(false)
 
 
 func send_shop_state() -> void:
@@ -167,11 +168,12 @@ func send_shop_state() -> void:
 			shop_items.push_back(item_dict)
 		player_dict["SHOP_ITEMS"] = shop_items
 		
-		var locked_items = []
+		var locked_items : Array = []
 		for item in RunData.locked_shop_items[player_index]:
 			var item_dict : Dictionary = {}
 			item_dict["ID"] = item[0].my_id
 			item_dict["WAVE_VALUE"] = item[1]
+			locked_items.push_back(item_dict)
 		player_dict["LOCKED_ITEMS"] = locked_items
 		
 		var weapons_array = []
@@ -243,6 +245,23 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		_reroll_discount[player_index] = player_dict["REROLL_DICSOUNT"]
 		_has_bonus_free_reroll[player_index] = player_dict["HAS_BONUS_FREE_REROLL"]
 		set_reroll_button_price(player_index)
+		
+		var locked_items : Array = player_dict["LOCKED_ITEMS"]
+		var shop_items_container = _get_shop_items_container(player_index)
+		for item in _get_shop_items_container(player_index).get_children():
+			if not item is ShopItem:
+				continue
+			
+			var is_locked = false
+			for locked_item in locked_items:
+				if locked_item["ID"] == item.item_data.my_id:
+					is_locked = true
+					break
+			
+			if is_locked:
+				item.lock_visually()
+			else:
+				item.unlock_visually()
 		
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
@@ -383,7 +402,6 @@ func _shop_item_for_string(shop_item_string : String, player_index : int) -> Sho
 
 
 func fill_shop_items(player_locked_items: Array, player_index: int, just_entered_shop: bool = false) -> void:
-	print_debug("an override? ", $"/root/BrotogetherOptions".in_multiplayer_game, " ", $"/root/SteamConnection".is_host())
 	if $"/root/BrotogetherOptions".in_multiplayer_game:
 		if $"/root/SteamConnection".is_host():
 			.fill_shop_items(player_locked_items, player_index, just_entered_shop)

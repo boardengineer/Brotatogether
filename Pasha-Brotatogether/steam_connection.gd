@@ -433,6 +433,8 @@ func read_p2p_packet() -> void:
 				_receive_shop_go_button_pressed(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_LOCK_ITEM:
 				_receive_shop_lock_item(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_UNLOCK_ITEM:
+				_receive_shop_unlock_item(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED:
 				_receive_character_selection_completed(data)
 			elif channel == MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED:
