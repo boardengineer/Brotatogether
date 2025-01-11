@@ -55,6 +55,8 @@ enum MessageType {
 	
 	MESSAGE_TYPE_SHOP_WEAPON_DISCARD,
 	
+	MESSAGE_TYPE_SHOP_CLOSE_POPUP,
+	
 	MESSAGE_TYPE_SHOP_BUY_ITEM,
 	
 	MESSAGE_TYPE_SHOP_REROLL,
@@ -171,6 +173,8 @@ signal shop_lobby_update(shop_dict)
 signal client_status_received(status_dict, player_index)
 
 signal host_starts_round()
+
+signal close_popup()
 
 func _ready():
 	if not Steam.loggedOn():
@@ -443,6 +447,8 @@ func read_p2p_packet() -> void:
 				_receive_host_round_start()
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS:
 				_receive_shop_focus_inventory_element(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_CLOSE_POPUP:
+				_receive_shop_close_popup()
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -921,16 +927,18 @@ func shop_weapon_discard(weapon_string : String) -> void:
 
 
 func _receive_shop_weapon_discard(data : Dictionary, sender_id : int) -> void:
+	print_debug("discard 4")
 	if not is_host():
 		print("WARNING - received shop discard as non-host, ignroing; data:", data)
 		return
 	
-	if not data.has("CURRENT_STATE"):
+	if not data.has("WEAPON"):
 		print("WARNING - received shop discard without WEAPON; data:", data)
 		return
 	
+	print_debug("discard 5")
 	var player_index : int = get_lobby_index_for_player(sender_id)
-	emit_signal("client_shop_discard_pressed", data["WEAPON"], player_index)
+	emit_signal("client_shop_discard_weapon", data["WEAPON"], player_index)
 
 
 func shop_lock_item(item_string : String, wave_value : int) -> void:
@@ -991,7 +999,7 @@ func shop_combine_weapon(weapon_string : String, is_upgrade : bool) -> void:
 			"IS_UPGRADE": is_upgrade,
 		}
 		
-		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_WEAPON_DISCARD, game_lobby_owner_id)
+		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_COMBINE_WEAPON, game_lobby_owner_id)
 
 
 func _receive_shop_combine_weapon(data : Dictionary, sender_id : int) -> void:
@@ -1028,3 +1036,11 @@ func _receive_shop_focus_inventory_element(data : Dictionary, sender_id : int) -
 
 func get_my_index() -> int:
 	return get_lobby_index_for_player(steam_id)
+
+
+func request_close_client_shop_popup(player_index : int) -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_SHOP_CLOSE_POPUP, lobby_members[player_index])
+
+
+func _receive_shop_close_popup() -> void:
+	emit_signal("close_popup")

@@ -4,10 +4,10 @@ var global_focused_control
 
 
 func ready() -> void:
-	var _err = get_viewport().connect("gui_focus_changed", self, "_on_focus_changed")
+	var _err = get_viewport().connect("gui_focus_changed", self, "_on_focus_changed_multiplayer")
 
 
-func _on_focus_changed(control:Control) -> void:
+func _on_focus_changed_multiplayer(control:Control) -> void:
 	if control != null:
 		global_focused_control = control
 

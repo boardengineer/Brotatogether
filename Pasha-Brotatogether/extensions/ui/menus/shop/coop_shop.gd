@@ -37,6 +37,7 @@ func _ready():
 		steam_connection.connect("client_shop_unlock_item", self, "_client_shop_unlock_item")
 		steam_connection.connect("client_shop_focus_inventory_element", self, "_client_focused_inventory_element")
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
+		steam_connection.connect("close_popup", self, "_remote_close_client_popup")
 
 
 func _process(delta):
@@ -98,6 +99,11 @@ func _on_item_discard_button_pressed(weapon_data: WeaponData, player_index: int)
 
 func _client_shop_discard_weapon(weapon_string : String, player_index : int) -> void:
 	_on_item_discard_button_pressed(_weapon_for_string(weapon_string, player_index), player_index)
+	steam_connection.request_close_client_shop_popup(player_index)
+
+
+func _remote_close_client_popup() -> void:
+	_get_coop_player_container(steam_connection.get_my_index()).item_popup.cancel()
 
 
 func _on_GoButton_pressed(player_index: int) -> void:
@@ -140,6 +146,7 @@ func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int,
 
 func _client_shop_combine_weapon(weapon_string : String, is_upgrade: bool, player_index : int) -> void:
 	_on_item_combine_button_pressed(_weapon_for_string(weapon_string, player_index), player_index, is_upgrade)
+	steam_connection.request_close_client_shop_popup(player_index)
 
 
 func _client_shop_lock_item(item_string : String, wave_value: int, player_index: int) -> void:
@@ -460,7 +467,6 @@ func _set_client_focus_for_player(focus_dict : Dictionary, player_index : int) -
 		var focus_type : String = focus_dict["TYPE"]
 		if focus_type in ["SHOP_ITEM", "ITEM", "WEAPON"]:
 			is_self_call = true
-		
 		Utils.get_focus_emulator(player_index).focused_control = focus_control
 	else:
 		print("ERR - Invalid focus dict", focus_dict, " ", player_index)
