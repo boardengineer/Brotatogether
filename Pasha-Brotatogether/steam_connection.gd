@@ -69,6 +69,8 @@ enum MessageType {
 	
 	MESSAGE_TYPE_SHOP_LOBBY_UPDATE,
 	
+	MESSAGE_TYPE_LEAVE_SHOP,
+	
 	MESSAGE_TYPE_HOST_ROUND_START,
 }
 
@@ -175,6 +177,8 @@ signal client_status_received(status_dict, player_index)
 signal host_starts_round()
 
 signal close_popup()
+
+signal receive_leave_shop()
 
 func _ready():
 	if not Steam.loggedOn():
@@ -449,6 +453,8 @@ func read_p2p_packet() -> void:
 				_receive_shop_focus_inventory_element(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_CLOSE_POPUP:
 				_receive_shop_close_popup()
+			elif channel == MessageType.MESSAGE_TYPE_LEAVE_SHOP:
+				_receive_leave_shop()
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -927,7 +933,6 @@ func shop_weapon_discard(weapon_string : String, player_index : int) -> void:
 
 
 func _receive_shop_weapon_discard(data : Dictionary, sender_id : int) -> void:
-	print_debug("discard 4")
 	if not is_host():
 		print("WARNING - received shop discard as non-host, ignroing; data:", data)
 		return
@@ -936,7 +941,6 @@ func _receive_shop_weapon_discard(data : Dictionary, sender_id : int) -> void:
 		print("WARNING - received shop discard without WEAPON; data:", data)
 		return
 	
-	print_debug("discard 5")
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_discard_weapon", data["WEAPON"], player_index)
 
@@ -1027,7 +1031,7 @@ func shop_focus_inventory_element(inventory_item_dict : Dictionary) -> void:
 	if is_host():
 		request_shop_update()
 	else:
-		send_p2p_packet(inventory_item_dict, MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS)
+		send_p2p_packet(inventory_item_dict, MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS, game_lobby_owner_id)
 
 
 func _receive_shop_focus_inventory_element(data : Dictionary, sender_id : int) -> void:
@@ -1044,3 +1048,11 @@ func request_close_client_shop_popup(player_index : int) -> void:
 
 func _receive_shop_close_popup() -> void:
 	emit_signal("close_popup")
+
+
+func leave_shop() -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_LEAVE_SHOP)
+
+
+func _receive_leave_shop() -> void:
+	emit_signal("receive_leave_shop")

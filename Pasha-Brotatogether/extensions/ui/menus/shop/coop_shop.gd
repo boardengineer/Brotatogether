@@ -38,6 +38,7 @@ func _ready():
 		steam_connection.connect("client_shop_focus_inventory_element", self, "_client_focused_inventory_element")
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
 		steam_connection.connect("close_popup", self, "_remote_close_client_popup")
+		steam_connection.connect("receive_leave_shop", self, "_receive_leave_shop")
 
 
 func _process(delta):
@@ -111,10 +112,36 @@ func _remote_close_client_popup() -> void:
 func _on_GoButton_pressed(player_index: int) -> void:
 	if in_multiplayer_game:
 		if steam_connection.is_host():
-			._on_GoButton_pressed(player_index)
+			_on_go_button_pressed_brotatogether(player_index)
 		steam_connection.shop_go_button_pressed(not _player_pressed_go_button[player_index])
 	else:
 		._on_GoButton_pressed(player_index)
+
+
+func _on_go_button_pressed_brotatogether(player_index: int)->void :
+	if get_tree().paused:
+		return 
+
+	if _player_pressed_go_button[player_index]:
+		_clear_go_button_pressed(player_index)
+		return 
+
+	_player_pressed_go_button[player_index] = true
+	var checkmark = _get_checkmark(player_index)
+	if checkmark != null:
+		checkmark.show()
+	
+	for other_player_index in RunData.get_player_count():
+		if not _player_pressed_go_button[other_player_index]:
+			return 
+	
+	RunData.current_wave += 1
+	steam_connection.leave_shop()
+	var _error = get_tree().change_scene(MenuData.game_scene)
+
+
+func _receive_leave_shop() -> void:
+	var _error = get_tree().change_scene(MenuData.game_scene)
 
 
 func _clear_go_button_pressed(player_index: int) -> void :
