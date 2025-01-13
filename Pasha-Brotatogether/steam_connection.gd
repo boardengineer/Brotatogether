@@ -547,7 +547,7 @@ func _receive_player_statuses(data : Dictionary) -> void:
 		return
 	
 	player_latencies = data["PLAYER_LATENCIES"]
-	print_debug("received player latencies: ", player_latencies)
+#	print_debug("received player latencies: ", player_latencies)
 
 
 func _on_p2p_session_request(remote_id: int) -> void:
@@ -809,7 +809,7 @@ func get_lobby_index_for_player(player_id : int) -> int:
 	return -1
 
 
-func request_shop_update() -> void:
+func request_shop_update(changed_shop_player_indeces : Array = []) -> void:
 	emit_signal("client_shop_requested")
 
 
@@ -875,9 +875,9 @@ func shop_go_button_exited() -> void:
 	shop_go_button_pressed(false)
 
 
-func shop_buy_item(item_string : String) -> void:
+func shop_buy_item(item_string : String, player_index : int) -> void:
 	if is_host():
-		request_shop_update()
+		request_shop_update([player_index])
 	else:
 		var data = {
 			"ITEM": item_string,
@@ -899,9 +899,9 @@ func _receive_shop_buy_item(data : Dictionary, sender_id : int) -> void:
 	emit_signal("client_shop_buy_item", data["ITEM"], player_index)
 
 
-func shop_reroll() -> void:
+func shop_reroll(player_index : int) -> void:
 	if is_host():
-		request_shop_update()
+		request_shop_update([player_index])
 	else:
 		send_p2p_packet({}, MessageType.MESSAGE_TYPE_SHOP_REROLL, game_lobby_owner_id)
 
@@ -915,9 +915,9 @@ func _receive_shop_reroll(sender_id : int) -> void:
 	emit_signal("client_shop_reroll", player_index)
 
 
-func shop_weapon_discard(weapon_string : String) -> void:
+func shop_weapon_discard(weapon_string : String, player_index : int) -> void:
 	if is_host():
-		request_shop_update()
+		request_shop_update([player_index])
 	else:
 		var data = {
 			"WEAPON": weapon_string,
@@ -990,9 +990,9 @@ func _receive_shop_unlock_item(data : Dictionary, sender_id : int) -> void:
 	emit_signal("client_shop_unlock_item", data["ITEM"], player_index)
 
 
-func shop_combine_weapon(weapon_string : String, is_upgrade : bool) -> void:
+func shop_combine_weapon(weapon_string : String, is_upgrade : bool, player_index : int) -> void:
 	if is_host():
-		request_shop_update()
+		request_shop_update([player_index])
 	else:
 		var data = {
 			"WEAPON": weapon_string,

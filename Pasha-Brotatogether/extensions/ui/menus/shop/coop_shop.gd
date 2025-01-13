@@ -51,7 +51,9 @@ func _process(delta):
 						break
 				if all_players_entered:
 					waiting_to_start_shop = false
-					send_shop_state()
+					
+					# Initial shop state, all players can break focus
+					send_shop_state([0,1,2,3])
 		_check_for_focus_change()
 
 
@@ -92,7 +94,7 @@ func _on_item_discard_button_pressed(weapon_data: WeaponData, player_index: int)
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_item_discard_button_pressed(weapon_data, player_index)
-		steam_connection.shop_weapon_discard(_string_for_weapon(weapon_data))
+		steam_connection.shop_weapon_discard(_string_for_weapon(weapon_data), player_index)
 	else:
 		._on_item_discard_button_pressed(weapon_data, player_index)
 
@@ -110,12 +112,21 @@ func _on_GoButton_pressed(player_index: int) -> void:
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_GoButton_pressed(player_index)
-		steam_connection.shop_go_button_pressed(_player_pressed_go_button[player_index])
+		steam_connection.shop_go_button_pressed(not _player_pressed_go_button[player_index])
 	else:
 		._on_GoButton_pressed(player_index)
 
 
-func _client_shop_go_button_pressed(player_index : int, latest_go_state : bool) -> void:
+func _clear_go_button_pressed(player_index: int) -> void :
+	if in_multiplayer_game:
+		if steam_connection.is_host():
+			._clear_go_button_pressed(player_index)
+		steam_connection.shop_go_button_pressed(false)
+	else:
+		._clear_go_button_pressed(player_index)
+	
+
+func _client_shop_go_button_pressed(latest_go_state : bool, player_index : int) -> void:
 	# Make the go function change the state to the new state by setting to the
 	# opposite
 	_player_pressed_go_button[player_index] = not latest_go_state
@@ -126,7 +137,7 @@ func on_shop_item_bought(shop_item: ShopItem, player_index: int) -> void:
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			.on_shop_item_bought(shop_item, player_index)
-		steam_connection.shop_buy_item(_string_for_shop_item(shop_item))
+		steam_connection.shop_buy_item(_string_for_shop_item(shop_item), player_index)
 	else:
 		.on_shop_item_bought(shop_item, player_index)
 
@@ -139,7 +150,7 @@ func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int,
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_item_combine_button_pressed(weapon_data, player_index, is_upgrade)
-		steam_connection.shop_combine_weapon(_string_for_weapon(weapon_data), is_upgrade)
+		steam_connection.shop_combine_weapon(_string_for_weapon(weapon_data), is_upgrade, player_index)
 	else:
 		._on_item_combine_button_pressed(weapon_data, player_index, is_upgrade)
 
@@ -157,7 +168,7 @@ func _client_shop_unlock_item(item_string : String, player_index : int) -> void:
 	_shop_item_for_string(item_string, player_index).change_lock_status(false)
 
 
-func send_shop_state() -> void:
+func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 	var result_dict : Dictionary = {}
 	
 	var players_array = []
@@ -187,6 +198,7 @@ func send_shop_state() -> void:
 		for weapon in RunData.get_player_weapons(player_index):
 			weapons_array.push_back(_dictionary_for_weapon(weapon))
 		player_dict["WEAPONS"] = weapons_array
+		player_dict["GO_PRESSED"] = _player_pressed_go_button[player_index]
 		
 		var items_array = []
 		for item in RunData.get_player_items(player_index):
@@ -203,6 +215,7 @@ func send_shop_state() -> void:
 		players_array.push_back(player_dict)
 	
 	result_dict["PLAYERS"] = players_array
+	result_dict["CHANGED_PLAYERS"] = changed_shop_player_indeces
 	
 #	print_debug("sending shop state with dict ", result_dict)
 	steam_connection.send_shop_update(result_dict)
@@ -220,9 +233,25 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 	print_debug("updating shop for dictionary - ", shop_dictionary)
 	
 	for player_index in shop_dictionary["PLAYERS"].size():
-		_shop_items[player_index].clear()
-		
 		var player_dict = shop_dictionary["PLAYERS"][player_index]
+		
+		var is_me = steam_connection.get_my_index() == player_index
+		var can_update = not is_me or shop_dictionary["CHANGED_PLAYERS"].has(player_index)
+		
+		var go_pressed = player_dict["GO_PRESSED"]
+		_player_pressed_go_button[player_index] = go_pressed
+		var checkmark = _get_checkmark(player_index)
+		if checkmark != null:
+			if go_pressed:
+				checkmark.show()
+			else:
+				checkmark.hide()
+		
+		if not can_update:
+			print_debug("skipping update for player ", player_index)
+			continue
+		
+		_shop_items[player_index].clear()
 		
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
 			var shop_item = _shop_item_for_dictionary(shop_item_dict)
@@ -252,6 +281,8 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		_reroll_discount[player_index] = player_dict["REROLL_DICSOUNT"]
 		_has_bonus_free_reroll[player_index] = player_dict["HAS_BONUS_FREE_REROLL"]
 		set_reroll_button_price(player_index)
+		
+		
 		
 		var locked_items : Array = player_dict["LOCKED_ITEMS"]
 		var shop_items_container = _get_shop_items_container(player_index)
@@ -501,6 +532,6 @@ func _on_RerollButton_pressed(player_index: int)->void :
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_RerollButton_pressed(player_index)
-		steam_connection.shop_reroll()
+		steam_connection.shop_reroll(player_index)
 	else:
 		._on_RerollButton_pressed( player_index)
