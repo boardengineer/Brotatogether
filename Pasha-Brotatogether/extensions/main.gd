@@ -7,6 +7,9 @@ var in_multiplayer_game = false
 var player_in_scene = [true, false, false, false]
 var waiting_to_start_round = false
 
+const SEND_RATE : float = 1.0 / 10.0
+var send_timer = SEND_RATE
+
 func _ready():
 	steam_connection = $"/root/SteamConnection"
 	brotatogether_options = $"/root/BrotogetherOptions"
@@ -15,9 +18,17 @@ func _ready():
 	if in_multiplayer_game:
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
+		steam_connection.connect("state_update", self, "_state_update")
 		
 		
 		call_deferred("multiplayer_ready")
+
+
+func _physics_process(delta : float):
+	send_timer -= delta
+	if send_timer <= 0.0:
+		send_timer = SEND_RATE
+		_send_game_state()
 
 
 func _process(delta):
@@ -33,6 +44,16 @@ func _process(delta):
 					waiting_to_start_round = false
 					_wave_timer.start()
 					steam_connection.send_round_start()
+
+
+func _send_game_state() -> void:
+	var state_dict = {}
+	
+	steam_connection.send_game_state(state_dict)
+
+
+func _state_update(state_dict : Dictionary) -> void:
+	print_debug("received state ", state_dict)
 
 
 func multiplayer_ready():

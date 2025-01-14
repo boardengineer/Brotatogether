@@ -72,6 +72,8 @@ enum MessageType {
 	MESSAGE_TYPE_LEAVE_SHOP,
 	
 	MESSAGE_TYPE_HOST_ROUND_START,
+	
+	MESSAGE_TYPE_MAIN_STATE,
 }
 
 var global_chat_lobby_id : int = -1
@@ -180,6 +182,8 @@ signal close_popup()
 
 signal receive_leave_shop()
 
+signal state_update(state_dict)
+
 func _ready():
 	if not Steam.loggedOn():
 		return
@@ -208,7 +212,7 @@ func _ready():
 	steam_id = Steam.getSteamID()
 
 
-func _process(_delta: float) -> void:
+func _physics_process(delta : float) -> void:
 	Steam.run_callbacks()
 	
 	if game_lobby_id > 0:
@@ -455,6 +459,8 @@ func read_p2p_packet() -> void:
 				_receive_shop_close_popup()
 			elif channel == MessageType.MESSAGE_TYPE_LEAVE_SHOP:
 				_receive_leave_shop()
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
+				_receive_game_state(data)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1056,3 +1062,15 @@ func leave_shop() -> void:
 
 func _receive_leave_shop() -> void:
 	emit_signal("receive_leave_shop")
+
+
+func send_game_state(state_dict : Dictionary) -> void:
+	send_p2p_packet(state_dict, MessageType.MESSAGE_TYPE_MAIN_STATE)
+
+
+func _receive_game_state(state_dict : Dictionary) -> void:
+	if is_host():
+		print("ERR - HOST SHOULD NOT BE GETTING STATE UPDATES")
+		return
+	
+	emit_signal("state_update", state_dict)
