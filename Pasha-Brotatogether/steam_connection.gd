@@ -74,6 +74,8 @@ enum MessageType {
 	MESSAGE_TYPE_HOST_ROUND_START,
 	
 	MESSAGE_TYPE_MAIN_STATE,
+	
+	MESSAGE_TYPE_CLIENT_POSITION,
 }
 
 var global_chat_lobby_id : int = -1
@@ -183,6 +185,8 @@ signal close_popup()
 signal receive_leave_shop()
 
 signal state_update(state_dict)
+
+signal client_position(client_position_dict, player_index)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -461,6 +465,8 @@ func read_p2p_packet() -> void:
 				_receive_leave_shop()
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
 				_receive_game_state(data)
+			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
+				_receive_client_position(data, sender_id)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1065,7 +1071,8 @@ func _receive_leave_shop() -> void:
 
 
 func send_game_state(state_dict : Dictionary) -> void:
-	send_p2p_packet(state_dict, MessageType.MESSAGE_TYPE_MAIN_STATE)
+	if is_host():
+		send_p2p_packet(state_dict, MessageType.MESSAGE_TYPE_MAIN_STATE)
 
 
 func _receive_game_state(state_dict : Dictionary) -> void:
@@ -1074,3 +1081,11 @@ func _receive_game_state(state_dict : Dictionary) -> void:
 		return
 	
 	emit_signal("state_update", state_dict)
+
+
+func send_client_position(client_position_dict : Dictionary) -> void:
+	send_p2p_packet(client_position_dict, MessageType.MESSAGE_TYPE_CLIENT_POSITION)
+
+
+func _receive_client_position(data : Dictionary, sender_id : int) -> void:
+	emit_signal("client_position", data, get_lobby_index_for_player(sender_id))

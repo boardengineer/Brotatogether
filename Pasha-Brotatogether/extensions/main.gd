@@ -7,8 +7,9 @@ var in_multiplayer_game = false
 var player_in_scene = [true, false, false, false]
 var waiting_to_start_round = false
 
-const SEND_RATE : float = 1.0 / 10.0
+const SEND_RATE : float = 1.0 / 30.0
 var send_timer = SEND_RATE
+var my_player_index
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -19,7 +20,9 @@ func _ready():
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
 		steam_connection.connect("state_update", self, "_state_update")
+		steam_connection.connect("client_position", self, "_update_player_position")
 		
+		my_player_index = steam_connection.get_my_index()
 		
 		call_deferred("multiplayer_ready")
 
@@ -28,7 +31,10 @@ func _physics_process(delta : float):
 	send_timer -= delta
 	if send_timer <= 0.0:
 		send_timer = SEND_RATE
-		_send_game_state()
+		if steam_connection.is_host():
+			_send_game_state()
+		else:
+			_send_client_position()
 
 
 func _process(delta):
@@ -49,11 +55,62 @@ func _process(delta):
 func _send_game_state() -> void:
 	var state_dict = {}
 	
+	state_dict["WAVE_TIME"] = _wave_timer.time_left
+	var players = []
+	
+	for player_index in _players.size():
+		var player = _players[player_index]
+		players.push_back(_dictionary_for_player(player))
+	
+	state_dict["PLAYERS"] = players
+	
 	steam_connection.send_game_state(state_dict)
 
 
 func _state_update(state_dict : Dictionary) -> void:
-	print_debug("received state ", state_dict)
+#	print_debug("received state ", state_dict)
+	
+	var wait_time = float(state_dict["WAVE_TIME"])
+	if wait_time > 0:
+		_wave_timer.start(wait_time)
+	
+	var players_array = state_dict["PLAYERS"]
+	for player_index in players_array.size():
+		_update_player_position(players_array[player_index], player_index)
+
+
+func _send_client_position() -> void:
+	steam_connection.send_client_position(_dictionary_for_player(_players[my_player_index]))
+
+
+func _dictionary_for_player(player) -> Dictionary:
+	var position = player.position
+	
+	var client_position_dict = {
+		"X_POS" : player.position.x,
+		"Y_POS" : player.position.y,
+		
+		"MOVE_X" : player._current_movement.x,
+		"MOVE_Y" : player._current_movement.y,
+		
+		"SPRITE_SCALE_X": player.sprite.scale.x 
+	}
+	
+	return client_position_dict
+	steam_connection.send_client_position(client_position_dict)
+
+
+func _update_player_position(position_dict : Dictionary, player_index : int) -> void:
+	if player_index != my_player_index:
+		_players[player_index].position.x = position_dict["X_POS"]
+		_players[player_index].position.y = position_dict["Y_POS"]
+		
+		_players[player_index].sprite.scale.x  = position_dict["SPRITE_SCALE_X"]
+		
+		_players[player_index]._current_movement.x  = position_dict["MOVE_X"]
+		_players[player_index]._current_movement.y  = position_dict["MOVE_Y"]
+		
+		_players[player_index].update_animation(_players[player_index]._current_movement)
 
 
 func multiplayer_ready():

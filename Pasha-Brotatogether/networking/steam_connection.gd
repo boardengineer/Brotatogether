@@ -447,3 +447,7 @@ func send_reroll(price) -> void:
 	send_data["player_id"] = parent.self_peer_id
 	send_data["price"] = price
 	send_data_to_all(send_data)
+
+
+func send_game_state() -> void:
+	pass
