@@ -94,7 +94,6 @@ func _on_selections_completed() -> void:
 	else:
 		._on_selections_completed()
 	
-	var selected_weapons = []
 	
 	for player_index in RunData.get_player_count():
 		var chosen_item = _get_panels()[player_index]
@@ -109,17 +108,25 @@ func _on_selections_completed() -> void:
 			_player_weapons[player_index] = weapon
 		
 		var _weapon = RunData.add_weapon(weapon, player_index, true)
-		selected_weapons.push_back(weapon_item_to_string(weapon))
 	
 	RunData.add_starting_items_and_weapons()
-	steam_connection.send_weapon_selection_completed(selected_weapons)
+	
+	var all_selected_weapons = []
+	for player_index in RunData.get_player_count():
+		var selected_weapons = []
+		for owned_weapon in RunData.players_data[player_index].weapons:
+			selected_weapons.push_back(weapon_item_to_string(owned_weapon))
+		all_selected_weapons.push_back(selected_weapons)
+	
+	steam_connection.send_weapon_selection_completed(all_selected_weapons)
 	
 	_change_scene(MenuData.difficulty_selection_scene)
 
 
 func _weapon_selection_completed(selected_weapons : Array) -> void:
 	for player_index in RunData.get_player_count():
-		var weapon = inventory_by_string_key[selected_weapons[player_index]]
-		var _weapon = RunData.add_weapon(weapon, player_index, true)
+		RunData.players_data[player_index].weapons.clear()
+		for weapon_index in selected_weapons[player_index].size():
+			RunData.players_data[player_index].weapons.push_back(inventory_by_string_key[selected_weapons[player_index][weapon_index]])
 	
 	_change_scene(MenuData.difficulty_selection_scene)

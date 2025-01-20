@@ -35,6 +35,8 @@ func _init():
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/global/focus_emulator.gd")
 	
+	ModLoaderMod.install_script_extension(ext_dir + "weapons/weapon.gd")
+	
 
 
 func _ready():

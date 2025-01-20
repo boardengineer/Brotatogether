@@ -15,10 +15,10 @@ func _ready():
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
 	
-	brotatogether_options.joining_multiplayer_lobby = false
-	brotatogether_options.in_multiplayer_game = true
-	
 	if is_multiplayer_lobby:
+		brotatogether_options.joining_multiplayer_lobby = false
+		brotatogether_options.in_multiplayer_game = true
+		
 		for difficulty_data in ItemService.difficulties:
 			inventory_by_string_key[difficulty_data.value] = difficulty_data
 	print_debug("created difficulty element map ", inventory_by_string_key)

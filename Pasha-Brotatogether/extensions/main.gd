@@ -28,6 +28,9 @@ func _ready():
 
 
 func _physics_process(delta : float):
+	if not in_multiplayer_game:
+		return
+	
 	send_timer -= delta
 	if send_timer <= 0.0:
 		send_timer = SEND_RATE
@@ -86,7 +89,7 @@ func _send_client_position() -> void:
 func _dictionary_for_player(player) -> Dictionary:
 	var position = player.position
 	
-	var client_position_dict = {
+	var player_dict = {
 		"X_POS" : player.position.x,
 		"Y_POS" : player.position.y,
 		
@@ -96,21 +99,34 @@ func _dictionary_for_player(player) -> Dictionary:
 		"SPRITE_SCALE_X": player.sprite.scale.x 
 	}
 	
-	return client_position_dict
-	steam_connection.send_client_position(client_position_dict)
+	var weapons_array : Array = []
+	var weapons = player.current_weapons
+	for weapon in weapons:
+		var weapon_dict = {}
+		weapon_dict["ROTATION"]  = weapon.rotation
+		weapons_array.push_back(weapon_dict)
+	player_dict["WEAPONS"] = weapons_array
+	
+	return player_dict
 
 
-func _update_player_position(position_dict : Dictionary, player_index : int) -> void:
+func _update_player_position(player_dict : Dictionary, player_index : int) -> void:
 	if player_index != my_player_index:
-		_players[player_index].position.x = position_dict["X_POS"]
-		_players[player_index].position.y = position_dict["Y_POS"]
+		_players[player_index].position.x = player_dict["X_POS"]
+		_players[player_index].position.y = player_dict["Y_POS"]
 		
-		_players[player_index].sprite.scale.x  = position_dict["SPRITE_SCALE_X"]
+		_players[player_index].sprite.scale.x  = player_dict["SPRITE_SCALE_X"]
 		
-		_players[player_index]._current_movement.x  = position_dict["MOVE_X"]
-		_players[player_index]._current_movement.y  = position_dict["MOVE_Y"]
+		_players[player_index]._current_movement.x  = player_dict["MOVE_X"]
+		_players[player_index]._current_movement.y  = player_dict["MOVE_Y"]
 		
 		_players[player_index].update_animation(_players[player_index]._current_movement)
+	
+	if not steam_connection.is_host():
+		var weapons_array = player_dict["WEAPONS"]
+		for weapon_index in weapons_array.size():
+			var weapon_dict = weapons_array[weapon_index]
+			_players[player_index].current_weapons[weapon_index].rotation = weapon_dict["ROTATION"]
 
 
 func multiplayer_ready():
