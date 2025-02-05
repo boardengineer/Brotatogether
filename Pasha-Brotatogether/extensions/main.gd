@@ -11,6 +11,8 @@ const SEND_RATE : float = 1.0 / 30.0
 var send_timer = SEND_RATE
 var my_player_index
 
+var client_enemies = {}
+
 func _ready():
 	steam_connection = $"/root/SteamConnection"
 	brotatogether_options = $"/root/BrotogetherOptions"
@@ -59,13 +61,17 @@ func _send_game_state() -> void:
 	var state_dict = {}
 	
 	state_dict["WAVE_TIME"] = _wave_timer.time_left
-	var players = []
 	
+	var players = []
 	for player_index in _players.size():
 		var player = _players[player_index]
 		players.push_back(_dictionary_for_player(player))
-	
 	state_dict["PLAYERS"] = players
+	
+	var enemies = []
+	for enemy in _entity_spawner.enemies:
+		enemies.push_back(_dictionary_for_enemy(enemy))
+	state_dict["ENEMIES"] = enemies
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -80,6 +86,10 @@ func _state_update(state_dict : Dictionary) -> void:
 	var players_array = state_dict["PLAYERS"]
 	for player_index in players_array.size():
 		_update_player_position(players_array[player_index], player_index)
+	
+	var enemies_array = state_dict["ENEMIES"]
+	for enemy in enemies_array:
+		_update_enemy(enemy)
 
 
 func _send_client_position() -> void:
@@ -127,6 +137,51 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 		for weapon_index in weapons_array.size():
 			var weapon_dict = weapons_array[weapon_index]
 			_players[player_index].current_weapons[weapon_index].rotation = weapon_dict["ROTATION"]
+
+
+func _dictionary_for_enemy(enemy) -> Dictionary:
+	var enemy_dict = {}
+	
+	enemy_dict["NETWORK_ID"] = enemy.network_id
+	enemy_dict["RESOURCE_PATH"] = enemy.stats.resource_path
+	enemy_dict["FILENAME"] = enemy.filename
+	enemy_dict["X_POS"] = enemy.position.x
+	enemy_dict["Y_POS"] = enemy.position.y
+	enemy_dict["MOVE_X"] = enemy._current_movement.x
+	enemy_dict["MOVE_Y"] = enemy._current_movement.y
+	
+	return enemy_dict
+
+
+func _update_enemy(enemy_dict : Dictionary) -> void:
+	var enemy_id = enemy_dict["NETWORK_ID"]
+	if client_enemies.has(enemy_id):
+		var enemy = client_enemies[enemy_id]
+		
+		enemy.position.x = enemy_dict["X_POS"]
+		enemy.position.y = enemy_dict["Y_POS"]
+		
+		enemy._current_movement.x = enemy_dict["MOVE_X"]
+		enemy._current_movement.y = enemy_dict["MOVE_Y"]
+		
+		enemy.call_deferred("update_animation", enemy._current_movement)
+	else:
+		call_deferred("spawn_enemy", enemy_dict)
+
+
+func spawn_enemy(enemy_dict) -> void:
+	var filename = enemy_dict["FILENAME"]
+	var resource_path = enemy_dict["RESOURCE_PATH"]
+	var enemy_id = enemy_dict["NETWORK_ID"]
+	
+	var enemy = load(filename).instance()
+	
+	var position : Vector2 = Vector2(enemy_dict["X_POS"], enemy_dict["Y_POS"])
+	enemy.position = position
+	enemy.stats = load(resource_path)
+	
+	client_enemies[enemy_id] = enemy
+	_entities_container.add_child(enemy)
 
 
 func multiplayer_ready():
