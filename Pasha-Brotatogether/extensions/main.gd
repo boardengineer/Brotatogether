@@ -76,6 +76,8 @@ func _send_game_state() -> void:
 		enemies.push_back(_dictionary_for_enemy(enemy))
 	state_dict["ENEMIES"] = enemies
 	
+	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
+	
 	steam_connection.send_game_state(state_dict)
 
 
@@ -93,6 +95,10 @@ func _state_update(state_dict : Dictionary) -> void:
 	var enemies_array = state_dict["ENEMIES"]
 	for enemy in enemies_array:
 		_update_enemy(enemy)
+	
+	for enemy_id in state_dict["BATCHED_ENEMY_DEATHS"]:
+		if client_enemies.has(enemy_id):
+			client_enemies[enemy_id].die()
 
 
 func _send_client_position() -> void:
