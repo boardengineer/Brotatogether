@@ -1,5 +1,8 @@
 extends "res://main.gd"
 
+var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
+var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_attack_behavior.gd")
+
 var steam_connection
 var brotatogether_options
 var in_multiplayer_game = false
@@ -181,6 +184,21 @@ func spawn_enemy(enemy_dict) -> void:
 	enemy.stats = load(resource_path)
 	
 	client_enemies[enemy_id] = enemy
+	
+	var movement_behavior = enemy.get_node("MovementBehavior")
+	enemy.remove_child(movement_behavior)
+	var client_movement_behavior = ClientMovementBehavior.new()
+	client_movement_behavior.set_name("MovementBehavior")
+	enemy.add_child(client_movement_behavior, true)
+	enemy._current_movement_behavior = client_movement_behavior
+	
+	var attack_behavior = enemy.get_node("AttackBehavior")
+	enemy.remove_child(attack_behavior)
+	var client_attack_behavior = ClientAttackBehavior.new()
+	client_attack_behavior.set_name("AttackBehavior")
+	enemy.add_child(client_attack_behavior, true)
+	enemy._current_attack_behavior = client_attack_behavior
+	
 	_entities_container.add_child(enemy)
 
 
