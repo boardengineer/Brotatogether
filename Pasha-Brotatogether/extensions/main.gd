@@ -77,6 +77,7 @@ func _send_game_state() -> void:
 	state_dict["ENEMIES"] = enemies
 	
 	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
+	brotatogether_options.batched_enemy_deaths.clear()
 	
 	steam_connection.send_game_state(state_dict)
 
