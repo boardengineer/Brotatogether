@@ -123,7 +123,12 @@ func _dictionary_for_player(player) -> Dictionary:
 	var weapons = player.current_weapons
 	for weapon in weapons:
 		var weapon_dict = {}
-		weapon_dict["ROTATION"]  = weapon.rotation
+		weapon_dict["SPRITE_ROTATION"] = weapon.sprite.rotation
+		weapon_dict["ROTATION"] = weapon.rotation
+		weapon_dict["X_POS"] = weapon.sprite.position.x
+		weapon_dict["Y_POS"] = weapon.sprite.position.y
+		weapon_dict["IS_SHOOTING"] = weapon._is_shooting
+		
 		weapons_array.push_back(weapon_dict)
 	player_dict["WEAPONS"] = weapons_array
 	
@@ -146,7 +151,13 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 		var weapons_array = player_dict["WEAPONS"]
 		for weapon_index in weapons_array.size():
 			var weapon_dict = weapons_array[weapon_index]
-			_players[player_index].current_weapons[weapon_index].rotation = weapon_dict["ROTATION"]
+			var weapon = _players[player_index].current_weapons[weapon_index]
+			
+			weapon.sprite.position.x = weapon_dict["X_POS"]
+			weapon.sprite.position.y = weapon_dict["Y_POS"]
+			weapon.sprite.rotation = weapon_dict["SPRITE_ROTATION"]
+			weapon.rotation = weapon_dict["ROTATION"]
+			weapon._is_shooting = weapon_dict["IS_SHOOTING"]
 
 
 func _dictionary_for_enemy(enemy) -> Dictionary:
