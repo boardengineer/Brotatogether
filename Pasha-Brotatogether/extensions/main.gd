@@ -15,6 +15,9 @@ var send_timer = SEND_RATE
 var my_player_index
 
 var client_enemies = {}
+var client_births = {}
+
+const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -79,6 +82,8 @@ func _send_game_state() -> void:
 	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
 	brotatogether_options.batched_enemy_deaths.clear()
 	
+	state_dict["BIRTHS"] = _dictionary_for_births()
+	
 	steam_connection.send_game_state(state_dict)
 
 
@@ -100,6 +105,8 @@ func _state_update(state_dict : Dictionary) -> void:
 	for enemy_id in state_dict["BATCHED_ENEMY_DEATHS"]:
 		if client_enemies.has(enemy_id):
 			client_enemies[enemy_id].die()
+	
+	_update_births(state_dict["BIRTHS"])
 
 
 func _send_client_position() -> void:
@@ -123,6 +130,7 @@ func _dictionary_for_player(player) -> Dictionary:
 	var weapons = player.current_weapons
 	for weapon in weapons:
 		var weapon_dict = {}
+		
 		weapon_dict["SPRITE_ROTATION"] = weapon.sprite.rotation
 		weapon_dict["ROTATION"] = weapon.rotation
 		weapon_dict["X_POS"] = weapon.sprite.position.x
@@ -256,3 +264,52 @@ func _on_EndWaveTimer_timeout()->void :
 		_change_scene(RunData.get_shop_scene_path())
 	else:
 		._on_EndWaveTimer_timeout()
+
+
+func _dictionary_for_births() -> Array:
+	var births_array = []
+	
+	for birth in _entity_spawner.births:
+		var birth_dict = {}
+		
+		birth_dict["NETWORK_ID"] = birth.network_id
+		
+		birth_dict["X_POS"] = birth.global_position.x
+		birth_dict["Y_POS"] = birth.global_position.y
+		
+		birth_dict["COLOR_R"] = birth.color.r
+		birth_dict["COLOR_G"] = birth.color.g
+		birth_dict["COLOR_B"] = birth.color.b
+		birth_dict["COLOR_A"] = birth.color.a
+		
+		births_array.push_back(birth_dict)
+	
+	return births_array
+
+
+func _update_births(births_array : Array) -> void:
+	var current_births : Dictionary = {}
+	
+	for birth_dict in births_array:
+		var network_id = birth_dict["NETWORK_ID"]
+		current_births[network_id] = true
+		
+		var birth
+		if client_births.has(network_id):
+			birth = client_births[network_id]
+		else:
+			birth = ENTITY_BIRTH_SCENE.instance()
+			client_births[network_id] = birth
+		
+		birth.color.r = birth_dict["COLOR_R"]
+		birth.color.g = birth_dict["COLOR_G"]
+		birth.color.b = birth_dict["COLOR_B"]
+		birth.color.a = birth_dict["COLOR_A"]
+		
+		birth.global_position.x = birth_dict["X_POS"]
+		birth.global_position.y = birth_dict["Y_POS"]
+	
+	for old_birth in client_births:
+		if not current_births.has(old_birth.network_id):
+			client_births.erase(old_birth.network_id)
+			old_birth.queue_free()
