@@ -299,7 +299,10 @@ func _update_births(births_array : Array) -> void:
 			birth = client_births[network_id]
 		else:
 			birth = ENTITY_BIRTH_SCENE.instance()
+			birth.network_id = network_id
+			_entities_container.add_child(birth)
 			client_births[network_id] = birth
+			birth.start()
 		
 		birth.color.r = birth_dict["COLOR_R"]
 		birth.color.g = birth_dict["COLOR_G"]
@@ -309,7 +312,8 @@ func _update_births(births_array : Array) -> void:
 		birth.global_position.x = birth_dict["X_POS"]
 		birth.global_position.y = birth_dict["Y_POS"]
 	
-	for old_birth in client_births:
-		if not current_births.has(old_birth.network_id):
-			client_births.erase(old_birth.network_id)
+	for network_id in client_births:
+		var old_birth = client_births[network_id]
+		if not current_births.has(network_id):
+			client_births.erase(network_id)
 			old_birth.queue_free()
