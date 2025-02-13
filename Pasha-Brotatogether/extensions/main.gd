@@ -16,8 +16,10 @@ var my_player_index
 
 var client_enemies = {}
 var client_births = {}
+var client_player_projectiles = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
+
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -82,7 +84,7 @@ func _send_game_state() -> void:
 	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
 	brotatogether_options.batched_enemy_deaths.clear()
 	
-	state_dict["BIRTHS"] = _dictionary_for_births()
+	state_dict["BIRTHS"] = _host_births_array()
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -106,6 +108,7 @@ func _state_update(state_dict : Dictionary) -> void:
 		if client_enemies.has(enemy_id):
 			client_enemies[enemy_id].die()
 	
+	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
 	_update_births(state_dict["BIRTHS"])
 
 
@@ -266,7 +269,7 @@ func _on_EndWaveTimer_timeout()->void :
 		._on_EndWaveTimer_timeout()
 
 
-func _dictionary_for_births() -> Array:
+func _host_births_array() -> Array:
 	var births_array = []
 	
 	for birth in _entity_spawner.births:
@@ -317,3 +320,54 @@ func _update_births(births_array : Array) -> void:
 		if not current_births.has(network_id):
 			client_births.erase(network_id)
 			old_birth.queue_free()
+
+
+func _host_player_projectiles_array() -> Array:
+	var player_projectiles_array = []
+	var container_scene = Utils.get_scene_node()
+	
+	for child in container_scene.get_children():
+		if child is PlayerProjectile:
+			var projectile_dict = {}
+			projectile_dict["NETWORK_ID"] = child.network_id
+			projectile_dict["X_POS"] = child.global_position.x
+			projectile_dict["Y_POS"] = child.global_position.y
+			projectile_dict["ROTATION"] = child.rotation
+			projectile_dict["FILENAME"] = child.filename
+			player_projectiles_array.push_back(projectile_dict)
+	return player_projectiles_array 
+
+
+func _update_player_projectiles(player_projectiles_array : Array) -> void:
+	var current_projectiles = {}
+	
+	for player_projectile_dict in player_projectiles_array:
+		var network_id = player_projectile_dict["NETWORK_ID"]
+		current_projectiles[network_id] = true
+		
+		if client_player_projectiles.has(network_id):
+			var projectile = client_player_projectiles[network_id]
+			
+			projectile.global_position.x = player_projectile_dict["X_POS"]
+			projectile.global_position.y = player_projectile_dict["Y_POS"]
+			projectile.rotation = player_projectile_dict["FILENAME"]
+		else:
+			call_deferred("_spawn_player_projectile", player_projectile_dict)
+	
+	for network_id in client_player_projectiles:
+		if not current_projectiles.has(network_id):
+			current_projectiles.erase(network_id)
+			client_player_projectiles[network_id].queue_free()
+
+
+func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
+	var network_id = player_projectile_dict["NETWORK_ID"]
+	var projectile = load(player_projectile_dict["FILENAME"]).instance()
+	
+	client_player_projectiles[network_id] = projectile
+	
+	projectile.global_position.x = player_projectile_dict["X_POS"]
+	projectile.global_position.y = player_projectile_dict["Y_POS"]
+	projectile.rotation = player_projectile_dict["FILENAME"]
+	
+	Utils.get_scene_node().add_child(projectile)

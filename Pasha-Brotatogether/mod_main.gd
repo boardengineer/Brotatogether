@@ -24,18 +24,17 @@ func _init():
 	
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "projectiles/projectile.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/coop_service.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/run_data.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/utils.gd")
-	
+		
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
-	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/coop_shop.gd")
-	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/global/focus_emulator.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "weapons/weapon.gd")
