@@ -85,6 +85,7 @@ func _send_game_state() -> void:
 	brotatogether_options.batched_enemy_deaths.clear()
 	
 	state_dict["BIRTHS"] = _host_births_array()
+	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -350,7 +351,7 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 			
 			projectile.global_position.x = player_projectile_dict["X_POS"]
 			projectile.global_position.y = player_projectile_dict["Y_POS"]
-			projectile.rotation = player_projectile_dict["FILENAME"]
+			projectile.rotation = player_projectile_dict["ROTATION"]
 		else:
 			call_deferred("_spawn_player_projectile", player_projectile_dict)
 	
@@ -368,6 +369,6 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	
 	projectile.global_position.x = player_projectile_dict["X_POS"]
 	projectile.global_position.y = player_projectile_dict["Y_POS"]
-	projectile.rotation = player_projectile_dict["FILENAME"]
+	projectile.rotation = player_projectile_dict["ROTATION"]
 	
 	Utils.get_scene_node().add_child(projectile)

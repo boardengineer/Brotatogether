@@ -24,6 +24,7 @@ func _init():
 	
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
 	
+	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_projectile.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/projectile.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/coop_service.gd")
