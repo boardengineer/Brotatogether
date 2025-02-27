@@ -357,8 +357,8 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 	
 	for network_id in client_player_projectiles:
 		if not current_projectiles.has(network_id):
-			current_projectiles.erase(network_id)
 			client_player_projectiles[network_id].queue_free()
+			client_player_projectiles.erase(network_id)
 
 
 func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
@@ -370,5 +370,6 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	projectile.global_position.x = player_projectile_dict["X_POS"]
 	projectile.global_position.y = player_projectile_dict["Y_POS"]
 	projectile.rotation = player_projectile_dict["ROTATION"]
-	
+	projectile.enable_physics_process = false
+	projectile.weapon_stats = WeaponStats.new()
 	Utils.get_scene_node().add_child(projectile)
