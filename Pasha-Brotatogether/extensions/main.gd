@@ -17,6 +17,7 @@ var my_player_index
 var client_enemies = {}
 var client_births = {}
 var client_player_projectiles = {}
+var client_items = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 
@@ -86,6 +87,7 @@ func _send_game_state() -> void:
 	
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
+	state_dict["ITEMS"] = _host_items_array()
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -111,6 +113,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	
 	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
 	_update_births(state_dict["BIRTHS"])
+	_update_items(state_dict["ITEMS"])
 
 
 func _send_client_position() -> void:
@@ -373,3 +376,44 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	projectile.enable_physics_process = false
 	projectile.weapon_stats = WeaponStats.new()
 	Utils.get_scene_node().add_child(projectile)
+
+
+func _host_items_array() -> Array:
+	var items_array : Array = []
+	for item in _active_golds:
+		var item_dict = {}
+		item_dict["NETWORK_ID"] = item.network_id
+		item_dict["X_POS"] = item.global_position.x
+		item_dict["Y_POS"] = item.global_position.y
+		item_dict["X_SCALE"] = item.scale.x
+		item_dict["Y_SCALE"] = item.scale.y
+		items_array.push_back(item_dict)
+	return items_array
+
+
+func _update_items(items_array : Array) -> void:
+	var current_items = {}
+	
+	for item_dict in items_array:
+		var network_id = item_dict["NETWORK_ID"]
+		current_items[network_id] = true
+		if client_items.has(network_id):
+			var item = client_items[network_id]
+			item.global_position.x = item_dict["X_POS"]
+			item.global_position.y = item_dict["Y_POS"]
+		else:
+			call_deferred("_spawn_item", item_dict)
+	
+	for network_id in client_items:
+		if not current_items.has(network_id):
+			client_items[network_id].queue_free()
+			client_items.erase(network_id)
+
+
+func _spawn_item(item_dict : Dictionary) -> void:
+	var network_id = item_dict["NETWORK_ID"]
+	var gold = gold_scene.instance()
+	gold.set_texture(gold_sprites[Utils.randi() % 11])
+	_materials_container.add_child(gold)
+	_active_golds.push_back(gold)
+	client_items[network_id] = gold
