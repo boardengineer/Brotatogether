@@ -414,6 +414,9 @@ func _spawn_item(item_dict : Dictionary) -> void:
 	var network_id = item_dict["NETWORK_ID"]
 	var gold = gold_scene.instance()
 	gold.set_texture(gold_sprites[Utils.randi() % 11])
+	gold.scale.x = item_dict["X_SCALE"]
+	gold.scale.y = item_dict["Y_SCALE"]
 	_materials_container.add_child(gold)
 	_active_golds.push_back(gold)
 	client_items[network_id] = gold
+	gold.call_deferred("show")
