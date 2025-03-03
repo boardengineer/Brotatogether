@@ -18,6 +18,7 @@ var client_enemies = {}
 var client_births = {}
 var client_player_projectiles = {}
 var client_items = {}
+var client_consumables = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 
@@ -420,3 +421,50 @@ func _spawn_item(item_dict : Dictionary) -> void:
 	_active_golds.push_back(gold)
 	client_items[network_id] = gold
 	gold.call_deferred("show")
+
+
+func _host_consumables_array() -> Array:
+	var consumables_array = []
+	
+	for consumable in _consumables_container.get_children():
+		if consumable.visible:
+			var consumable_dict = {}
+			consumable_dict["NETWORK_ID"] = consumable.network_id
+			consumable_dict["X_POS"] = consumable.global_position.x
+			consumable_dict["Y_POS"] = consumable.global_position.y
+			consumable_dict["LOAD_PATH"] = consumable.consumable_data.icon.load_path
+			consumables_array.push_back(consumable_dict)
+	
+	return consumables_array
+
+
+func _update_consumables(consumables_array : Array) -> void:
+	var current_consumables = {}
+	
+	for consumable_dict in consumables_array:
+		var network_id = consumable_dict["NETWORK_ID"]
+		current_consumables[network_id] = true
+		if client_consumables.has(network_id):
+			var consumable = client_consumables[network_id]
+			consumable.global_position.x = consumable_dict["X_POS"]
+			consumable.global_position.y = consumable_dict["Y_POS"]
+		else:
+			call_deferred("spawn_consumable", consumable_dict)
+	
+	for network_id in client_consumables:
+		if not current_consumables.has(network_id):
+			client_consumables[network_id].queue_free()
+			client_consumables.erase(network_id)
+
+
+func spawn_consumable(consumable_dict : Dictionary) -> void:
+	var consumable:Consumable = _consumable_pool.pop_back()
+	if consumable == null:
+		consumable = consumable_scene.instance()
+		_consumables_container.add_child(consumable)
+	
+	var file_path = consumable_dict["LOAD_PATH"]
+	consumable.set_texture(load(file_path))
+	consumable.global_position.x = consumable_dict["X_POS"]
+	consumable.global_position.y = consumable_dict["Y_POS"]
+	consumable.call_deferred("show")
