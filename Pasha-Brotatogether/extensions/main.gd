@@ -89,6 +89,7 @@ func _send_game_state() -> void:
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
+	state_dict["CONSUMABLES"] = _host_consumables_array()
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -110,11 +111,14 @@ func _state_update(state_dict : Dictionary) -> void:
 	
 	for enemy_id in state_dict["BATCHED_ENEMY_DEATHS"]:
 		if client_enemies.has(enemy_id):
-			client_enemies[enemy_id].die()
+			if not client_enemies[enemy_id].dead:
+				client_enemies[enemy_id].die()
+			client_enemies.erase(enemy_id)
 	
 	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
 	_update_births(state_dict["BIRTHS"])
 	_update_items(state_dict["ITEMS"])
+	_update_consumables(state_dict["CONSUMABLES"])
 
 
 func _send_client_position() -> void:
@@ -468,3 +472,4 @@ func spawn_consumable(consumable_dict : Dictionary) -> void:
 	consumable.global_position.x = consumable_dict["X_POS"]
 	consumable.global_position.y = consumable_dict["Y_POS"]
 	consumable.call_deferred("show")
+	client_consumables[consumable_dict["NETWORK_ID"]] = consumable
