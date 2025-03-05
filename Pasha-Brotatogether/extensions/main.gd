@@ -90,6 +90,9 @@ func _send_game_state() -> void:
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
 	state_dict["CONSUMABLES"] = _host_consumables_array()
+	state_dict["NEUTRALS"] = _host_neutrals_array()
+	state_dict["STRUCTURES"] = _host_structures_array()
+	state_dict["ENEMY_PROJECTILES"] = _host_enemy_projectiles_array()
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -119,6 +122,9 @@ func _state_update(state_dict : Dictionary) -> void:
 	_update_births(state_dict["BIRTHS"])
 	_update_items(state_dict["ITEMS"])
 	_update_consumables(state_dict["CONSUMABLES"])
+	_update_neutrals(state_dict["NEUTRALS"])
+	_update_structures(state_dict["STRUCTURES"])
+	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"])
 
 
 func _send_client_position() -> void:
@@ -453,7 +459,7 @@ func _update_consumables(consumables_array : Array) -> void:
 			consumable.global_position.x = consumable_dict["X_POS"]
 			consumable.global_position.y = consumable_dict["Y_POS"]
 		else:
-			call_deferred("spawn_consumable", consumable_dict)
+			call_deferred("_spawn_consumable", consumable_dict)
 	
 	for network_id in client_consumables:
 		if not current_consumables.has(network_id):
@@ -461,7 +467,7 @@ func _update_consumables(consumables_array : Array) -> void:
 			client_consumables.erase(network_id)
 
 
-func spawn_consumable(consumable_dict : Dictionary) -> void:
+func _spawn_consumable(consumable_dict : Dictionary) -> void:
 	var consumable:Consumable = _consumable_pool.pop_back()
 	if consumable == null:
 		consumable = consumable_scene.instance()
@@ -473,3 +479,56 @@ func spawn_consumable(consumable_dict : Dictionary) -> void:
 	consumable.global_position.y = consumable_dict["Y_POS"]
 	consumable.call_deferred("show")
 	client_consumables[consumable_dict["NETWORK_ID"]] = consumable
+
+
+func _host_neutrals_array() -> Array:
+	var neutrals_array = []
+	
+	for neutral in _entity_spawner.neutrals:
+		var neutral_dict = {}
+		# TODO: finish this
+		neutrals_array.push_back(neutral_dict)
+	
+	return neutrals_array
+
+
+func _update_neutrals(neutrals_array : Array) -> void:
+	# TODO finish this
+	pass
+
+
+func _spawn_neutral(neutral_dict : Dictionary) -> void:
+	# TODO finish this
+	pass
+
+
+func _host_structures_array() -> Array:
+	var structures_array = []
+	# TODO finish this
+	return structures_array
+
+
+func _update_structures(structures_array : Array) -> void:
+	# TODO finish this
+	pass
+
+
+func _spawn_structure(structure_dict : Dictionary) -> void:
+	# TODO finish this
+	pass
+
+
+func _host_enemy_projectiles_array() -> Array:
+	var enemy_projectiles_array = []
+	# TODO finish this
+	return enemy_projectiles_array
+
+
+func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
+	# TODO finish this
+	pass
+
+
+func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
+	# TODO finish this
+	pass
