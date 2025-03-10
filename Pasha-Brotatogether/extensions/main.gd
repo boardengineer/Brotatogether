@@ -19,6 +19,7 @@ var client_births = {}
 var client_player_projectiles = {}
 var client_items = {}
 var client_consumables = {}
+var client_neutrals = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 
@@ -486,15 +487,30 @@ func _host_neutrals_array() -> Array:
 	
 	for neutral in _entity_spawner.neutrals:
 		var neutral_dict = {}
-		# TODO: finish this
+		neutral_dict["NETWORK_ID"] = neutral.network_id
+		neutral_dict["X_POS"] = neutral.global_position.x
+		neutral_dict["Y_POS"] = neutral.global_position.y
 		neutrals_array.push_back(neutral_dict)
 	
 	return neutrals_array
 
 
 func _update_neutrals(neutrals_array : Array) -> void:
-	# TODO finish this
-	pass
+	var current_neutrals = {}
+	
+	for neutral_dict in neutrals_array:
+		var network_id = neutral_dict["NETWORK_ID"]
+		current_neutrals[network_id] = true
+		if client_neutrals.has(network_id):
+			var neutral = client_neutrals[network_id]
+			neutral.global_position.x = neutral_dict["X_POS"]
+			neutral.global_position.y = neutral_dict["Y_POS"]
+		else:
+			call_deferred("_spawn_neutral", neutral_dict)
+	
+	for network_id in client_neutrals:
+		if not network_id in current_neutrals:
+			pass
 
 
 func _spawn_neutral(neutral_dict : Dictionary) -> void:
