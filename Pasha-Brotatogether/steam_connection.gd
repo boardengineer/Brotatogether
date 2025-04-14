@@ -216,7 +216,7 @@ func _ready():
 	steam_id = Steam.getSteamID()
 
 
-func _physics_process(delta : float) -> void:
+func _physics_process(_delta : float) -> void:
 	Steam.run_callbacks()
 	
 	if game_lobby_id > 0:

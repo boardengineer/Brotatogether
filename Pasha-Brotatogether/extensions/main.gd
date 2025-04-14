@@ -128,6 +128,34 @@ func _state_update(state_dict : Dictionary) -> void:
 	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"])
 
 
+#func get_game_state() -> PoolByteArray:
+#	var buffer = StreamPeerBuffer.new()
+#
+#	if "/root/Main":
+#		var main = $"/root/Main"
+#
+#		if main:
+#			get_players_state(buffer) ## DONE
+#			get_enemies_state(buffer)  ## DONE
+#			get_births_state(buffer) ## DONE
+#			get_items_state(buffer) ## DONE
+#			get_projectiles_state(buffer) ## DONE
+#			get_consumables_state(buffer) ## DONE
+#			get_neutrals_state(buffer) ## DONE
+#			get_structures_state(buffer) ## DONE
+#			get_enemy_projectiles(buffer) ## DONE
+#			get_deaths(buffer) ## DONE
+#			get_enemy_damages(buffer)
+#			get_enemy_flashes(buffer)
+#			get_batched_floating_text(buffer)
+#			get_hit_effects(buffer)
+#
+#			buffer.put_float(main._wave_timer.time_left)
+#			buffer.put_32(RunData.bonus_gold)
+#
+#	return buffer.data_array
+
+
 func _send_client_position() -> void:
 	steam_connection.send_client_position(_dictionary_for_player(_players[my_player_index]))
 
@@ -469,7 +497,7 @@ func _update_consumables(consumables_array : Array) -> void:
 
 
 func _spawn_consumable(consumable_dict : Dictionary) -> void:
-	var consumable:Consumable = _consumable_pool.pop_back()
+	var consumable:Consumable = get_node_from_pool(consumable_scene.resource_path)
 	if consumable == null:
 		consumable = consumable_scene.instance()
 		_consumables_container.add_child(consumable)
