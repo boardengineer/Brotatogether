@@ -316,7 +316,7 @@ func _on_EndWaveTimer_timeout()->void :
 func _host_births_array() -> Array:
 	var births_array = []
 	
-	for birth in _entity_spawner.births:
+	for birth in _births_container.get_children():
 		var birth_dict = {}
 		
 		birth_dict["NETWORK_ID"] = birth.network_id
@@ -324,13 +324,15 @@ func _host_births_array() -> Array:
 		birth_dict["X_POS"] = birth.global_position.x
 		birth_dict["Y_POS"] = birth.global_position.y
 		
-		birth_dict["COLOR_R"] = birth.color.r
-		birth_dict["COLOR_G"] = birth.color.g
-		birth_dict["COLOR_B"] = birth.color.b
-		birth_dict["COLOR_A"] = birth.color.a
+		birth_dict["COLOR_R"] = birth._color.r
+		birth_dict["COLOR_G"] = birth._color.g
+		birth_dict["COLOR_B"] = birth._color.b
+		birth_dict["COLOR_A"] = birth._color.a
+		birth_dict["TYPE"] = birth.type
 		
 		births_array.push_back(birth_dict)
 	
+	print_debug("sending births ", births_array)
 	return births_array
 
 
@@ -347,17 +349,15 @@ func _update_births(births_array : Array) -> void:
 		else:
 			birth = ENTITY_BIRTH_SCENE.instance()
 			birth.network_id = network_id
-			_entities_container.add_child(birth)
+			_births_container.add_child(birth)
 			client_births[network_id] = birth
-			birth.start()
+			birth.start(birth_dict["TYPE"], ENTITY_BIRTH_SCENE, Vector2(birth_dict["X_POS"], birth_dict["Y_POS"]))
 		
-		birth.color.r = birth_dict["COLOR_R"]
-		birth.color.g = birth_dict["COLOR_G"]
-		birth.color.b = birth_dict["COLOR_B"]
-		birth.color.a = birth_dict["COLOR_A"]
-		
-		birth.global_position.x = birth_dict["X_POS"]
-		birth.global_position.y = birth_dict["Y_POS"]
+		# TODO, I don't think we need these colors anymore
+		birth._color.r = birth_dict["COLOR_R"]
+		birth._color.g = birth_dict["COLOR_G"]
+		birth._color.b = birth_dict["COLOR_B"]
+		birth._color.a = birth_dict["COLOR_A"]
 	
 	for network_id in client_births:
 		var old_birth = client_births[network_id]
