@@ -332,7 +332,6 @@ func _host_births_array() -> Array:
 		
 		births_array.push_back(birth_dict)
 	
-	print_debug("sending births ", births_array)
 	return births_array
 
 
@@ -368,10 +367,10 @@ func _update_births(births_array : Array) -> void:
 
 func _host_player_projectiles_array() -> Array:
 	var player_projectiles_array = []
-	var container_scene = Utils.get_scene_node()
+	var container_scene = _player_projectiles
 	
 	for child in container_scene.get_children():
-		if child is PlayerProjectile:
+		if child is PlayerProjectile and child._hitbox.active:
 			var projectile_dict = {}
 			projectile_dict["NETWORK_ID"] = child.network_id
 			projectile_dict["X_POS"] = child.global_position.x
@@ -400,7 +399,8 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 	
 	for network_id in client_player_projectiles:
 		if not current_projectiles.has(network_id):
-			client_player_projectiles[network_id].queue_free()
+			if is_instance_valid(client_player_projectiles[network_id]):
+				client_player_projectiles[network_id].queue_free()
 			client_player_projectiles.erase(network_id)
 
 
@@ -412,10 +412,20 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	
 	projectile.global_position.x = player_projectile_dict["X_POS"]
 	projectile.global_position.y = player_projectile_dict["Y_POS"]
+	projectile.spawn_position.x = player_projectile_dict["X_POS"]
+	projectile.spawn_position.y = player_projectile_dict["Y_POS"]
+
+	# The projectile will despawn if max_range is too low, the host will 
+	# erase the projectile at the right time so set max range very high to
+	# disable client-side logic in this regard.
+	projectile._max_range = 9999
+ 
 	projectile.rotation = player_projectile_dict["ROTATION"]
-	projectile.enable_physics_process = false
-	projectile.weapon_stats = WeaponStats.new()
-	Utils.get_scene_node().add_child(projectile)
+
+	_player_projectiles.add_child(projectile)
+
+	projectile.set_physics_process(false)
+	projectile.show()
 
 
 func _host_items_array() -> Array:
