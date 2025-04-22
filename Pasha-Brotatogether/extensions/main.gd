@@ -22,7 +22,7 @@ var client_consumables = {}
 var client_neutrals = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
-
+const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -552,8 +552,13 @@ func _update_neutrals(neutrals_array : Array) -> void:
 
 
 func _spawn_neutral(neutral_dict : Dictionary) -> void:
-	# TODO finish this
-	pass
+	var neutral = TREE_SCENE.instance()
+	neutral.global_position.x = neutral_dict["X_POS"]
+	neutral.global_position.y = neutral_dict["Y_POS"]
+	
+	client_neutrals[neutral_dict["NETWORK_ID"]] = neutral
+	
+	Utils.get_scene_node().add_child(neutral)
 
 
 func _host_structures_array() -> Array:
