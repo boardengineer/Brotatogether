@@ -17,9 +17,11 @@ var my_player_index
 var client_enemies = {}
 var client_births = {}
 var client_player_projectiles = {}
+var client_enemy_projectiles = {}
 var client_items = {}
 var client_consumables = {}
 var client_neutrals = {}
+var client_structures = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
@@ -367,9 +369,8 @@ func _update_births(births_array : Array) -> void:
 
 func _host_player_projectiles_array() -> Array:
 	var player_projectiles_array = []
-	var container_scene = _player_projectiles
 	
-	for child in container_scene.get_children():
+	for child in _player_projectiles.get_children():
 		if child is PlayerProjectile and child._hitbox.active:
 			var projectile_dict = {}
 			projectile_dict["NETWORK_ID"] = child.network_id
@@ -548,7 +549,8 @@ func _update_neutrals(neutrals_array : Array) -> void:
 	
 	for network_id in client_neutrals:
 		if not network_id in current_neutrals:
-			pass
+			client_neutrals[network_id].queue_free()
+			client_neutrals.erase(network_id)
 
 
 func _spawn_neutral(neutral_dict : Dictionary) -> void:
@@ -563,31 +565,99 @@ func _spawn_neutral(neutral_dict : Dictionary) -> void:
 
 func _host_structures_array() -> Array:
 	var structures_array = []
-	# TODO finish this
+	
+	for structure in _entity_spawner.structures:
+		var structure_dict = {}
+		
+		structure_dict["NETWORK_ID"] = structure.network_id
+		structure_dict["FILENAME"] = structure.filename
+		structure_dict["X_POS"] = structure.position.x
+		structure_dict["Y_POS"] = structure.position.y
+		structures_array.push_back(structure_dict)
+		
 	return structures_array
 
 
 func _update_structures(structures_array : Array) -> void:
-	# TODO finish this
-	pass
+	var current_structures = {}
+	
+	for structure_dict in structures_array:
+		var network_id = structure_dict["NETWORK_ID"]
+		current_structures[network_id] = true
+		if client_structures.has(network_id):
+			var structure = client_structures[network_id]
+		else:
+			call_deferred("_spawn_structure", structure_dict)
+	
+	for network_id in client_structures:
+		if not network_id in current_structures:
+			client_structures[network_id].queue_free()
+			client_structures.erase(network_id)
 
 
 func _spawn_structure(structure_dict : Dictionary) -> void:
-	# TODO finish this
-	pass
+	var filename = structure_dict["FILENAME"]
+	var structure = load(filename).instance()
+	
+	structure.position.x = structure_dict["X_POS"]
+	structure.position.y = structure_dict["Y_POS"]
+	
+	client_structures[structure_dict["NETWORK_ID"]] = structure
+	
+	Utils.get_scene_node().add_child(structure)
 
 
 func _host_enemy_projectiles_array() -> Array:
 	var enemy_projectiles_array = []
-	# TODO finish this
+	
+	for enemy_projectile in _enemy_projectiles.get_children():
+		if enemy_projectile is Projectile and enemy_projectile._hitbox.active:
+			var projectile_dict = {}
+			projectile_dict["NETWORK_ID"] = enemy_projectile.network_id
+			projectile_dict["X_POS"] = enemy_projectile.global_position.x
+			projectile_dict["Y_POS"] = enemy_projectile.global_position.y
+			projectile_dict["ROTATION"] = enemy_projectile.rotation
+			projectile_dict["FILENAME"] = enemy_projectile.filename
+			enemy_projectiles_array.push_back(projectile_dict)
 	return enemy_projectiles_array
 
 
 func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
-	# TODO finish this
-	pass
+	var current_enemy_projectiles = {}
+	for enemy_projectile_dict in enemy_projectiles_array:
+		var network_id = enemy_projectile_dict["NETWORK_ID"]
+		current_enemy_projectiles[network_id] = true
+		
+		if client_enemy_projectiles.has(network_id):
+			var enemy_projectile = client_enemy_projectiles[network_id]
+			
+			enemy_projectile.global_position.x = enemy_projectile_dict["X_POS"]
+			enemy_projectile.global_position.y = enemy_projectile_dict["Y_POS"]
+			enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
+		else:
+			call_deferred("_spawn_enemy_projectile", enemy_projectile_dict)
+	
+	for network_id in client_enemy_projectiles:
+		if not current_enemy_projectiles.has(network_id):
+			if is_instance_valid(client_enemy_projectiles[network_id]):
+				client_enemy_projectiles[network_id].queue_free()
+			client_enemy_projectiles.erase(network_id)
 
 
 func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
-	# TODO finish this
-	pass
+	var network_id = enemy_projectile_dict["NETWORK_ID"]
+	var enemy_projectile = load(enemy_projectile_dict["FILENAME"]).instance()
+	client_enemy_projectiles[network_id] = enemy_projectile
+	
+	enemy_projectile.global_position.x = enemy_projectile_dict["X_POS"]
+	enemy_projectile.global_position.y = enemy_projectile_dict["Y_POS"]
+	
+	enemy_projectile.spawn_position.x = enemy_projectile_dict["X_POS"]
+	enemy_projectile.spawn_position.y = enemy_projectile_dict["Y_POS"]
+	
+	enemy_projectile._max_range = 9999
+	enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
+	
+	_enemy_projectiles.add_child(enemy_projectile)
+	_enemy_projectiles.set_physics_process(false)
+	_enemy_projectiles.show()
