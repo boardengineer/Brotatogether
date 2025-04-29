@@ -18,6 +18,8 @@ func _init():
 	
 	# Add extensions
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/enemies/enemy.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "entities/units/unit/unit.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "entities/structures/turret/turret.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/entity.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/entity_birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/player_movement_behavior.gd")

@@ -25,6 +25,7 @@ var client_structures = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
+const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -601,6 +602,8 @@ func _spawn_structure(structure_dict : Dictionary) -> void:
 	
 	structure.position.x = structure_dict["X_POS"]
 	structure.position.y = structure_dict["Y_POS"]
+	
+	structure.stats = CLIENT_TURRET_STATS
 	
 	client_structures[structure_dict["NETWORK_ID"]] = structure
 	
