@@ -320,6 +320,8 @@ func _host_births_array() -> Array:
 	var births_array = []
 	
 	for birth in _births_container.get_children():
+		if birth._collision_shape.disabled:
+			continue
 		var birth_dict = {}
 		
 		birth_dict["NETWORK_ID"] = birth.network_id
