@@ -681,7 +681,7 @@ func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
 	_enemy_projectiles.show()
 
 
-func _update_batched_hit_effects(batched_hit_effects_array : Array) -> void:
+func _update_batched_hit_particles(batched_hit_effects_array : Array) -> void:
 	for hit_effect_dict in batched_hit_effects_array:
 		var effect_pos = Vector2(hit_effect_dict["X_POS"], hit_effect_dict["Y_POS"])
 		var direction = Vector2(hit_effect_dict["X_DIR"], hit_effect_dict["Y_DIR"])
@@ -689,7 +689,7 @@ func _update_batched_hit_effects(batched_hit_effects_array : Array) -> void:
 		_effects_manager.play_hit_effect(effect_pos, direction, effect_scale)
 
 
-func _update_batched_hit_particles(batched_hit_particles_array : Array) -> void:
+func _update_batched_hit_effects(batched_hit_particles_array : Array) -> void:
 	for hit_particles_dict in batched_hit_particles_array:
 		var effect_pos = Vector2(hit_particles_dict["X_POS"], hit_particles_dict["Y_POS"])
 		var effect_scale = hit_particles_dict["SCALE"]
@@ -700,6 +700,6 @@ func _update_batched_floating_text(batched_floating_text_array : Array) -> void:
 	for floating_text_dict in batched_floating_text_array:
 		var value = floating_text_dict["VALUE"]
 		var text_pos = Vector2(floating_text_dict["X_POS"], floating_text_dict["Y_POS"])
-		var color = Color8(floating_text_dict["R_COLOR"], floating_text_dict["G_COLOR"], floating_text_dict["B_COLOR"] ,floating_text_dict["A_POS"])
+		var color = Color8(floating_text_dict["R_COLOR"], floating_text_dict["G_COLOR"], floating_text_dict["B_COLOR"] ,floating_text_dict["A_COLOR"])
 		var duration = floating_text_dict["DURATION"]
 		_floating_text_manager.display(value, text_pos, color, null, duration)
