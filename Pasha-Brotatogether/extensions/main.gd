@@ -90,6 +90,15 @@ func _send_game_state() -> void:
 	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
 	brotatogether_options.batched_enemy_deaths.clear()
 	
+	state_dict["BATCHED_HIT_EFFECTS"] = brotatogether_options.batched_hit_effects.duplicate()
+	brotatogether_options.batched_hit_effects.clear()
+	
+	state_dict["BATCHED_HIT_PARTICLES"] = brotatogether_options.batched_hit_particles.duplicate()
+	brotatogether_options.batched_hit_particles.clear()
+	
+	state_dict["BATCHED_FLOATING_TEXT"] = brotatogether_options.batched_floating_text.duplicate()
+	brotatogether_options.batched_floating_text.clear()
+	
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
@@ -129,6 +138,10 @@ func _state_update(state_dict : Dictionary) -> void:
 	_update_neutrals(state_dict["NEUTRALS"])
 	_update_structures(state_dict["STRUCTURES"])
 	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"])
+	
+	_update_batched_hit_effects(state_dict["BATCHED_HIT_EFFECTS"])
+	_update_batched_hit_particles(state_dict["BATCHED_HIT_PARTICLES"])
+	_update_batched_floating_text(state_dict["BATCHED_FLOATING_TEXT"])
 
 
 #func get_game_state() -> PoolByteArray:
@@ -151,10 +164,10 @@ func _state_update(state_dict : Dictionary) -> void:
 #			get_enemy_damages(buffer)
 #			get_enemy_flashes(buffer)
 #			get_batched_floating_text(buffer)
-#			get_hit_effects(buffer)
+#			get_hit_effects(buffer) 
 #
 #			buffer.put_float(main._wave_timer.time_left)
-#			buffer.put_32(RunData.bonus_gold)
+#			buffer.put_32(RunData.bonus_gold)  
 #
 #	return buffer.data_array
 
@@ -666,3 +679,27 @@ func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
 	_enemy_projectiles.add_child(enemy_projectile)
 	_enemy_projectiles.set_physics_process(false)
 	_enemy_projectiles.show()
+
+
+func _update_batched_hit_effects(batched_hit_effects_array : Array) -> void:
+	for hit_effect_dict in batched_hit_effects_array:
+		var effect_pos = Vector2(hit_effect_dict["X_POS"], hit_effect_dict["Y_POS"])
+		var direction = Vector2(hit_effect_dict["X_DIR"], hit_effect_dict["Y_DIR"])
+		var effect_scale = hit_effect_dict["SCALE"]
+		_effects_manager.play_hit_effect(effect_pos, direction, effect_scale)
+
+
+func _update_batched_hit_particles(batched_hit_particles_array : Array) -> void:
+	for hit_particles_dict in batched_hit_particles_array:
+		var effect_pos = Vector2(hit_particles_dict["X_POS"], hit_particles_dict["Y_POS"])
+		var effect_scale = hit_particles_dict["SCALE"]
+		_effects_manager.play_hit_particles(effect_pos, Vector2.ZERO, effect_scale)
+
+
+func _update_batched_floating_text(batched_floating_text_array : Array) -> void:
+	for floating_text_dict in batched_floating_text_array:
+		var value = floating_text_dict["VALUE"]
+		var text_pos = Vector2(floating_text_dict["X_POS"], floating_text_dict["Y_POS"])
+		var color = Color8(floating_text_dict["R_COLOR"], floating_text_dict["G_COLOR"], floating_text_dict["B_COLOR"] ,floating_text_dict["A_POS"])
+		var duration = floating_text_dict["DURATION"]
+		_floating_text_manager.display(value, text_pos, color, null, duration)

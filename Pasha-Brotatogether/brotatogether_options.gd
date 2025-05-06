@@ -9,3 +9,6 @@ var in_multiplayer_game : bool = false
 var current_network_id : int = 0
 
 var batched_enemy_deaths = {}
+var batched_floating_text = []
+var batched_hit_particles = []
+var batched_hit_effects = []

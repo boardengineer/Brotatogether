@@ -24,8 +24,10 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/entity_birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/player_movement_behavior.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "items/global/item.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	
+	ModLoaderMod.install_script_extension(ext_dir + "items/global/item.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_projectile.gd")
@@ -41,6 +43,9 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/coop_shop.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/global/focus_emulator.gd")
+	
+	
+	ModLoaderMod.install_script_extension(ext_dir + "visual_effects/floating_text/floating_text_manager.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "weapons/weapon.gd")
 	
