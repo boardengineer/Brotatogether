@@ -79,7 +79,7 @@ func _send_game_state() -> void:
 	var players = []
 	for player_index in _players.size():
 		var player = _players[player_index]
-		players.push_back(_dictionary_for_player(player))
+		players.push_back(_dictionary_for_player(player, player_index))
 	state_dict["PLAYERS"] = players
 	
 	var enemies = []
@@ -161,22 +161,21 @@ func _state_update(state_dict : Dictionary) -> void:
 #			get_structures_state(buffer) ## DONE
 #			get_enemy_projectiles(buffer) ## DONE
 #			get_deaths(buffer) ## DONE
-#			get_enemy_damages(buffer)
-#			get_enemy_flashes(buffer)
-#			get_batched_floating_text(buffer)
-#			get_hit_effects(buffer) 
+#			get_enemy_flashes(buffer) 
+#			get_batched_floating_text(buffer) ## DONE
+#			get_hit_effects(buffer)  ## DONE
 #
 #			buffer.put_float(main._wave_timer.time_left)
-#			buffer.put_32(RunData.bonus_gold)  
+#			buffer.put_32(RunData.bonus_gold) ## DONE
 #
 #	return buffer.data_array
 
 
 func _send_client_position() -> void:
-	steam_connection.send_client_position(_dictionary_for_player(_players[my_player_index]))
+	steam_connection.send_client_position(_dictionary_for_player(_players[my_player_index], my_player_index))
 
 
-func _dictionary_for_player(player) -> Dictionary:
+func _dictionary_for_player(player, player_index) -> Dictionary:
 	var position = player.position
 	
 	var player_dict = {
@@ -186,7 +185,7 @@ func _dictionary_for_player(player) -> Dictionary:
 		"MOVE_X" : player._current_movement.x,
 		"MOVE_Y" : player._current_movement.y,
 		
-		"SPRITE_SCALE_X": player.sprite.scale.x 
+		"SPRITE_SCALE_X": player.sprite.scale.x,
 	}
 	
 	var weapons_array : Array = []
@@ -203,26 +202,55 @@ func _dictionary_for_player(player) -> Dictionary:
 		weapons_array.push_back(weapon_dict)
 	player_dict["WEAPONS"] = weapons_array
 	
+	if steam_connection.is_host():
+		player_dict["PLAYER_GOLD"] = RunData.players_data[player_index].gold
+		player_dict["PLAYER_CURRENT_XP"] = RunData.players_data[player_index].current_xp
+		player_dict["PLAYER_NEXT_LEVEL_XP"] = RunData.get_next_level_xp_needed(player_index)
+		player_dict["CURRENT_HP"] = player.current_stats.health
+		player_dict["MAX_HP"] = player.max_stats.health
+		
 	return player_dict
 
 
 func _update_player_position(player_dict : Dictionary, player_index : int) -> void:
+	var player = _players[player_index]
 	if player_index != my_player_index:
-		_players[player_index].position.x = player_dict["X_POS"]
-		_players[player_index].position.y = player_dict["Y_POS"]
+		player.position.x = player_dict["X_POS"]
+		player.position.y = player_dict["Y_POS"]
 		
-		_players[player_index].sprite.scale.x  = player_dict["SPRITE_SCALE_X"]
+		player.sprite.scale.x  = player_dict["SPRITE_SCALE_X"]
 		
-		_players[player_index]._current_movement.x  = player_dict["MOVE_X"]
-		_players[player_index]._current_movement.y  = player_dict["MOVE_Y"]
+		player._current_movement.x  = player_dict["MOVE_X"]
+		player._current_movement.y  = player_dict["MOVE_Y"]
 		
-		_players[player_index].update_animation(_players[player_index]._current_movement)
+		player.update_animation(_players[player_index]._current_movement)
 	
 	if not steam_connection.is_host():
+		var current_xp = player_dict["PLAYER_CURRENT_XP"]
+		var next_level_xp = player_dict["PLAYER_NEXT_LEVEL_XP"]
+		RunData.players_data[player_index].current_xp = current_xp
+		RunData.emit_signal("xp_added", current_xp, next_level_xp, player_index)
+		
+		var current_hp = player_dict["CURRENT_HP"]
+		var max_hp = player_dict["MAX_HP"]
+		var should_send_hp_signal = false
+		if current_hp != player.current_stats.health:
+			should_send_hp_signal = true
+		player.current_stats.health = current_hp
+		if max_hp != player.max_stats.health:
+			should_send_hp_signal = true
+		player.max_stats.health = max_hp
+		if should_send_hp_signal:
+			player.emit_signal("health_updated", player, player.current_stats.health, player.max_stats.health)
+		
+		var current_gold = player_dict["PLAYER_GOLD"]
+		RunData.players_data[player_index].gold = current_gold
+		RunData.emit_signal("gold_changed", current_gold, player_index)
+		
 		var weapons_array = player_dict["WEAPONS"]
 		for weapon_index in weapons_array.size():
 			var weapon_dict = weapons_array[weapon_index]
-			var weapon = _players[player_index].current_weapons[weapon_index]
+			var weapon = player.current_weapons[weapon_index]
 			
 			weapon.sprite.position.x = weapon_dict["X_POS"]
 			weapon.sprite.position.y = weapon_dict["Y_POS"]
