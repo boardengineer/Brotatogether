@@ -209,6 +209,9 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 		player_dict["CURRENT_HP"] = player.current_stats.health
 		player_dict["MAX_HP"] = player.max_stats.health
 		
+		var things_to_process = _things_to_process_player_containers[player_index]
+		player_dict["NUM_UPGRADES"] = things_to_process.upgrades._elements.size()
+		
 	return player_dict
 
 
@@ -246,6 +249,10 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 		var current_gold = player_dict["PLAYER_GOLD"]
 		RunData.players_data[player_index].gold = current_gold
 		RunData.emit_signal("gold_changed", current_gold, player_index)
+		
+		var things_to_process = _things_to_process_player_containers[player_index]
+		if player_dict["NUM_UPGRADES"] > things_to_process.upgrades._elements.size():
+			things_to_process.upgrades.add_element(ItemService.get_icon("icon_upgrade_to_process"), 1)
 		
 		var weapons_array = player_dict["WEAPONS"]
 		for weapon_index in weapons_array.size():
