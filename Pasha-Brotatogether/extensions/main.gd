@@ -7,6 +7,9 @@ var steam_connection
 var brotatogether_options
 var in_multiplayer_game = false
 
+# If true, the steam logic will be skipped to avoid duplicate rpc chains.
+var is_self_call = false
+
 var player_in_scene = [true, false, false, false]
 var waiting_to_start_round = false
 
@@ -26,6 +29,7 @@ var client_structures = {}
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
+const ENABLE_DEBUG_KEYS = true
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -106,6 +110,7 @@ func _send_game_state() -> void:
 	state_dict["NEUTRALS"] = _host_neutrals_array()
 	state_dict["STRUCTURES"] = _host_structures_array()
 	state_dict["ENEMY_PROJECTILES"] = _host_enemy_projectiles_array()
+	state_dict["UPGRADE_MENU_STATUS"] = _host_menu_status()
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -142,6 +147,16 @@ func _state_update(state_dict : Dictionary) -> void:
 	_update_batched_hit_effects(state_dict["BATCHED_HIT_EFFECTS"])
 	_update_batched_hit_particles(state_dict["BATCHED_HIT_PARTICLES"])
 	_update_batched_floating_text(state_dict["BATCHED_FLOATING_TEXT"])
+	_update_menu(state_dict["UPGRADE_MENU_STATUS"])
+
+
+func _input(event) -> void: 
+	if not ENABLE_DEBUG_KEYS:
+		return
+	if event is InputEventKey:
+		if event.scancode == KEY_F1:
+			on_levelled_up(0)
+			print_debug("pressed key")
 
 
 #func get_game_state() -> PoolByteArray:
@@ -344,22 +359,22 @@ func _host_starts_round() -> void:
 
 func _on_WaveTimer_timeout() -> void:
 	if in_multiplayer_game:
-		print_debug("wave timer ended")
-#		if steam_connection.is_host():
-#			._on_WaveTimer_timeout()
-		# TODO wave cleanup and stuff
-		_end_wave_timer.start()
+		if steam_connection.is_host():
+			._on_WaveTimer_timeout()
+			return
+		else:
+			_ui_dim_screen.dim()
+			_wave_cleared_label.hide()
+			_wave_timer_label.hide()
+			_hud.hide()
 	else:
 		._on_WaveTimer_timeout()
 
 
 func _on_EndWaveTimer_timeout()->void :
 	if in_multiplayer_game:
-		print_debug("post-wave timer ended")
-#		if steam_connection.is_host():
-#			._on_EndWaveTimer_timeout()
-		# TODO process upgrades and items
-		_change_scene(RunData.get_shop_scene_path())
+		if steam_connection.is_host():
+			._on_EndWaveTimer_timeout()
 	else:
 		._on_EndWaveTimer_timeout()
 
@@ -738,3 +753,64 @@ func _update_batched_floating_text(batched_floating_text_array : Array) -> void:
 		var color = Color8(floating_text_dict["R_COLOR"], floating_text_dict["G_COLOR"], floating_text_dict["B_COLOR"] ,floating_text_dict["A_COLOR"])
 		var duration = floating_text_dict["DURATION"]
 		_floating_text_manager.display(value, text_pos, color, null, duration)
+
+
+func _host_menu_status() -> Dictionary:
+	var menu_dict = {}
+	
+	var showing_upgrade_menus : bool = _coop_upgrades_ui.visible
+	menu_dict["MENU_VISIBLE"] = showing_upgrade_menus
+	
+	if showing_upgrade_menus:
+		var player_menus = []
+		for player_index in RunData.get_player_count():
+			var player_menu_dict = {}
+#			_coop_upgrades_ui
+			var player_container = _coop_upgrades_ui._get_player_container(player_index)
+			
+			var showing_player_items_container = player_container._items_container.visible
+			var showing_player_upgrades_container = player_container._upgrades_container.visible
+			player_menu_dict["SHOWING_ITEMS"] = showing_player_items_container
+			player_menu_dict["SHOWING_UPGRADES"] = showing_player_upgrades_container
+			
+			if showing_player_upgrades_container:
+				var upgrade_options = []
+				for upgrade in player_container._old_upgrades:
+					var upgrade_data = {}
+					upgrade_data["UPGRADE_ID"] = upgrade.upgrade_id
+					upgrade_data["UPGRADE_TIER"] = upgrade.tier
+					upgrade_options.push_back(upgrade_data)
+				player_menu_dict["UPGRADE_OPTIONS"] = upgrade_options
+			elif showing_player_items_container:
+				pass
+			
+			player_menus.push_back(player_menu_dict)
+		menu_dict["PLAYER_MENUS"] = player_menus
+	
+	print_debug("Menu DICT: ", menu_dict)
+	return menu_dict
+
+
+func _update_menu(menu_dict : Dictionary) -> void:
+	var showing_upgrade_menus : bool = menu_dict["MENU_VISIBLE"]
+	
+	if showing_upgrade_menus and not _coop_upgrades_ui.visible:
+		_coop_upgrades_ui.show()
+	elif not showing_upgrade_menus:
+		if _coop_upgrades_ui.visible:
+			_coop_upgrades_ui.hide()
+		return
+	
+	var player_menus = menu_dict["PLAYER_MENUS"]
+	for player_index in RunData.get_player_count():
+		var player_container = _coop_upgrades_ui._get_player_container(player_index)
+		var player_menu_dict = player_menus[player_index]
+		
+		var showing_player_items_container = player_menu_dict["SHOWING_ITEMS"]
+		var showing_player_upgrades_container = player_menu_dict["SHOWING_UPGRADES"]
+		if showing_player_items_container:
+			player_container._items_container.show()
+			player_container._upgrades_container.hide()
+		elif showing_player_upgrades_container:
+			player_container._items_container.hide()
+			player_container._upgrades_container.show()
