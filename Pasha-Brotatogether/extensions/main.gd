@@ -777,10 +777,10 @@ func _host_menu_status() -> Dictionary:
 				var upgrade_options = []
 				for upgrade in player_container._old_upgrades:
 					var upgrade_data = {}
-					upgrade_data["UPGRADE_ID"] = upgrade.upgrade_id
-					upgrade_data["UPGRADE_TIER"] = upgrade.tier
+					upgrade_data["UPGRADE_ID"] = upgrade.my_id
 					upgrade_options.push_back(upgrade_data)
 				player_menu_dict["UPGRADE_OPTIONS"] = upgrade_options
+				player_menu_dict["REROLL_PRICE"] = player_container._reroll_price
 			elif showing_player_items_container:
 				pass
 			
@@ -808,9 +808,36 @@ func _update_menu(menu_dict : Dictionary) -> void:
 		
 		var showing_player_items_container = player_menu_dict["SHOWING_ITEMS"]
 		var showing_player_upgrades_container = player_menu_dict["SHOWING_UPGRADES"]
-		if showing_player_items_container:
-			player_container._items_container.show()
-			player_container._upgrades_container.hide()
-		elif showing_player_upgrades_container:
+		if showing_player_upgrades_container:
+			var upgrade_options : Array = player_menu_dict["UPGRADE_OPTIONS"]
+			var should_update_upgrades : bool = false
+			for i in upgrade_options.size():
+				if i >= player_container._old_upgrades.size():
+					should_update_upgrades = true
+				else:
+					var upgrade_data = upgrade_options[i]
+					if upgrade_data["UPGRADE_ID"] != player_container._old_upgrades[i].my_id:
+						should_update_upgrades = true
+			if should_update_upgrades:
+				var upgrades = []
+				for i in upgrade_options.size():
+					var upgrade_data = upgrade_options[i]
+					for dupe_candidate in ItemService.upgrades:
+						if dupe_candidate.my_id == upgrade_data["UPGRADE_ID"]:
+							upgrades.push_back(dupe_candidate.duplicate())
+				player_container._old_upgrades = upgrades
+				var upgrade_uis = player_container._get_upgrade_uis()
+				for i in upgrade_options.size():
+					var upgrade_ui = upgrade_uis[i]
+					upgrade_ui.visible = i < upgrades.size()
+					if upgrade_ui.visible:
+						upgrade_ui.set_upgrade(upgrades[i], player_index)
+				var reroll_price = player_menu_dict["REROLL_PRICE"]
+				player_container._reroll_button.init(reroll_price, player_index)
+				player_container._update_gold_label()
+				
 			player_container._items_container.hide()
 			player_container._upgrades_container.show()
+		elif showing_player_items_container:
+			player_container._items_container.show()
+			player_container._upgrades_container.hide()
