@@ -155,35 +155,12 @@ func _input(event) -> void:
 		return
 	if event is InputEventKey:
 		if event.scancode == KEY_F1:
-			on_levelled_up(0)
-			print_debug("pressed key")
-
-
-#func get_game_state() -> PoolByteArray:
-#	var buffer = StreamPeerBuffer.new()
-#
-#	if "/root/Main":
-#		var main = $"/root/Main"
-#
-#		if main:
-#			get_players_state(buffer) ## DONE
-#			get_enemies_state(buffer)  ## DONE
-#			get_births_state(buffer) ## DONE
-#			get_items_state(buffer) ## DONE
-#			get_projectiles_state(buffer) ## DONE
-#			get_consumables_state(buffer) ## DONE
-#			get_neutrals_state(buffer) ## DONE
-#			get_structures_state(buffer) ## DONE
-#			get_enemy_projectiles(buffer) ## DONE
-#			get_deaths(buffer) ## DONE
-#			get_enemy_flashes(buffer) 
-#			get_batched_floating_text(buffer) ## DONE
-#			get_hit_effects(buffer)  ## DONE
-#
-#			buffer.put_float(main._wave_timer.time_left)
-#			buffer.put_32(RunData.bonus_gold) ## DONE
-#
-#	return buffer.data_array
+#			on_levelled_up(0)
+			var consumable: Consumable = consumable_scene.instance()
+			var consumable_to_spawn = load("res://items/consumables/item_box/item_box_data.tres")
+			consumable.consumable_data = consumable_to_spawn
+			consumable.set_texture(consumable_to_spawn.icon)
+			on_consumable_picked_up(consumable , 0)
 
 
 func _send_client_position() -> void:
@@ -367,6 +344,18 @@ func _on_WaveTimer_timeout() -> void:
 			_wave_cleared_label.hide()
 			_wave_timer_label.hide()
 			_hud.hide()
+			
+			_coop_upgrades_ui.propagate_call("set_process_input", [true])
+			DebugService.log_data("_on_EndWaveTimer_timeout")
+			SoundManager.clear_queue()
+			SoundManager2D.clear_queue()
+			InputService.set_gamepad_echo_processing(true)
+			_cleaning_up = true
+			
+			for player in _players:
+				if is_instance_valid(player):
+					player._can_move = false
+					player.set_physics_process(false)
 	else:
 		._on_WaveTimer_timeout()
 
@@ -782,7 +771,7 @@ func _host_menu_status() -> Dictionary:
 				player_menu_dict["UPGRADE_OPTIONS"] = upgrade_options
 				player_menu_dict["REROLL_PRICE"] = player_container._reroll_price
 			elif showing_player_items_container:
-				pass
+				player_menu_dict["ITEM_ID"] = player_container._item_data.my_id
 			
 			player_menus.push_back(player_menu_dict)
 		menu_dict["PLAYER_MENUS"] = player_menus
@@ -836,8 +825,27 @@ func _update_menu(menu_dict : Dictionary) -> void:
 				player_container._reroll_button.init(reroll_price, player_index)
 				player_container._update_gold_label()
 				
+				player_container._items_container.hide()
+				player_container._upgrades_container.show()
+				player_container.focus()
+				
 			player_container._items_container.hide()
 			player_container._upgrades_container.show()
 		elif showing_player_items_container:
+			var item_id = player_menu_dict["ITEM_ID"]
+			
+			if player_container._item_data == null or item_id != player_container._item_data.my_id:
+				var item_data
+				for item_candidate in ItemService.items:
+					if item_id == item_candidate.my_id:
+						item_data = item_candidate.duplicate()
+						break
+				for item_candidate in ItemService.weapons:
+					if item_id == item_candidate.my_id:
+						item_data = item_candidate.duplicate()
+						break
+				player_container.show_item(item_data)
+				player_container.focus()
+			
 			player_container._items_container.show()
 			player_container._upgrades_container.hide()
