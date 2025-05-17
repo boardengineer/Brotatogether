@@ -41,6 +41,7 @@ func _ready():
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
 		steam_connection.connect("state_update", self, "_state_update")
 		steam_connection.connect("client_position", self, "_update_player_position")
+		steam_connection.connect("client_menu_focus", self, "_update_client_focus")
 		
 		my_player_index = steam_connection.get_my_index()
 		
@@ -164,7 +165,17 @@ func _input(event) -> void:
 
 
 func _send_client_position() -> void:
-	steam_connection.send_client_position(_dictionary_for_player(_players[my_player_index], my_player_index))
+	var in_postwave_menu = _coop_upgrades_ui.visible
+	if in_postwave_menu:
+		var player_container = _coop_upgrades_ui._get_player_container(my_player_index)
+		var focus_string = _string_for_menu_focus(player_container)
+		steam_connection.send_client_menu_focus(
+			{
+				"FOCUS" : focus_string
+			}
+		)
+	else:
+		steam_connection.send_client_position(_dictionary_for_player(_players[my_player_index], my_player_index))
 
 
 func _dictionary_for_player(player, player_index) -> Dictionary:
@@ -773,6 +784,7 @@ func _host_menu_status() -> Dictionary:
 			elif showing_player_items_container:
 				player_menu_dict["ITEM_ID"] = player_container._item_data.my_id
 			
+			player_menu_dict["FOCUS"] = _string_for_menu_focus(player_container)
 			player_menus.push_back(player_menu_dict)
 		menu_dict["PLAYER_MENUS"] = player_menus
 	
@@ -849,3 +861,59 @@ func _update_menu(menu_dict : Dictionary) -> void:
 			
 			player_container._items_container.show()
 			player_container._upgrades_container.hide()
+		if player_index != my_player_index:
+			_focus_for_string(player_container, player_menu_dict["FOCUS"])
+
+
+func _update_client_focus(data : Dictionary, player_index : int) -> void:
+	if steam_connection.is_host() and player_index != my_player_index:
+		var player_container = _coop_upgrades_ui._get_player_container(player_index)
+		_focus_for_string(player_container, data["FOCUS"])
+
+
+func _string_for_menu_focus(player_container : CoopUpgradesUIPlayerContainer) -> String:
+	var focus_emulator = player_container.focus_emulator
+	if not focus_emulator.focused_control:
+		return ""
+	
+	var focused_control = focus_emulator.focused_control
+	if focused_control == player_container._take_button:
+		return "take"
+	elif focused_control == player_container._discard_button:
+		return "discard"
+	elif focused_control == player_container._upgrade_ui_1.button:
+		return "upgrade_1"
+	elif focused_control == player_container._upgrade_ui_2.button:
+		return "upgrade_2"
+	elif focused_control == player_container._upgrade_ui_3.button:
+		return "upgrade_3"
+	elif focused_control == player_container._upgrade_ui_4.button:
+		return "upgrade_4"
+	elif focused_control == player_container._reroll_button:
+		return "reroll"
+	
+	return ""
+
+
+func _focus_for_string(player_container : CoopUpgradesUIPlayerContainer, focus_key: String) -> void:
+	var old_focused_control = player_container.focus_emulator
+	var requested_focused_control = null
+	
+	
+	if focus_key == "take":
+		requested_focused_control = player_container._take_button
+	elif focus_key == "discard":
+		requested_focused_control = player_container._discard_button
+	elif focus_key == "upgrade_1":
+		requested_focused_control = player_container._upgrade_ui_1.button
+	elif focus_key == "upgrade_2":
+		requested_focused_control = player_container._upgrade_ui_2.button
+	elif focus_key == "upgrade_3":
+		requested_focused_control = player_container._upgrade_ui_3.button
+	elif focus_key == "upgrade_4":
+		requested_focused_control = player_container._upgrade_ui_4.button
+	elif focus_key == "reroll":
+		requested_focused_control = player_container._reroll_button
+	
+	if requested_focused_control:
+		player_container.focus_emulator.focused_control = requested_focused_control
