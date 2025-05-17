@@ -39,6 +39,9 @@ func _ready():
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
 		steam_connection.connect("close_popup", self, "_remote_close_client_popup")
 		steam_connection.connect("receive_leave_shop", self, "_receive_leave_shop")
+		
+		if steam_connection.is_host():
+			steam_connection.send_host_entered_shop()
 
 
 func _process(delta):

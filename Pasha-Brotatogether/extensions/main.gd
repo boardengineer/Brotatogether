@@ -48,6 +48,8 @@ func _ready():
 		steam_connection.connect("client_main_scene_take_button_pressed", self, "_client_take_button_pressed")
 		steam_connection.connect("client_main_scene_discard_button_pressed", self, "_client_discard_button_pressed")
 		
+		steam_connection.connect("host_entered_shop", self, "_host_entered_shop")
+		
 		my_player_index = steam_connection.get_my_index()
 		
 		call_deferred("multiplayer_ready")
@@ -944,3 +946,7 @@ func _client_take_button_pressed(player_index : int) -> void:
 func _client_discard_button_pressed(player_index : int) -> void:
 	var player_container = _coop_upgrades_ui._get_player_container(player_index)
 	player_container._on_DiscardButton_pressed()
+
+
+func _host_entered_shop() -> void:
+	_change_scene(RunData.get_shop_scene_path())

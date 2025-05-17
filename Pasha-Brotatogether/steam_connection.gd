@@ -86,6 +86,8 @@ enum MessageType {
 	MESSAGE_TYPE_MAIN_SCENE_TAKE_BUTTON_PRESSED,
 	
 	MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED,
+	
+	MESSAGE_TYPE_HOST_ENTERED_SHOP,
 }
 
 var global_chat_lobby_id : int = -1
@@ -207,6 +209,8 @@ signal client_main_scene_choose_upgrade_pressed(upgrade_data_dict, player_index)
 signal client_main_scene_take_button_pressed(player_index)
 
 signal client_main_scene_discard_button_pressed(player_index)
+
+signal host_entered_shop()
 
 func _ready():
 	if not Steam.loggedOn():
@@ -501,6 +505,8 @@ func read_p2p_packet() -> void:
 				_receive_main_scene_client_take_button_pressed(sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED:
 				_receive_main_scene_client_discard_button_pressed(sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_HOST_ENTERED_SHOP:
+				_receive_host_entered_shop()
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1163,3 +1169,11 @@ func send_main_scene_client_discard_button_pressed() -> void:
 
 func _receive_main_scene_client_discard_button_pressed(sender_id : int) -> void:
 	emit_signal("client_main_scene_discard_button_pressed", get_lobby_index_for_player(sender_id))
+
+
+func send_host_entered_shop() -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_HOST_ENTERED_SHOP)
+
+
+func _receive_host_entered_shop() -> void:
+	emit_signal("host_entered_shop")
