@@ -78,6 +78,14 @@ enum MessageType {
 	MESSAGE_TYPE_CLIENT_POSITION,
 	
 	MESSAGE_TYPE_CLIENT_FOCUS_MAIN_SCENE,
+	
+	MESSAGE_TYPE_MAIN_SCENE_REROLL_BUTTON_PRESSED,
+	
+	MESSAGE_TYPE_MAIN_SCENE_CHOOSE_UPGRADE_PRESSED,
+	
+	MESSAGE_TYPE_MAIN_SCENE_TAKE_BUTTON_PRESSED,
+	
+	MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED,
 }
 
 var global_chat_lobby_id : int = -1
@@ -191,6 +199,14 @@ signal state_update(state_dict)
 signal client_position(client_position_dict, player_index)
 
 signal client_menu_focus(client_menu_focus_dict, player_index)
+
+signal client_main_scene_reroll_button_pressed(player_index)
+
+signal client_main_scene_choose_upgrade_pressed(upgrade_data_dict, player_index)
+
+signal client_main_scene_take_button_pressed(player_index)
+
+signal client_main_scene_discard_button_pressed(player_index)
 
 func _ready():
 	if not Steam.loggedOn():
@@ -467,12 +483,24 @@ func read_p2p_packet() -> void:
 				_receive_shop_close_popup()
 			elif channel == MessageType.MESSAGE_TYPE_LEAVE_SHOP:
 				_receive_leave_shop()
+		
+			# Main scene channels
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
 				_receive_game_state(data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
+			
+			## Post-wave menu channels
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_FOCUS_MAIN_SCENE:
 				_receive_client_menu_focus(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_SCENE_REROLL_BUTTON_PRESSED:
+				_receive_main_scene_client_reroll_button_pressed(sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_SCENE_CHOOSE_UPGRADE_PRESSED:
+				_receive_main_scene_client_choose_upgrade_pressed(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_SCENE_TAKE_BUTTON_PRESSED:
+				_receive_main_scene_client_take_button_pressed(sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED:
+				_receive_main_scene_client_discard_button_pressed(sender_id)
 			
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1103,3 +1131,35 @@ func send_client_menu_focus(client_menu_dict : Dictionary) -> void:
 
 func _receive_client_menu_focus(data : Dictionary, sender_id: int) -> void:
 	emit_signal("client_menu_focus", data, get_lobby_index_for_player(sender_id))
+
+
+func send_main_scene_client_reroll_button_ressed() -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_MAIN_SCENE_REROLL_BUTTON_PRESSED)
+
+
+func _receive_main_scene_client_reroll_button_pressed(sender_id : int) -> void:
+	emit_signal("client_main_scene_reroll_button_pressed", get_lobby_index_for_player(sender_id))
+
+
+func send_main_scene_client_choose_upgrade_pressed(upgrade_data_dict : Dictionary) -> void:
+	send_p2p_packet(upgrade_data_dict, MessageType.MESSAGE_TYPE_MAIN_SCENE_CHOOSE_UPGRADE_PRESSED)
+
+
+func _receive_main_scene_client_choose_upgrade_pressed(upgrade_data_dict : Dictionary, sender_id : int) -> void:
+	emit_signal("client_main_scene_choose_upgrade_pressed", upgrade_data_dict, get_lobby_index_for_player(sender_id))
+
+
+func send_main_scene_client_take_button_pressed() -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_MAIN_SCENE_TAKE_BUTTON_PRESSED)
+
+
+func _receive_main_scene_client_take_button_pressed(sender_id : int) -> void:
+	emit_signal("client_main_scene_take_button_pressed", get_lobby_index_for_player(sender_id))
+
+
+func send_main_scene_client_discard_button_pressed() -> void:
+	send_p2p_packet({}, MessageType.MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED)
+
+
+func _receive_main_scene_client_discard_button_pressed(sender_id : int) -> void:
+	emit_signal("client_main_scene_discard_button_pressed", get_lobby_index_for_player(sender_id))

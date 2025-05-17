@@ -43,6 +43,11 @@ func _ready():
 		steam_connection.connect("client_position", self, "_update_player_position")
 		steam_connection.connect("client_menu_focus", self, "_update_client_focus")
 		
+		steam_connection.connect("client_main_scene_reroll_button_pressed", self, "_client_reroll_button_pressed")
+		steam_connection.connect("client_main_scene_choose_upgrade_pressed", self, "_client_choose_upgrade_button_pressed")
+		steam_connection.connect("client_main_scene_take_button_pressed", self, "_client_take_button_pressed")
+		steam_connection.connect("client_main_scene_discard_button_pressed", self, "_client_discard_button_pressed")
+		
 		my_player_index = steam_connection.get_my_index()
 		
 		call_deferred("multiplayer_ready")
@@ -917,3 +922,25 @@ func _focus_for_string(player_container : CoopUpgradesUIPlayerContainer, focus_k
 	
 	if requested_focused_control:
 		player_container.focus_emulator.focused_control = requested_focused_control
+
+
+func _client_reroll_button_pressed(player_index : int) -> void:
+	var player_container = _coop_upgrades_ui._get_player_container(player_index)
+	player_container._on_RerollButton_pressed()
+
+
+func _client_choose_upgrade_button_pressed(upgrade_dict : Dictionary, player_index : int) -> void:
+	var player_container = _coop_upgrades_ui._get_player_container(player_index)
+	for upgrade_candidate in ItemService.upgrades:
+		if upgrade_candidate.my_id == upgrade_dict["UPGRADE_ID"]:
+			player_container._on_choose_button_pressed(upgrade_candidate.duplicate())
+
+
+func _client_take_button_pressed(player_index : int) -> void:
+	var player_container = _coop_upgrades_ui._get_player_container(player_index)
+	player_container._on_TakeButton_pressed()
+
+
+func _client_discard_button_pressed(player_index : int) -> void:
+	var player_container = _coop_upgrades_ui._get_player_container(player_index)
+	player_container._on_DiscardButton_pressed()
