@@ -68,7 +68,7 @@ func _physics_process(delta : float):
 			_send_client_position()
 
 
-func _process(delta):
+func _process(_delta):
 	if in_multiplayer_game:
 		if waiting_to_start_round:
 			if steam_connection.is_host():
@@ -186,8 +186,6 @@ func _send_client_position() -> void:
 
 
 func _dictionary_for_player(player, player_index) -> Dictionary:
-	var position = player.position
-	
 	var player_dict = {
 		"X_POS" : player.position.x,
 		"Y_POS" : player.position.y,
@@ -659,6 +657,9 @@ func _update_structures(structures_array : Array) -> void:
 		current_structures[network_id] = true
 		if client_structures.has(network_id):
 			var structure = client_structures[network_id]
+			
+			structure.position.x = structure_dict["X_POS"]
+			structure.position.y = structure_dict["Y_POS"]
 		else:
 			call_deferred("_spawn_structure", structure_dict)
 	
@@ -903,9 +904,7 @@ func _string_for_menu_focus(player_container : CoopUpgradesUIPlayerContainer) ->
 
 
 func _focus_for_string(player_container : CoopUpgradesUIPlayerContainer, focus_key: String) -> void:
-	var old_focused_control = player_container.focus_emulator
 	var requested_focused_control = null
-	
 	
 	if focus_key == "take":
 		requested_focused_control = player_container._take_button
@@ -950,3 +949,9 @@ func _client_discard_button_pressed(player_index : int) -> void:
 
 func _host_entered_shop() -> void:
 	_change_scene(RunData.get_shop_scene_path())
+
+
+func _check_for_pause() -> void:
+	if not in_multiplayer_game:
+		._check_for_pause()
+	

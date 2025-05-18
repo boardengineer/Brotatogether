@@ -44,7 +44,7 @@ func _ready():
 			steam_connection.send_host_entered_shop()
 
 
-func _process(delta):
+func _process(_delta):
 	if in_multiplayer_game:
 		if waiting_to_start_shop:
 			if steam_connection.is_host():
@@ -190,7 +190,7 @@ func _client_shop_combine_weapon(weapon_string : String, is_upgrade: bool, playe
 	steam_connection.request_close_client_shop_popup(player_index)
 
 
-func _client_shop_lock_item(item_string : String, wave_value: int, player_index: int) -> void:
+func _client_shop_lock_item(item_string : String, _wave_value: int, player_index: int) -> void:
 	_shop_item_for_string(item_string, player_index).change_lock_status(true)
 
 
@@ -205,7 +205,6 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 	var player_count: int = RunData.get_player_count()
 	for player_index in player_count:
 		var player_dict = {}
-		var free_rerolls = RunData.get_player_effect("free_rerolls", player_index)
 		var shop_items = []
 		for item in _shop_items[player_index]:
 			var item_dict : Dictionary = {}
@@ -284,7 +283,6 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		_shop_items[player_index].clear()
 		
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
-			var shop_item = _shop_item_for_dictionary(shop_item_dict)
 			_shop_items[player_index].push_back(_shop_item_for_dictionary(shop_item_dict))
 		_get_shop_items_container(player_index).set_shop_items(_shop_items[player_index])
 		
@@ -315,7 +313,6 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		
 		
 		var locked_items : Array = player_dict["LOCKED_ITEMS"]
-		var shop_items_container = _get_shop_items_container(player_index)
 		for item in _get_shop_items_container(player_index).get_children():
 			if not item is ShopItem:
 				continue

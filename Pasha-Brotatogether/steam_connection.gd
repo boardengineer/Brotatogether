@@ -673,7 +673,7 @@ func _receive_character_selection_completed(data : Dictionary) -> void:
 	emit_signal("character_selection_complete", data["HAS_WEAPON_SLOTS"], data["SELECTED_CHARACTERS"])
 
 
-func _receive_character_select(data : Dictionary, sender_id : int) -> void:
+func _receive_character_select(_data : Dictionary, sender_id : int) -> void:
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received character select for player ", sender_id)
 		return
@@ -737,7 +737,7 @@ func weapon_selected() -> void:
 		send_p2p_packet({}, MessageType.MESSAGE_TYPE_WEAPON_SELECTED, game_lobby_owner_id)
 
 
-func _receive_weapon_select(data : Dictionary, sender_id : int) -> void:
+func _receive_weapon_select(_data : Dictionary, sender_id : int) -> void:
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received character select for player ", sender_id)
 		return
@@ -780,8 +780,6 @@ func _receive_weapon_lobby_update(data : Dictionary) -> void:
 	if not data.has("SELECTED_WEAPONS") or not data.has("SELECTIONS_CONFIRMED"):
 		print("WARNING - received lobby player update wihtout player selections", data)
 		return
-	
-	var difficulty_select_scene = get_tree().current_scene
 	
 	emit_signal("weapon_lobby_update", data["SELECTED_WEAPONS"], data["SELECTIONS_CONFIRMED"])
 
@@ -867,7 +865,7 @@ func get_lobby_index_for_player(player_id : int) -> int:
 	return -1
 
 
-func request_shop_update(changed_shop_player_indeces : Array = []) -> void:
+func request_shop_update(_changed_shop_player_indeces : Array = []) -> void:
 	emit_signal("client_shop_requested")
 
 
