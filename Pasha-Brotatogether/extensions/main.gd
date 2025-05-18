@@ -780,6 +780,7 @@ func _host_menu_status() -> Dictionary:
 			var showing_player_upgrades_container = player_container._upgrades_container.visible
 			player_menu_dict["SHOWING_ITEMS"] = showing_player_items_container
 			player_menu_dict["SHOWING_UPGRADES"] = showing_player_upgrades_container
+			player_menu_dict["PLAYER_FINISHED"] = player_container._checkmark_group.visible
 			
 			if showing_player_upgrades_container:
 				var upgrade_options = []
@@ -817,6 +818,7 @@ func _update_menu(menu_dict : Dictionary) -> void:
 		
 		var showing_player_items_container = player_menu_dict["SHOWING_ITEMS"]
 		var showing_player_upgrades_container = player_menu_dict["SHOWING_UPGRADES"]
+		var player_finished = player_menu_dict["PLAYER_FINISHED"]
 		if showing_player_upgrades_container:
 			var upgrade_options : Array = player_menu_dict["UPGRADE_OPTIONS"]
 			var should_update_upgrades : bool = false
@@ -871,6 +873,10 @@ func _update_menu(menu_dict : Dictionary) -> void:
 			player_container._upgrades_container.hide()
 		if player_index != my_player_index:
 			_focus_for_string(player_container, player_menu_dict["FOCUS"])
+		if player_finished:
+			player_container._items_container.hide()
+			player_container._upgrades_container.hide()
+			player_container._checkmark_group.show()
 
 
 func _update_client_focus(data : Dictionary, player_index : int) -> void:
@@ -954,4 +960,3 @@ func _host_entered_shop() -> void:
 func _check_for_pause() -> void:
 	if not in_multiplayer_game:
 		._check_for_pause()
-	
