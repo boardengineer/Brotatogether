@@ -27,6 +27,8 @@ var client_consumables = {}
 var client_neutrals = {}
 var client_structures = {}
 
+var server_player_projectile_ids = {}
+
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
@@ -498,16 +500,16 @@ func _host_player_projectiles_array() -> Array:
 	for child in _player_projectiles.get_children():
 		if child is PlayerProjectile and child._hitbox.active:
 			var projectile_dict = {}
-			var data_node = child.find_node("DATA")
-			if not data_node:
-				data_node = DataNode.new()
-				data_node.name = "DATA"
-				var network_id = brotatogether_options.current_network_id
+			var network_id
+			if server_player_projectile_ids.has(child):
+				network_id = server_player_projectile_ids[child]
+			else:
+				network_id = brotatogether_options.current_network_id
 				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
-				data_node.data["ID"] = network_id 
-				child.add_child(data_node)
+				server_player_projectile_ids[child] = network_id
 			
-			projectile_dict["NETWORK_ID"] = data_node.data["ID"]
+			print_debug("sending bullet with id ", network_id)
+			projectile_dict["NETWORK_ID"] = network_id
 			projectile_dict["X_POS"] = child.global_position.x
 			projectile_dict["Y_POS"] = child.global_position.y
 			projectile_dict["ROTATION"] = child.rotation
@@ -861,7 +863,7 @@ func _host_menu_status() -> Dictionary:
 			player_menus.push_back(player_menu_dict)
 		menu_dict["PLAYER_MENUS"] = player_menus
 	
-	print_debug("Menu DICT: ", menu_dict)
+#	print_debug("Menu DICT: ", menu_dict)
 	return menu_dict
 
 

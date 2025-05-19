@@ -405,7 +405,7 @@ func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1) -> v
 	
 	var compressed_data: PoolByteArray = var2bytes(data).compress(File.COMPRESSION_GZIP)
 	packet_data.append_array(compressed_data)
-	print_debug("[", MessageType.keys()[message_type], "] sending packet size: ", compressed_data.size())
+#	print_debug("[", MessageType.keys()[message_type], "] sending packet size: ", compressed_data.size())
 	
 	if target_id == -1:
 		for lobby_member_id in lobby_members:
