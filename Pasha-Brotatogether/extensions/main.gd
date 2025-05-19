@@ -215,7 +215,7 @@ func _input(event) -> void:
 	if event is InputEventKey:
 		if event.scancode == KEY_F1:
 #			on_levelled_up(0)
-			var consumable: Consumable = consumable_scene.instance()
+			var consumable = consumable_scene.instance()
 			var consumable_to_spawn = load("res://items/consumables/item_box/item_box_data.tres")
 			consumable.consumable_data = consumable_to_spawn
 			consumable.set_texture(consumable_to_spawn.icon)
@@ -632,7 +632,7 @@ func _update_consumables(consumables_array : Array) -> void:
 
 
 func _spawn_consumable(consumable_dict : Dictionary) -> void:
-	var consumable:Consumable = get_node_from_pool(consumable_scene.resource_path)
+	var consumable = get_node_from_pool(consumable_scene.resource_path)
 	if consumable == null:
 		consumable = consumable_scene.instance()
 		_consumables_container.add_child(consumable)
