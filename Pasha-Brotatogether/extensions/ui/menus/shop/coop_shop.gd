@@ -81,7 +81,8 @@ func _client_shop_focus_updated(shop_item_string : String, player_index : int) -
 	is_self_call = true
 	
 	var shop_item : ShopItem = _shop_item_for_string(shop_item_string, player_index)
-	Utils.get_focus_emulator(player_index).focused_control = shop_item._button
+	if shop_item:
+		Utils.get_focus_emulator(player_index).focused_control = shop_item._button
 
 
 func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
@@ -381,7 +382,8 @@ func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index :
 		return _get_reroll_button(player_index)
 	elif focus_type == "SHOP_ITEM":
 		var shop_item : ShopItem = _shop_item_for_string(item_dict["ID"], player_index)
-		return shop_item._button
+		if shop_item:
+			return shop_item._button
 	else:
 		print("ERR - Focusing inventgory element of unknown type ", item_dict)
 	
