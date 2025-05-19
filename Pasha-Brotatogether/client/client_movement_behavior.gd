@@ -1,4 +1,3 @@
-class_name ClientMovementBehavior
 extends MovementBehavior
 
 func init(parent:Node)->Node:

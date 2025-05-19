@@ -2,6 +2,7 @@ extends "res://main.gd"
 
 var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
 var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_attack_behavior.gd")
+var DataNode = load("res://mods-unpacked/Pasha-Brotatogether/data_node.gd")
 
 var steam_connection
 var brotatogether_options
@@ -497,7 +498,16 @@ func _host_player_projectiles_array() -> Array:
 	for child in _player_projectiles.get_children():
 		if child is PlayerProjectile and child._hitbox.active:
 			var projectile_dict = {}
-			projectile_dict["NETWORK_ID"] = child.network_id
+			var data_node = child.find_node("DATA")
+			if not data_node:
+				data_node = DataNode.new()
+				data_node.name = "DATA"
+				var network_id = brotatogether_options.current_network_id
+				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
+				data_node.data["ID"] = network_id 
+				child.add_child(data_node)
+			
+			projectile_dict["NETWORK_ID"] = data_node.data["ID"]
 			projectile_dict["X_POS"] = child.global_position.x
 			projectile_dict["Y_POS"] = child.global_position.y
 			projectile_dict["ROTATION"] = child.rotation

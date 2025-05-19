@@ -16,10 +16,3 @@ func _ready():
 		is_host = steam_connection.is_host()
 		network_id = brotatogether_options.current_network_id
 		brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
-
-
-func set_to_be_destroyed()->void :
-	if in_multiplayer_game:
-		if not is_host:
-			return
-	.set_to_be_destroyed()
