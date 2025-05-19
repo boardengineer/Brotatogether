@@ -29,7 +29,9 @@ var client_structures = {}
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
-const ENABLE_DEBUG_KEYS = true
+const ENABLE_DEBUG = true
+
+var debug_frame_counter : int = 0
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -123,43 +125,92 @@ func _send_game_state() -> void:
 	steam_connection.send_game_state(state_dict)
 
 
-func _state_update(state_dict : Dictionary) -> void:
+func _state_update(state_dict : Dictionary) -> void:	
+	var start_time : int = Time.get_ticks_usec()
+	var before : int
 #	print_debug("received state ", state_dict)
 	
+	before = Time.get_ticks_usec()
 	var wait_time = float(state_dict["WAVE_TIME"])
 	if wait_time > 0:
 		_wave_timer.start(wait_time)
+	var wave_timer_update_time = Time.get_ticks_usec() - before
 	
+	before = Time.get_ticks_usec()
 	var players_array = state_dict["PLAYERS"]
 	for player_index in players_array.size():
 		_update_player_position(players_array[player_index], player_index)
+	var player_update_time = Time.get_ticks_usec() - before
 	
+	before = Time.get_ticks_usec()
 	var enemies_array = state_dict["ENEMIES"]
 	for enemy in enemies_array:
 		_update_enemy(enemy)
+	var enemies_update_time = Time.get_ticks_usec() - before
 	
+	before = Time.get_ticks_usec()
 	for enemy_id in state_dict["BATCHED_ENEMY_DEATHS"]:
 		if client_enemies.has(enemy_id):
 			if not client_enemies[enemy_id].dead:
 				client_enemies[enemy_id].die()
 			client_enemies.erase(enemy_id)
+	var enemy_deaths_update_time = Time.get_ticks_usec() - before
 	
+	before = Time.get_ticks_usec()
 	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
-	_update_births(state_dict["BIRTHS"])
-	_update_items(state_dict["ITEMS"])
-	_update_consumables(state_dict["CONSUMABLES"])
-	_update_neutrals(state_dict["NEUTRALS"])
-	_update_structures(state_dict["STRUCTURES"])
-	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"])
+	var player_projectiles_update_time = Time.get_ticks_usec() - before
 	
+	before = Time.get_ticks_usec()
+	_update_births(state_dict["BIRTHS"])
+	var births_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	_update_items(state_dict["ITEMS"])
+	var items_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	_update_consumables(state_dict["CONSUMABLES"])
+	var consumables_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	_update_neutrals(state_dict["NEUTRALS"])
+	var neutrals_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	_update_structures(state_dict["STRUCTURES"])
+	var structures_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"])
+	var enemy_projectiles_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
 	_update_batched_hit_effects(state_dict["BATCHED_HIT_EFFECTS"])
+	var enemy_hit_effects_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
 	_update_batched_hit_particles(state_dict["BATCHED_HIT_PARTICLES"])
+	var enemy_hit_particles_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
 	_update_batched_floating_text(state_dict["BATCHED_FLOATING_TEXT"])
+	var floating_text_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
 	_update_menu(state_dict["UPGRADE_MENU_STATUS"])
+	var menu_update_time = Time.get_ticks_usec() - before
+	
+	if ENABLE_DEBUG:
+		var end_time : int = Time.get_ticks_usec()
+		var elapsed_time = end_time - start_time
+		debug_frame_counter += 1
+		if debug_frame_counter % 100 == 0 || elapsed_time > 1000:
+			print_debug("state update time: ", elapsed_time)
+			print_debug(wave_timer_update_time, " ", player_update_time, " ", enemies_update_time, " ", enemy_deaths_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
 
 
 func _input(event) -> void: 
-	if not ENABLE_DEBUG_KEYS:
+	if not ENABLE_DEBUG:
 		return
 	if event is InputEventKey:
 		if event.scancode == KEY_F1:
@@ -760,7 +811,8 @@ func _update_batched_floating_text(batched_floating_text_array : Array) -> void:
 		var text_pos = Vector2(floating_text_dict["X_POS"], floating_text_dict["Y_POS"])
 		var color = Color8(floating_text_dict["R_COLOR"], floating_text_dict["G_COLOR"], floating_text_dict["B_COLOR"] ,floating_text_dict["A_COLOR"])
 		var duration = floating_text_dict["DURATION"]
-		_floating_text_manager.display(value, text_pos, color, null, duration)
+#		_floating_text_manager.display(value, text_pos, color, null, duration)
+		_floating_text_manager.call_deferred("display", value, text_pos, color, null, duration)
 
 
 func _host_menu_status() -> Dictionary:
