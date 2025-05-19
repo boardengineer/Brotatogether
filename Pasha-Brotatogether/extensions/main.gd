@@ -29,7 +29,7 @@ var client_structures = {}
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
-const ENABLE_DEBUG = true
+const ENABLE_DEBUG = false
 
 var debug_frame_counter : int = 0
 
@@ -277,6 +277,8 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 func _update_player_position(player_dict : Dictionary, player_index : int) -> void:
 	var player = _players[player_index]
 	if player_index != my_player_index:
+		if player.dead:
+			return
 		player.position.x = player_dict["X_POS"]
 		player.position.y = player_dict["Y_POS"]
 		
