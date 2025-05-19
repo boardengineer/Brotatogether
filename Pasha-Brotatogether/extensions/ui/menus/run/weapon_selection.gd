@@ -25,7 +25,7 @@ func _ready():
 func weapon_item_to_string(item : Resource) -> String:
 	if item == null:
 		return "RANDOM"
-	return item.name
+	return item.my_id
 
 
 
@@ -52,7 +52,7 @@ func _on_element_focused(element:InventoryElement, inventory_player_index:int) -
 	if is_multiplayer_lobby:
 		var element_string = ""
 		if element.item != null:
-			element_string = element.item.name
+			element_string = element.item.my_id
 		elif element.is_random:
 			element_string = "RANDOM"
 		
