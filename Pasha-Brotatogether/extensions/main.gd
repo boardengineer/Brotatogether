@@ -32,9 +32,33 @@ var server_player_projectile_ids = {}
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
-const ENABLE_DEBUG = false
+const ENABLE_DEBUG = true
 
 var debug_frame_counter : int = 0
+
+enum EntityState {
+	ENTITY_STATE_X_POS,
+	ENTITY_STATE_Y_POS,
+	ENTITY_STATE_X_MOVE,
+	ENTITY_STATE_Y_MOVE,
+	ENTITY_STATE_CURRENT_HP,
+	ENTITY_STATE_MAX_HP,
+	ENTITY_STATE_SPRITE_SCALE,
+	ENTITY_STATE_PLAYER_GOLD,
+	ENTITY_STATE_PLAYER_CURRENT_XP,
+	ENTITY_STATE_PLAYER_NEXT_LEVEL_XP,
+	ENTITY_STATE_PLAYER_NUM_UPGRADES,
+	ENTITY_STATE_PLAYER_WEAPONS,
+}
+
+enum WeaponState {
+	WEAPON_STATE_X_POS,
+	WEAPON_STATE_Y_POS,
+	WEAPON_STATE_ROTATION,
+	WEAPON_STATE_SPRITE_ROTATION,
+	WEAPON_STATE_IS_SHOOTING,
+}
+
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -124,6 +148,13 @@ func _send_game_state() -> void:
 	state_dict["STRUCTURES"] = _host_structures_array()
 	state_dict["ENEMY_PROJECTILES"] = _host_enemy_projectiles_array()
 	state_dict["UPGRADE_MENU_STATUS"] = _host_menu_status()
+	
+	if ENABLE_DEBUG:
+		var size_by_key = {}
+		for key in state_dict:
+			var compressed_data: PoolByteArray = var2bytes(state_dict[key]).compress(File.COMPRESSION_GZIP)
+			size_by_key[key] = compressed_data.size()
+		print_debug(size_by_key)
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -241,13 +272,13 @@ func _send_client_position() -> void:
 
 func _dictionary_for_player(player, player_index) -> Dictionary:
 	var player_dict = {
-		"X_POS" : player.position.x,
-		"Y_POS" : player.position.y,
+		EntityState.ENTITY_STATE_X_POS : player.position.x,
+		EntityState.ENTITY_STATE_Y_POS : player.position.y,
 		
-		"MOVE_X" : player._current_movement.x,
-		"MOVE_Y" : player._current_movement.y,
+		EntityState.ENTITY_STATE_X_MOVE : player._current_movement.x,
+		EntityState.ENTITY_STATE_Y_MOVE : player._current_movement.y,
 		
-		"SPRITE_SCALE_X": player.sprite.scale.x,
+		EntityState.ENTITY_STATE_SPRITE_SCALE: player.sprite.scale.x,
 	}
 	
 	var weapons_array : Array = []
@@ -255,24 +286,24 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 	for weapon in weapons:
 		var weapon_dict = {}
 		
-		weapon_dict["SPRITE_ROTATION"] = weapon.sprite.rotation
-		weapon_dict["ROTATION"] = weapon.rotation
-		weapon_dict["X_POS"] = weapon.sprite.position.x
-		weapon_dict["Y_POS"] = weapon.sprite.position.y
-		weapon_dict["IS_SHOOTING"] = weapon._is_shooting
+		weapon_dict[WeaponState.WEAPON_STATE_SPRITE_ROTATION] = weapon.sprite.rotation
+		weapon_dict[WeaponState.WEAPON_STATE_ROTATION] = weapon.rotation
+		weapon_dict[WeaponState.WEAPON_STATE_X_POS] = weapon.sprite.position.x
+		weapon_dict[WeaponState.WEAPON_STATE_Y_POS] = weapon.sprite.position.y
+		weapon_dict[WeaponState.WEAPON_STATE_IS_SHOOTING] = weapon._is_shooting
 		
 		weapons_array.push_back(weapon_dict)
-	player_dict["WEAPONS"] = weapons_array
+	player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS] = weapons_array
 	
 	if steam_connection.is_host():
-		player_dict["PLAYER_GOLD"] = RunData.players_data[player_index].gold
-		player_dict["PLAYER_CURRENT_XP"] = RunData.players_data[player_index].current_xp
-		player_dict["PLAYER_NEXT_LEVEL_XP"] = RunData.get_next_level_xp_needed(player_index)
-		player_dict["CURRENT_HP"] = player.current_stats.health
-		player_dict["MAX_HP"] = player.max_stats.health
+		player_dict[EntityState.ENTITY_STATE_PLAYER_GOLD] = RunData.players_data[player_index].gold
+		player_dict[EntityState.ENTITY_STATE_PLAYER_CURRENT_XP] = RunData.players_data[player_index].current_xp
+		player_dict[EntityState.ENTITY_STATE_PLAYER_NEXT_LEVEL_XP] = RunData.get_next_level_xp_needed(player_index)
+		player_dict[EntityState.ENTITY_STATE_CURRENT_HP] = player.current_stats.health
+		player_dict[EntityState.ENTITY_STATE_MAX_HP] = player.max_stats.health
 		
 		var things_to_process = _things_to_process_player_containers[player_index]
-		player_dict["NUM_UPGRADES"] = things_to_process.upgrades._elements.size()
+		player_dict[EntityState.ENTITY_STATE_PLAYER_NUM_UPGRADES] = things_to_process.upgrades._elements.size()
 		
 	return player_dict
 
@@ -282,24 +313,24 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 	if player_index != my_player_index:
 		if player.dead:
 			return
-		player.position.x = player_dict["X_POS"]
-		player.position.y = player_dict["Y_POS"]
+		player.position.x = player_dict[EntityState.ENTITY_STATE_X_POS]
+		player.position.y = player_dict[EntityState.ENTITY_STATE_Y_POS]
 		
-		player.sprite.scale.x  = player_dict["SPRITE_SCALE_X"]
+		player.sprite.scale.x  = player_dict[EntityState.ENTITY_STATE_SPRITE_SCALE]
 		
-		player._current_movement.x  = player_dict["MOVE_X"]
-		player._current_movement.y  = player_dict["MOVE_Y"]
+		player._current_movement.x  = player_dict[EntityState.ENTITY_STATE_X_MOVE]
+		player._current_movement.y  = player_dict[EntityState.ENTITY_STATE_Y_MOVE]
 		
 		player.update_animation(_players[player_index]._current_movement)
 	
 	if not steam_connection.is_host():
-		var current_xp = player_dict["PLAYER_CURRENT_XP"]
-		var next_level_xp = player_dict["PLAYER_NEXT_LEVEL_XP"]
+		var current_xp = player_dict[EntityState.ENTITY_STATE_PLAYER_CURRENT_XP]
+		var next_level_xp = player_dict[EntityState.ENTITY_STATE_PLAYER_NEXT_LEVEL_XP]
 		RunData.players_data[player_index].current_xp = current_xp
 		RunData.emit_signal("xp_added", current_xp, next_level_xp, player_index)
 		
-		var current_hp = player_dict["CURRENT_HP"]
-		var max_hp = player_dict["MAX_HP"]
+		var current_hp = player_dict[EntityState.ENTITY_STATE_CURRENT_HP]
+		var max_hp = player_dict[EntityState.ENTITY_STATE_MAX_HP]
 		var should_send_hp_signal = false
 		if current_hp != player.current_stats.health:
 			should_send_hp_signal = true
@@ -310,24 +341,24 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 		if should_send_hp_signal:
 			player.emit_signal("health_updated", player, player.current_stats.health, player.max_stats.health)
 		
-		var current_gold = player_dict["PLAYER_GOLD"]
+		var current_gold = player_dict[EntityState.ENTITY_STATE_PLAYER_GOLD]
 		RunData.players_data[player_index].gold = current_gold
 		RunData.emit_signal("gold_changed", current_gold, player_index)
 		
 		var things_to_process = _things_to_process_player_containers[player_index]
-		if player_dict["NUM_UPGRADES"] > things_to_process.upgrades._elements.size():
+		if player_dict[EntityState.ENTITY_STATE_PLAYER_NUM_UPGRADES] > things_to_process.upgrades._elements.size():
 			things_to_process.upgrades.add_element(ItemService.get_icon("icon_upgrade_to_process"), 1)
 		
-		var weapons_array = player_dict["WEAPONS"]
+		var weapons_array = player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS]
 		for weapon_index in weapons_array.size():
 			var weapon_dict = weapons_array[weapon_index]
 			var weapon = player.current_weapons[weapon_index]
 			
-			weapon.sprite.position.x = weapon_dict["X_POS"]
-			weapon.sprite.position.y = weapon_dict["Y_POS"]
-			weapon.sprite.rotation = weapon_dict["SPRITE_ROTATION"]
-			weapon.rotation = weapon_dict["ROTATION"]
-			weapon._is_shooting = weapon_dict["IS_SHOOTING"]
+			weapon.sprite.position.x = weapon_dict[WeaponState.WEAPON_STATE_X_POS]
+			weapon.sprite.position.y = weapon_dict[WeaponState.WEAPON_STATE_Y_POS]
+			weapon.sprite.rotation = weapon_dict[WeaponState.WEAPON_STATE_SPRITE_ROTATION]
+			weapon.rotation = weapon_dict[WeaponState.WEAPON_STATE_ROTATION]
+			weapon._is_shooting = weapon_dict[WeaponState.WEAPON_STATE_IS_SHOOTING]
 
 
 func _dictionary_for_enemy(enemy) -> Dictionary:
@@ -508,7 +539,6 @@ func _host_player_projectiles_array() -> Array:
 				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
 				server_player_projectile_ids[child] = network_id
 			
-			print_debug("sending bullet with id ", network_id)
 			projectile_dict["NETWORK_ID"] = network_id
 			projectile_dict["X_POS"] = child.global_position.x
 			projectile_dict["Y_POS"] = child.global_position.y
