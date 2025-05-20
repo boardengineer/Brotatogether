@@ -151,10 +151,15 @@ func _send_game_state() -> void:
 	
 	if ENABLE_DEBUG:
 		var size_by_key = {}
+		var big_enough_to_show = false
 		for key in state_dict:
 			var compressed_data: PoolByteArray = var2bytes(state_dict[key]).compress(File.COMPRESSION_GZIP)
-			size_by_key[key] = compressed_data.size()
-		print_debug(size_by_key)
+			var compressed_size = compressed_data.size()
+			if compressed_size > 200:
+				big_enough_to_show = true
+				size_by_key[key] = compressed_size
+		if big_enough_to_show:
+			print_debug(size_by_key)
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -540,8 +545,8 @@ func _host_player_projectiles_array() -> Array:
 				server_player_projectile_ids[child] = network_id
 			
 			projectile_dict["NETWORK_ID"] = network_id
-			projectile_dict["X_POS"] = child.global_position.x
-			projectile_dict["Y_POS"] = child.global_position.y
+			projectile_dict["X_POS"] = child.position.x
+			projectile_dict["Y_POS"] = child.position.y
 			projectile_dict["ROTATION"] = child.rotation
 			projectile_dict["FILENAME"] = child.filename
 			player_projectiles_array.push_back(projectile_dict)
@@ -558,8 +563,8 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 		if client_player_projectiles.has(network_id):
 			var projectile = client_player_projectiles[network_id]
 			
-			projectile.global_position.x = player_projectile_dict["X_POS"]
-			projectile.global_position.y = player_projectile_dict["Y_POS"]
+			projectile.position.x = player_projectile_dict["X_POS"]
+			projectile.position.y = player_projectile_dict["Y_POS"]
 			projectile.rotation = player_projectile_dict["ROTATION"]
 		else:
 			call_deferred("_spawn_player_projectile", player_projectile_dict)
@@ -577,8 +582,8 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	
 	client_player_projectiles[network_id] = projectile
 	
-	projectile.global_position.x = player_projectile_dict["X_POS"]
-	projectile.global_position.y = player_projectile_dict["Y_POS"]
+	projectile.position.x = player_projectile_dict["X_POS"]
+	projectile.position.y = player_projectile_dict["Y_POS"]
 	projectile.spawn_position.x = player_projectile_dict["X_POS"]
 	projectile.spawn_position.y = player_projectile_dict["Y_POS"]
 
