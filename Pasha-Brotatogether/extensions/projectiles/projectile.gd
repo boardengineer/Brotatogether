@@ -16,5 +16,3 @@ func _ready():
 		is_host = steam_connection.is_host()
 		network_id = brotatogether_options.current_network_id
 		brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
-
-

@@ -28,6 +28,7 @@ var client_neutrals = {}
 var client_structures = {}
 
 var server_player_projectile_ids = {}
+var server_enemy_projectile_ids = {}
 
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
@@ -36,6 +37,9 @@ const ENABLE_DEBUG = true
 
 var debug_frame_counter : int = 0
 
+# This is currently a half-completed attempt ot shrink some of the overhead
+# in messaging.  With a bit of testing, the gains weren't that great given 
+# compression so it may not get done.
 enum EntityState {
 	ENTITY_STATE_X_POS,
 	ENTITY_STATE_Y_POS,
@@ -44,6 +48,8 @@ enum EntityState {
 	ENTITY_STATE_CURRENT_HP,
 	ENTITY_STATE_MAX_HP,
 	ENTITY_STATE_SPRITE_SCALE,
+	
+	# Player-specific entity state.
 	ENTITY_STATE_PLAYER_GOLD,
 	ENTITY_STATE_PLAYER_CURRENT_XP,
 	ENTITY_STATE_PLAYER_NEXT_LEVEL_XP,
@@ -377,6 +383,11 @@ func _dictionary_for_enemy(enemy) -> Dictionary:
 	enemy_dict["MOVE_X"] = enemy._current_movement.x
 	enemy_dict["MOVE_Y"] = enemy._current_movement.y
 	
+	enemy_dict["MODULATE_A"] = enemy.sprite.self_modulate.a8
+	enemy_dict["MODULATE_R"] = enemy.sprite.self_modulate.r8
+	enemy_dict["MODULATE_G"] = enemy.sprite.self_modulate.g8
+	enemy_dict["MODULATE_B"] = enemy.sprite.self_modulate.b8
+	
 	return enemy_dict
 
 
@@ -390,6 +401,13 @@ func _update_enemy(enemy_dict : Dictionary) -> void:
 		
 		enemy._current_movement.x = enemy_dict["MOVE_X"]
 		enemy._current_movement.y = enemy_dict["MOVE_Y"]
+		
+		var modulate_a = enemy_dict["MODULATE_A"]
+		var modulate_r = enemy_dict["MODULATE_R"]
+		var modulate_g = enemy_dict["MODULATE_G"]
+		var modulate_b = enemy_dict["MODULATE_B"]
+		
+		enemy.sprite.self_modulate = Color8(modulate_r, modulate_g, modulate_b, modulate_a)
 		
 		enemy.call_deferred("update_animation", enemy._current_movement)
 	else:
@@ -789,7 +807,15 @@ func _host_enemy_projectiles_array() -> Array:
 	for enemy_projectile in _enemy_projectiles.get_children():
 		if enemy_projectile is Projectile and enemy_projectile._hitbox.active:
 			var projectile_dict = {}
-			projectile_dict["NETWORK_ID"] = enemy_projectile.network_id
+			var network_id
+			if server_enemy_projectile_ids.has(enemy_projectile):
+				network_id = server_enemy_projectile_ids[enemy_projectile]
+			else:
+				network_id = brotatogether_options.current_network_id
+				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
+				server_enemy_projectile_ids[enemy_projectile] = network_id
+			
+			projectile_dict["NETWORK_ID"] = network_id
 			projectile_dict["X_POS"] = enemy_projectile.global_position.x
 			projectile_dict["Y_POS"] = enemy_projectile.global_position.y
 			projectile_dict["ROTATION"] = enemy_projectile.rotation
@@ -807,8 +833,8 @@ func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 		if client_enemy_projectiles.has(network_id):
 			var enemy_projectile = client_enemy_projectiles[network_id]
 			
-			enemy_projectile.global_position.x = enemy_projectile_dict["X_POS"]
-			enemy_projectile.global_position.y = enemy_projectile_dict["Y_POS"]
+			enemy_projectile.position.x = enemy_projectile_dict["X_POS"]
+			enemy_projectile.position.y = enemy_projectile_dict["Y_POS"]
 			enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
 		else:
 			call_deferred("_spawn_enemy_projectile", enemy_projectile_dict)
@@ -825,13 +851,9 @@ func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
 	var enemy_projectile = load(enemy_projectile_dict["FILENAME"]).instance()
 	client_enemy_projectiles[network_id] = enemy_projectile
 	
-	enemy_projectile.global_position.x = enemy_projectile_dict["X_POS"]
-	enemy_projectile.global_position.y = enemy_projectile_dict["Y_POS"]
+	enemy_projectile.position.x = enemy_projectile_dict["X_POS"]
+	enemy_projectile.position.y = enemy_projectile_dict["Y_POS"]
 	
-	enemy_projectile.spawn_position.x = enemy_projectile_dict["X_POS"]
-	enemy_projectile.spawn_position.y = enemy_projectile_dict["Y_POS"]
-	
-	enemy_projectile._max_range = 9999
 	enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
 	
 	_enemy_projectiles.add_child(enemy_projectile)
