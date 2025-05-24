@@ -833,6 +833,9 @@ func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 		if client_enemy_projectiles.has(network_id):
 			var enemy_projectile = client_enemy_projectiles[network_id]
 			
+			if not is_instance_valid(enemy_projectile):
+				continue
+			
 			enemy_projectile.position.x = enemy_projectile_dict["X_POS"]
 			enemy_projectile.position.y = enemy_projectile_dict["Y_POS"]
 			enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
