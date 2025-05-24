@@ -18,6 +18,7 @@ const SEND_RATE : float = 1.0 / 30.0
 var send_timer = SEND_RATE
 var my_player_index
 
+var client_players = {}
 var client_enemies = {}
 var client_births = {}
 var client_player_projectiles = {}
@@ -158,6 +159,9 @@ func _send_game_state() -> void:
 	state_dict["BATCHED_FLOATING_TEXT"] = brotatogether_options.batched_floating_text.duplicate()
 	brotatogether_options.batched_floating_text.clear()
 	
+	state_dict["BATCHED_UNIT_FLASHES"] = brotatogether_options.batched_unit_flashes.duplicate()
+	brotatogether_options.batched_unit_flashes.clear()
+	
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
@@ -217,6 +221,19 @@ func _state_update(state_dict : Dictionary) -> void:
 	var enemy_deaths_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
+	for flashing_unit_id in state_dict["BATCHED_UNIT_FLASHES"]:
+		var flashing_unit
+		if client_enemies.has(flashing_unit_id):
+			flashing_unit = client_enemies[flashing_unit_id]
+		elif client_players.has(flashing_unit_id):
+			flashing_unit = client_players[flashing_unit_id]
+		elif client_neutrals.has(flashing_unit_id):
+			flashing_unit = client_neutrals[flashing_unit_id]
+		if flashing_unit and is_instance_valid(flashing_unit):
+			flashing_unit.flash()
+	var flashing_units_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
 	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
 	var player_projectiles_update_time = Time.get_ticks_usec() - before
 	
@@ -266,7 +283,7 @@ func _state_update(state_dict : Dictionary) -> void:
 		debug_frame_counter += 1
 		if debug_frame_counter % 100 == 0 || elapsed_time > 1000:
 			print_debug("state update time: ", elapsed_time)
-			print_debug(wave_timer_update_time, " ", player_update_time, " ", enemies_update_time, " ", enemy_deaths_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
+			print_debug(wave_timer_update_time, " ", player_update_time, " ", enemies_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
 
 
 func _input(event) -> void: 
@@ -298,6 +315,8 @@ func _send_client_position() -> void:
 
 func _dictionary_for_player(player, player_index) -> Dictionary:
 	var player_dict = {
+		EntityState.ENTITY_STATE_NETWORK_ID : player.network_id,
+		
 		EntityState.ENTITY_STATE_X_POS : player.position.x,
 		EntityState.ENTITY_STATE_Y_POS : player.position.y,
 		
@@ -336,6 +355,11 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 
 func _update_player_position(player_dict : Dictionary, player_index : int) -> void:
 	var player = _players[player_index]
+	var network_id = player_dict[EntityState.ENTITY_STATE_NETWORK_ID]
+	
+	if not client_players.has(network_id):
+		client_players[network_id] = player
+	
 	if player_index != my_player_index:
 		if player.dead:
 			return
