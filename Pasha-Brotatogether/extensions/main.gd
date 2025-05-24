@@ -41,6 +41,8 @@ var debug_frame_counter : int = 0
 # in messaging.  With a bit of testing, the gains weren't that great given 
 # compression so it may not get done.
 enum EntityState {
+	ENTITY_STATE_NETWORK_ID,
+	
 	ENTITY_STATE_X_POS,
 	ENTITY_STATE_Y_POS,
 	ENTITY_STATE_X_MOVE,
@@ -64,6 +66,16 @@ enum WeaponState {
 	WEAPON_STATE_SPRITE_ROTATION,
 	WEAPON_STATE_IS_SHOOTING,
 }
+
+enum ProjectileState {
+	PROJECTILE_STATE_NETWORK_ID,
+	
+	PROJECTILE_STATE_X_POS,
+	PROJECTILE_STATE_Y_POS,
+	PROJECTILE_STATE_ROTATION,
+	PROJECTILE_STATE_FILENAME,
+}
+
 
 
 func _ready():
@@ -163,7 +175,10 @@ func _send_game_state() -> void:
 			var compressed_size = compressed_data.size()
 			if compressed_size > 200:
 				big_enough_to_show = true
-				size_by_key[key] = compressed_size
+				if state_dict[key] is Array:
+					size_by_key[key] = "%d (%.1f) " % [compressed_size, compressed_size / state_dict[key].size()]
+				else:
+					size_by_key[key] = compressed_size
 		if big_enough_to_show:
 			print_debug(size_by_key)
 	
@@ -815,11 +830,11 @@ func _host_enemy_projectiles_array() -> Array:
 				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
 				server_enemy_projectile_ids[enemy_projectile] = network_id
 			
-			projectile_dict["NETWORK_ID"] = network_id
-			projectile_dict["X_POS"] = enemy_projectile.global_position.x
-			projectile_dict["Y_POS"] = enemy_projectile.global_position.y
-			projectile_dict["ROTATION"] = enemy_projectile.rotation
-			projectile_dict["FILENAME"] = enemy_projectile.filename
+			projectile_dict[ProjectileState.PROJECTILE_STATE_NETWORK_ID] = network_id
+			projectile_dict[ProjectileState.PROJECTILE_STATE_X_POS] = enemy_projectile.global_position.x
+			projectile_dict[ProjectileState.PROJECTILE_STATE_Y_POS] = enemy_projectile.global_position.y
+			projectile_dict[ProjectileState.PROJECTILE_STATE_ROTATION] = enemy_projectile.rotation
+			projectile_dict[ProjectileState.PROJECTILE_STATE_FILENAME] = enemy_projectile.filename
 			enemy_projectiles_array.push_back(projectile_dict)
 	return enemy_projectiles_array
 
@@ -827,7 +842,7 @@ func _host_enemy_projectiles_array() -> Array:
 func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 	var current_enemy_projectiles = {}
 	for enemy_projectile_dict in enemy_projectiles_array:
-		var network_id = enemy_projectile_dict["NETWORK_ID"]
+		var network_id = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_NETWORK_ID]
 		current_enemy_projectiles[network_id] = true
 		
 		if client_enemy_projectiles.has(network_id):
@@ -836,9 +851,9 @@ func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 			if not is_instance_valid(enemy_projectile):
 				continue
 			
-			enemy_projectile.position.x = enemy_projectile_dict["X_POS"]
-			enemy_projectile.position.y = enemy_projectile_dict["Y_POS"]
-			enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
+			enemy_projectile.position.x = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_X_POS]
+			enemy_projectile.position.y = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_Y_POS]
+			enemy_projectile.rotation = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_ROTATION]
 		else:
 			call_deferred("_spawn_enemy_projectile", enemy_projectile_dict)
 	
@@ -850,14 +865,14 @@ func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 
 
 func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
-	var network_id = enemy_projectile_dict["NETWORK_ID"]
-	var enemy_projectile = load(enemy_projectile_dict["FILENAME"]).instance()
+	var network_id = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_NETWORK_ID]
+	var enemy_projectile = load(enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_FILENAME]).instance()
 	client_enemy_projectiles[network_id] = enemy_projectile
 	
-	enemy_projectile.position.x = enemy_projectile_dict["X_POS"]
-	enemy_projectile.position.y = enemy_projectile_dict["Y_POS"]
+	enemy_projectile.position.x = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_X_POS]
+	enemy_projectile.position.y = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_Y_POS]
 	
-	enemy_projectile.rotation = enemy_projectile_dict["ROTATION"]
+	enemy_projectile.rotation = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_ROTATION]
 	
 	_enemy_projectiles.add_child(enemy_projectile)
 	_enemy_projectiles.set_physics_process(false)
