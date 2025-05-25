@@ -85,7 +85,7 @@ func _ready():
 		var username_label_player_4 : Label = UsernameLabel.instance()
 		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4".add_child(username_label_player_4)
 		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4".move_child(username_label_player_4, 0)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2/MarginContainer".set("custom_constants/margin_top", 50)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4/MarginContainer".set("custom_constants/margin_top", 50)
 		username_labels.push_back(username_label_player_4)
 		
 		for index in steam_connection.lobby_member_names.size():
