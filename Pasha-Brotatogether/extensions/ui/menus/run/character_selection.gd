@@ -2,6 +2,8 @@ extends "res://ui/menus/run/character_selection.gd"
 
 const ChatPanel = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat_panel.tscn")
 const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
+const UsernameLabel = preload("res://mods-unpacked/Pasha-Brotatogether/ui/username_label.tscn")
+
 const MULTIPLAYER_CLIENT_PLAYER_TYPE = 10
 
 var steam_connection
@@ -23,6 +25,8 @@ var panels_array
 var visible_panel_index : int = 0
 
 var inventory_by_string_key : Dictionary
+
+var username_labels = []
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -59,6 +63,33 @@ func _ready():
 		_err =  run_options_right_arrow.connect("pressed", self, "_on_pressed_right_menu_arrow")
 		
 		panel_parent_container = _run_options_panel.get_parent()
+		
+		var username_label_player_1 : Label = UsernameLabel.instance()
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel1".add_child(username_label_player_1)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel1".move_child(username_label_player_1, 0)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel1/MarginContainer".set("custom_constants/margin_top", 50)
+		username_labels.push_back(username_label_player_1)
+		
+		var username_label_player_2 : Label = UsernameLabel.instance()
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2".add_child(username_label_player_2)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2".move_child(username_label_player_2, 0)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2/MarginContainer".set("custom_constants/margin_top", 50)
+		username_labels.push_back(username_label_player_2)
+		
+		var username_label_player_3 : Label = UsernameLabel.instance()
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel3".add_child(username_label_player_3)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel3".move_child(username_label_player_3, 0)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel3/MarginContainer".set("custom_constants/margin_top", 50)
+		username_labels.push_back(username_label_player_3)
+		
+		var username_label_player_4 : Label = UsernameLabel.instance()
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4".add_child(username_label_player_4)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4".move_child(username_label_player_4, 0)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2/MarginContainer".set("custom_constants/margin_top", 50)
+		username_labels.push_back(username_label_player_4)
+		
+		for index in steam_connection.lobby_member_names.size():
+			username_labels[index].text = steam_connection.lobby_member_names[index]
 		
 		global_chat_panel = ChatPanel.instance()
 		global_chat_panel.get_node("MarginContainer/VBoxContainer/HBoxContainer/ChatTitle").text = "Global Chat"

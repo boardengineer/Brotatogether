@@ -95,6 +95,7 @@ var steam_id : int
 
 var game_lobby_id : int = -1
 var lobby_members : Array = []
+var lobby_member_names : Array = []
 
 # Player latencies will be populated as people join and start sending statuses.
 var player_latencies : Dictionary = {}
@@ -337,7 +338,9 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
 					
 					for member_index in Steam.getNumLobbyMembers(lobby_id):
-						lobby_members.push_back(Steam.getLobbyMemberByIndex(lobby_id, member_index))
+						var member_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
+						lobby_members.push_back(member_id)
+						lobby_member_names.push_back(Steam.getFriendPersonaName(member_id))
 					
 					var _error = get_tree().change_scene(MenuData.character_selection_scene)
 					
@@ -353,6 +356,7 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 		if lobby_id == game_lobby_id and game_lobby_id != -1:
 			if not lobby_members.has(change_id):
 				lobby_members.push_back(change_id)
+				lobby_member_names.push_back(changer_name)
 				emit_signal("lobby_players_updated")
 			print("%s has joined the lobby." % changer_name)
 			print_debug("steam lobby : ", lobby_members)

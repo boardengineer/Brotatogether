@@ -1,0 +1,6 @@
+[gd_scene format=2]
+
+[node name="username_label" type="Label"]
+size_flags_vertical = 1
+text = "Username"
+align = 1
