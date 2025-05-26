@@ -93,6 +93,7 @@ func _on_selections_completed() -> void:
 			return
 	else:
 		._on_selections_completed()
+		return
 	
 	
 	for player_index in RunData.get_player_count():
