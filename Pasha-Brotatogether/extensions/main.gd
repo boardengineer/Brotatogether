@@ -20,6 +20,7 @@ var my_player_index
 
 var client_players = {}
 var client_enemies = {}
+var client_bosses = {}
 var client_births = {}
 var client_player_projectiles = {}
 var client_enemy_projectiles = {}
@@ -144,8 +145,14 @@ func _send_game_state() -> void:
 	
 	var enemies = []
 	for enemy in _entity_spawner.enemies:
-		enemies.push_back(_dictionary_for_enemy(enemy))
+		if is_instance_valid(enemy):
+			enemies.push_back(_dictionary_for_enemy(enemy))
 	state_dict["ENEMIES"] = enemies
+	
+	var bosses = []
+	for boss in _entity_spawner.bosses:
+		bosses.push_back(_dictionary_for_enemy(boss))
+	state_dict["BOSSES"] = bosses
 	
 	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
 	brotatogether_options.batched_enemy_deaths.clear()
@@ -211,6 +218,12 @@ func _state_update(state_dict : Dictionary) -> void:
 	for enemy in enemies_array:
 		_update_enemy(enemy)
 	var enemies_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	var bosses_array = state_dict["BOSSES"]
+	for boss in bosses_array:
+		_update_enemy(boss )
+	var bosses_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
 	for enemy_id in state_dict["BATCHED_ENEMY_DEATHS"]:
@@ -283,7 +296,7 @@ func _state_update(state_dict : Dictionary) -> void:
 		debug_frame_counter += 1
 		if debug_frame_counter % 100 == 0 || elapsed_time > 1000:
 			print_debug("state update time: ", elapsed_time)
-			print_debug(wave_timer_update_time, " ", player_update_time, " ", enemies_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
+			print_debug(wave_timer_update_time, " ", player_update_time, " ", enemies_update_time, " ", bosses_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
 
 
 func _input(event) -> void: 
