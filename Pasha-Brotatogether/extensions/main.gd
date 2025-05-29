@@ -151,7 +151,8 @@ func _send_game_state() -> void:
 	
 	var bosses = []
 	for boss in _entity_spawner.bosses:
-		bosses.push_back(_dictionary_for_enemy(boss))
+		if is_instance_valid(boss):
+			bosses.push_back(_dictionary_for_enemy(boss))
 	state_dict["BOSSES"] = bosses
 	
 	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()

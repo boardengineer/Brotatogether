@@ -15,6 +15,10 @@ var waiting_to_start_shop = false
 var focusing_reroll_button = false
 var focusing_go_button = false
 
+# Force clients to update their focus, this syncs up focus after inventory
+# changes (buys, discards, etc) and prevents the client focus from disappearing
+var pending_force_focus = []
+
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -57,6 +61,7 @@ func _process(_delta):
 					waiting_to_start_shop = false
 					
 					# Initial shop state, all players can break focus
+					print_debug("sending shop startup message")
 					send_shop_state([0,1,2,3])
 		_check_for_focus_change()
 
@@ -68,6 +73,7 @@ func _client_status_received(client_data : Dictionary, player_index : int) -> vo
 
 
 func _on_element_focused(element: InventoryElement, player_index: int)->void :
+	print_debug("player focused? ", player_index)
 	._on_element_focused(element,player_index)
 	
 	if in_multiplayer_game:
@@ -78,6 +84,7 @@ func _on_element_focused(element: InventoryElement, player_index: int)->void :
 
 
 func _client_shop_focus_updated(shop_item_string : String, player_index : int) -> void:
+	print_debug("player changed focus: ", player_index)
 	is_self_call = true
 	
 	var shop_item : ShopItem = _shop_item_for_string(shop_item_string, player_index)
@@ -86,19 +93,28 @@ func _client_shop_focus_updated(shop_item_string : String, player_index : int) -
 
 
 func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
-	._on_shop_item_focused(shop_item, player_index)
-	
+	print_debug("shop item focused ", player_index, " ", shop_item)
+		
 	if in_multiplayer_game:
+		if waiting_to_start_shop and player_index != steam_connection.get_my_index():
+			return
+		._on_shop_item_focused(shop_item, player_index)
 		if is_self_call:
 			is_self_call = false
 		else:
-			steam_connection.shop_item_focused(_string_for_shop_item(shop_item))
+			print_debug("sending shop item focus")
+			var players_to_force = pending_force_focus.duplicate()
+			pending_force_focus.clear()
+			steam_connection.shop_item_focused(_string_for_shop_item(shop_item), players_to_force)
+	else:
+		._on_shop_item_focused(shop_item, player_index)
 
 
 func _on_item_discard_button_pressed(weapon_data: WeaponData, player_index: int)->void :
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_item_discard_button_pressed(weapon_data, player_index)
+			pending_force_focus.push_back(player_index)
 		steam_connection.shop_weapon_discard(_string_for_weapon(weapon_data), player_index)
 	else:
 		._on_item_discard_button_pressed(weapon_data, player_index)
@@ -168,6 +184,7 @@ func on_shop_item_bought(shop_item: ShopItem, player_index: int) -> void:
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			.on_shop_item_bought(shop_item, player_index)
+			pending_force_focus.push_back(player_index)
 		steam_connection.shop_buy_item(_string_for_shop_item(shop_item), player_index)
 	else:
 		.on_shop_item_bought(shop_item, player_index)
@@ -180,6 +197,7 @@ func _client_shop_buy_item(item_string : String, player_index : int) -> void:
 func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int, is_upgrade: bool = false)->void :
 	if in_multiplayer_game:
 		if steam_connection.is_host():
+			pending_force_focus.push_back(player_index)
 			._on_item_combine_button_pressed(weapon_data, player_index, is_upgrade)
 		steam_connection.shop_combine_weapon(_string_for_weapon(weapon_data), is_upgrade, player_index)
 	else:
@@ -301,8 +319,7 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		
 		
 		if player_dict.has("FOCUS"):
-			if player_index != steam_connection.get_my_index():
-				_set_client_focus_for_player(player_dict["FOCUS"], player_index)
+			_set_client_focus_for_player(player_dict["FOCUS"], player_index)
 		else:
 			print_debug("WARN - missing focus for player ", player_index, " ", player_dict)
 		
@@ -310,8 +327,6 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		_reroll_discount[player_index] = player_dict["REROLL_DICSOUNT"]
 		_has_bonus_free_reroll[player_index] = player_dict["HAS_BONUS_FREE_REROLL"]
 		set_reroll_button_price(player_index)
-		
-		
 		
 		var locked_items : Array = player_dict["LOCKED_ITEMS"]
 		for item in _get_shop_items_container(player_index).get_children():
@@ -331,6 +346,7 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
+		waiting_to_start_shop = false
 
 
 func _dictionary_for_inventory_item(item : ItemData) -> Dictionary:
@@ -539,14 +555,14 @@ func _check_for_focus_change() -> void:
 	var focused_control = Utils.get_focus_emulator(player_index).focused_control
 	
 	if focused_control == _get_reroll_button(player_index):
-		if not focusing_reroll_button:
+		if not focusing_reroll_button and not waiting_to_start_shop:
 			steam_connection.shop_focus_inventory_element(_focus_dictionary_for_player(player_index))
 		focusing_reroll_button = true
 	else:
 		focusing_reroll_button = false
 		
 	if focused_control == _get_go_button(player_index):
-		if not focusing_go_button:
+		if not focusing_go_button and not waiting_to_start_shop:
 			steam_connection.shop_focus_inventory_element(_focus_dictionary_for_player(player_index))
 		focusing_go_button = true
 	else:

@@ -410,7 +410,7 @@ func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1) -> v
 	var compressed_data: PoolByteArray = var2bytes(data).compress(File.COMPRESSION_GZIP)
 	packet_data.append_array(compressed_data)
 	
-	print_debug("[", MessageType.keys()[message_type], "] sending packet size: ", compressed_data.size())
+#	print_debug("[", MessageType.keys()[message_type], "] sending packet size: ", compressed_data.size())
 	
 	if target_id == -1:
 		for lobby_member_id in lobby_members:
@@ -872,8 +872,9 @@ func get_lobby_index_for_player(player_id : int) -> int:
 	return -1
 
 
-func request_shop_update(_changed_shop_player_indeces : Array = []) -> void:
-	emit_signal("client_shop_requested")
+func request_shop_update(changed_shop_player_indeces : Array = []) -> void:
+	print_debug("sending shop request with changed players: ", changed_shop_player_indeces)
+	emit_signal("client_shop_requested", changed_shop_player_indeces)
 
 
 func send_shop_update(shop_data : Dictionary) -> void:
@@ -884,9 +885,10 @@ func _receive_shop_update(data : Dictionary) -> void:
 	emit_signal("shop_lobby_update", data)
 
 
-func shop_item_focused(shop_item_string : String) -> void:
+func shop_item_focused(shop_item_string : String, force_focus_for_players : Array = []) -> void:
 	if is_host():
-		request_shop_update()
+		print_debug("focus update request")
+		request_shop_update(force_focus_for_players)
 	else:
 		var data = {
 			"FOCUSED_ITEM": shop_item_string,
@@ -1086,6 +1088,7 @@ func _receive_host_round_start() -> void:
 
 func shop_focus_inventory_element(inventory_item_dict : Dictionary) -> void:
 	if is_host():
+		print_debug("shop focus update???")
 		request_shop_update()
 	else:
 		send_p2p_packet(inventory_item_dict, MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS, game_lobby_owner_id)
