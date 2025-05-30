@@ -47,6 +47,7 @@ func _ready():
 	if is_multiplayer_lobby:
 		ProgressData.settings.coop_mode_toggled = true
 		_coop_button.init()
+		_coop_button.hide()
 		var run_options_top_panel = _run_options_panel.get_node("MarginContainer/VBoxContainer/HBoxContainer")
 		run_options_top_panel.remove_child(run_options_top_panel.get_node("Icon"))
 		
