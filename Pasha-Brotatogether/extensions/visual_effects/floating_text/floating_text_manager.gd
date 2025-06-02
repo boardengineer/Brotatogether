@@ -30,4 +30,4 @@ func display(value: String, text_pos: Vector2, color: Color = Color.white, icon:
 		text_dict["VALUE"] = value
 		text_dict["DURATION"] = p_duration
 		
-		brotatogether_options.batched_floating_text.push_back(text_dict)
+#		brotatogether_options.batched_floating_text.push_back(text_dict)

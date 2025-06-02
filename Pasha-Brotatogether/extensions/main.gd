@@ -191,8 +191,8 @@ func _send_game_state() -> void:
 					size_by_key[key] = "%d (%.1f) " % [compressed_size, compressed_size / state_dict[key].size()]
 				else:
 					size_by_key[key] = compressed_size
-		if big_enough_to_show:
-			print_debug(size_by_key)
+#		if big_enough_to_show:
+#			print_debug(size_by_key)
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -1139,3 +1139,44 @@ func _host_entered_shop() -> void:
 func _check_for_pause() -> void:
 	if not in_multiplayer_game:
 		._check_for_pause()
+
+
+func connect_visual_effects(unit: Unit)->void :
+	.connect_visual_effects(unit)
+	
+	if in_multiplayer_game:
+		if steam_connection.is_host():
+			var _error_floating_text = unit.connect("took_damage", self, "_on_unit_took_damage")
+
+
+func _on_unit_took_damage(unit: Unit, value: int, _knockback_direction: Vector2, is_crit: bool, is_dodge: bool, is_protected: bool, armor_did_something: bool, _args: TakeDamageArgs, hit_type: int)->void :
+	var color: Color = Color.white
+	var text = str(value)
+	var always_display = false
+
+	if unit is Player:
+		always_display = true
+		if value > 0:
+			color = Color.red
+			text = "-" + text
+		elif is_dodge:
+			text = "DODGE"
+		elif is_protected:
+			text = "NULLIFIED"
+	elif is_crit:
+		color = Color.yellow
+	elif armor_did_something:
+		color = Color.gray
+
+	var text_dict = {}
+	var text_pos = unit.global_position
+	text_dict["X_POS"] = text_pos.x
+	text_dict["Y_POS"] = text_pos.y
+	text_dict["R_COLOR"] = color.r8
+	text_dict["G_COLOR"] = color.g8
+	text_dict["B_COLOR"] = color.b8
+	text_dict["A_COLOR"] = color.a8
+	text_dict["VALUE"] = text
+	text_dict["DURATION"] = _floating_text_manager.duration
+	
+	brotatogether_options.batched_floating_text.push_back(text_dict)
