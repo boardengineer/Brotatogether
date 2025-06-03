@@ -31,6 +31,13 @@ func _ready():
 	steam_connection.connect("game_lobby_found", self, "_game_lobby_found")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
+	
+	for message in steam_connection.pending_system_messages:
+		var new_message_node = ChatMessage.instance()
+		new_message_node.message = message
+		new_message_node.username = "SYSTEM"
+		chat_messages.add_child(new_message_node)
+	steam_connection.pending_system_messages
 
 
 func _input(event:InputEvent)->void :

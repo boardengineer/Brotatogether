@@ -97,6 +97,9 @@ var game_lobby_id : int = -1
 var lobby_members : Array = []
 var lobby_member_names : Array = []
 
+# Messages to be displayed in the global lobby chat next time its entered
+var pending_system_messages : Array = []
+
 # Player latencies will be populated as people join and start sending statuses.
 var player_latencies : Dictionary = {}
 var game_lobby_owner_id : int = -1
@@ -297,6 +300,12 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 		Steam.createLobby(Steam.LOBBY_TYPE_INVISIBLE, 250)
 
 
+func leave_game_lobby() -> void:
+	if game_lobby_id > 0:
+		Steam.leaveLobby(game_lobby_id)
+		game_lobby_id = 0
+
+
 func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 	if connect == 1:
 		if is_creating_global_chat_lobby:
@@ -363,6 +372,9 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 
 	# Else if a player has left the lobby
 	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_LEFT:
+		if change_id == game_lobby_owner_id:
+			pending_system_messages.push_back("Host left the lobby")
+			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
 		print("%s has left the lobby." % changer_name)
 
 	# Else if a player has been kicked

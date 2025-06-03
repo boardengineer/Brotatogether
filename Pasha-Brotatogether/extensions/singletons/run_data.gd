@@ -9,6 +9,8 @@ var is_multiplayer_lobby = false
 func init_multiplayer() -> void:
 	steam_connection = $"/root/SteamConnection"
 	brotatogether_options = $"/root/BrotogetherOptions"
+	
+	steam_connection.leave_game_lobby()
 
 
 func lock_player_shop_item(item_data: ItemParentData, wave_value: int, player_index: int)->void :
