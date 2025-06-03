@@ -302,6 +302,9 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 
 func leave_game_lobby() -> void:
 	if game_lobby_id > 0:
+		lobby_members.clear()
+		lobby_member_names.clear()
+		
 		Steam.leaveLobby(game_lobby_id)
 		game_lobby_id = 0
 
@@ -374,6 +377,7 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_LEFT:
 		if change_id == game_lobby_owner_id:
 			pending_system_messages.push_back("Host left the lobby")
+			leave_game_lobby()
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
 		print("%s has left the lobby." % changer_name)
 

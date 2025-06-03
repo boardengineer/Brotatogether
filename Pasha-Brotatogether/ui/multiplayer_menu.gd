@@ -37,7 +37,8 @@ func _ready():
 		new_message_node.message = message
 		new_message_node.username = "SYSTEM"
 		chat_messages.add_child(new_message_node)
-	steam_connection.pending_system_messages
+	steam_connection.pending_system_messages.clear()
+	CoopService.clear_coop_players()
 
 
 func _input(event:InputEvent)->void :
