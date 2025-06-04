@@ -39,7 +39,10 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/utils.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/coop_upgrades_ui_player_container.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
