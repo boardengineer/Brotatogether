@@ -80,11 +80,13 @@ func _on_element_focused(element: InventoryElement, player_index: int)->void :
 		if is_self_call:
 			is_self_call = false
 		else:
-			steam_connection.shop_focus_inventory_element(_dictionary_for_focus_inventory_element(element, player_index))
+			var focus_string = _dictionary_for_focus_inventory_element(element, player_index)
+			print_debug("player changed focus: ", player_index, " ", focus_string)
+			steam_connection.shop_focus_inventory_element(focus_string)
 
 
 func _client_shop_focus_updated(shop_item_string : String, player_index : int) -> void:
-	print_debug("player changed focus: ", player_index)
+	print_debug("player changed focus: ", player_index, " ", shop_item_string)
 	is_self_call = true
 	
 	var shop_item : ShopItem = _shop_item_for_string(shop_item_string, player_index)
@@ -96,13 +98,13 @@ func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
 	print_debug("shop item focused ", player_index, " ", shop_item)
 		
 	if in_multiplayer_game:
-		if waiting_to_start_shop and player_index != steam_connection.get_my_index():
+		var is_me = player_index == steam_connection.get_my_index()
+		if waiting_to_start_shop and not is_me:
 			return
 		._on_shop_item_focused(shop_item, player_index)
 		if is_self_call:
 			is_self_call = false
-		else:
-			print_debug("sending shop item focus")
+		elif is_me or steam_connection.is_host():
 			var players_to_force = pending_force_focus.duplicate()
 			pending_force_focus.clear()
 			steam_connection.shop_item_focused(_string_for_shop_item(shop_item), players_to_force)
@@ -248,9 +250,11 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		player_dict["WEAPONS"] = weapons_array
 		player_dict["GO_PRESSED"] = _player_pressed_go_button[player_index]
 		
+		var gear_container : PlayerGearContainer = _get_gear_container(player_index)
 		var items_array = []
-		for item in RunData.get_player_items(player_index):
-			items_array.push_back(_dictionary_for_inventory_item(item))
+		for element in gear_container.items_container._elements.get_children():
+			items_array.push_back(_dictionary_for_inventory_item(element.item))
+			print_debug("shop container has ", element.item.my_id)
 		player_dict["ITEMS"] = items_array
 		
 		player_dict["GOLD"] = RunData.get_player_gold(player_index)
