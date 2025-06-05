@@ -320,11 +320,13 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 			game_lobby_owner_id = Steam.getLobbyOwner(game_lobby_id) # This should be me but query to make sure
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
 			_err = Steam.setLobbyData(created_lobby_id,"lobby_name", Steam.getFriendPersonaName(Steam.getSteamID()))
+			_err = Steam.setLobbyData(created_lobby_id,"lobby_status", "OPEN")
 
 
 func _request_global_chat_search() -> void:
 	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	Steam.addRequestLobbyListStringFilter("lobby_type", GLOBAL_CHAT_TYPE, Steam.LOBBY_COMPARISON_EQUAL)
+	Steam.addRequestLobbyListStringFilter("lobby_status", "OPEN", Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.requestLobbyList()
 
 
@@ -684,6 +686,7 @@ func send_character_selection_completed(some_player_has_weapon_slots : bool, cur
 	if not is_host():
 		return
 	
+	var _err = Steam.setLobbyData(game_lobby_id, "lobby_status", "CLOSED")
 	var data = {
 		"HAS_WEAPON_SLOTS" : some_player_has_weapon_slots,
 		"SELECTED_CHARACTERS": currently_focused_characters,

@@ -20,7 +20,6 @@ var my_player_index
 
 var client_players = {}
 var client_enemies = {}
-var client_bosses = {}
 var client_births = {}
 var client_player_projectiles = {}
 var client_enemy_projectiles = {}
@@ -28,6 +27,9 @@ var client_items = {}
 var client_consumables = {}
 var client_neutrals = {}
 var client_structures = {}
+
+# Used to dedupe spawns
+var client_pending_ids = {}
 
 var server_player_projectile_ids = {}
 var server_enemy_projectile_ids = {}
@@ -223,7 +225,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	before = Time.get_ticks_usec()
 	var bosses_array = state_dict["BOSSES"]
 	for boss in bosses_array:
-		_update_enemy(boss )
+		_update_enemy(boss)
 	var bosses_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
@@ -464,7 +466,9 @@ func _update_enemy(enemy_dict : Dictionary) -> void:
 		
 		enemy.call_deferred("update_animation", enemy._current_movement)
 	else:
-		call_deferred("spawn_enemy", enemy_dict)
+		if not client_pending_ids.has(enemy_id):
+			client_pending_ids[enemy_id] = true
+			call_deferred("spawn_enemy", enemy_dict)
 
 
 func spawn_enemy(enemy_dict) -> void:
@@ -479,6 +483,7 @@ func spawn_enemy(enemy_dict) -> void:
 	enemy.stats = load(resource_path)
 	
 	client_enemies[enemy_id] = enemy
+	client_pending_ids.erase(enemy_id)
 	
 	var movement_behavior = enemy.get_node("MovementBehavior")
 	enemy.remove_child(movement_behavior)
@@ -638,7 +643,9 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 			projectile.position.y = player_projectile_dict["Y_POS"]
 			projectile.rotation = player_projectile_dict["ROTATION"]
 		else:
-			call_deferred("_spawn_player_projectile", player_projectile_dict)
+			if not client_pending_ids.has(network_id):
+				client_pending_ids[network_id] = true
+				call_deferred("_spawn_player_projectile", player_projectile_dict)
 	
 	for network_id in client_player_projectiles:
 		if not current_projectiles.has(network_id):
@@ -651,6 +658,7 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	var network_id = player_projectile_dict["NETWORK_ID"]
 	var projectile = load(player_projectile_dict["FILENAME"]).instance()
 	
+	client_pending_ids.erase(network_id)
 	client_player_projectiles[network_id] = projectile
 	
 	projectile.position.x = player_projectile_dict["X_POS"]
