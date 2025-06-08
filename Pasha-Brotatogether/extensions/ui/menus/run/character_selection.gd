@@ -121,7 +121,7 @@ func _ready():
 		
 		for member_id in steam_connection.lobby_members:
 			if member_id == steam_connection.steam_id:
-				CoopService._add_player(CoopService.KEYBOARD_REMAPPED_DEVICE_ID, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+				CoopService._add_player(0, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			else:
 				CoopService._add_player(100, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			
