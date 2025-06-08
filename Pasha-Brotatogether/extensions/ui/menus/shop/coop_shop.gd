@@ -393,7 +393,9 @@ func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index :
 	
 	var focus_type = item_dict["TYPE"]
 	if focus_type == "WEAPON":
-		return gear_container.weapons_container._elements.get_children()[item_dict["INDEX"]]
+		var weapon_index = item_dict["INDEX"]
+		if weapon_index < gear_container.weapons_container._elements.get_children().size():
+			return gear_container.weapons_container._elements.get_children()[weapon_index]
 	elif focus_type == "ITEM":
 		return gear_container.items_container._elements.get_children()[item_dict["INDEX"]]
 	elif focus_type == "GO":
