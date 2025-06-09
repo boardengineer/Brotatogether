@@ -254,7 +254,7 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		var items_array = []
 		for element in gear_container.items_container._elements.get_children():
 			items_array.push_back(_dictionary_for_inventory_item(element.item))
-			print_debug("shop container has ", element.item.my_id)
+#			print_debug("shop container has ", element.item.my_id)
 		player_dict["ITEMS"] = items_array
 		
 		player_dict["GOLD"] = RunData.get_player_gold(player_index)

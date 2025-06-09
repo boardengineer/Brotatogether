@@ -289,15 +289,14 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 		if is_game_lobby:
 			emit_signal("game_lobby_found", lobby_id, game_lobby_name)
 		
-	if min_chat_lobby_id < global_chat_lobby_id:
-		print_debug("Not sure how this happened but we should rejoin the lower id chat room")
-	
 	if found_global_chat_lobby:
 		if min_chat_lobby_id != global_chat_lobby_id:
 			Steam.joinLobby(min_chat_lobby_id)
 	else:
-		is_creating_global_chat_lobby = true
-		Steam.createLobby(Steam.LOBBY_TYPE_INVISIBLE, 250)
+		if global_chat_lobby_id == -1 and not is_creating_global_chat_lobby:
+			print_debug("requesting new chat lobby")
+			is_creating_global_chat_lobby = true
+			Steam.createLobby(Steam.LOBBY_TYPE_INVISIBLE, 250)
 
 
 func leave_game_lobby() -> void:
@@ -312,6 +311,7 @@ func leave_game_lobby() -> void:
 func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 	if connect == 1:
 		if is_creating_global_chat_lobby:
+			print_debug("creating global chat")
 			is_creating_global_chat_lobby = false
 			global_chat_lobby_id = created_lobby_id
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GLOBAL_CHAT_TYPE)
@@ -326,13 +326,13 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 func _request_global_chat_search() -> void:
 	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	Steam.addRequestLobbyListStringFilter("lobby_type", GLOBAL_CHAT_TYPE, Steam.LOBBY_COMPARISON_EQUAL)
-	Steam.addRequestLobbyListStringFilter("lobby_status", "OPEN", Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.requestLobbyList()
 
 
 func request_lobby_search() -> void:
 	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	Steam.addRequestLobbyListStringFilter("lobby_type", GAME_LOBBY_TYPE, Steam.LOBBY_COMPARISON_EQUAL)
+	Steam.addRequestLobbyListStringFilter("lobby_status", "OPEN", Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.requestLobbyList()
 
 
@@ -345,6 +345,7 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 			var value = lobby_data[kvpair_index]["value"]
 			if key == "lobby_type":
 				if value == GLOBAL_CHAT_TYPE:
+					print_debug("setting global chat id ", global_chat_lobby_id)
 					global_chat_lobby_id = lobby_id
 				elif value == GAME_LOBBY_TYPE:
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true

@@ -119,11 +119,12 @@ func _ready():
 		panels_array = [_run_options_panel, global_chat_panel, lobby_chat_panel]
 		update_panel_visiblility()
 		
-		for member_id in steam_connection.lobby_members:
+		for member_index in steam_connection.lobby_members.size():
+			var member_id = steam_connection.lobby_members[member_index]
 			if member_id == steam_connection.steam_id:
 				CoopService._add_player(0, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			else:
-				CoopService._add_player(100, MULTIPLAYER_CLIENT_PLAYER_TYPE)
+				CoopService._add_player(100 + member_index, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			
 		for character_data in _get_all_possible_elements(0):
 			inventory_by_string_key[character_item_to_string(character_data)] = character_data
