@@ -641,9 +641,10 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 		if client_player_projectiles.has(network_id):
 			var projectile = client_player_projectiles[network_id]
 			
-			projectile.position.x = player_projectile_dict["X_POS"]
-			projectile.position.y = player_projectile_dict["Y_POS"]
-			projectile.rotation = player_projectile_dict["ROTATION"]
+			if is_instance_valid(projectile):
+				projectile.position.x = player_projectile_dict["X_POS"]
+				projectile.position.y = player_projectile_dict["Y_POS"]
+				projectile.rotation = player_projectile_dict["ROTATION"]
 		else:
 			if not client_pending_ids.has(network_id):
 				client_pending_ids[network_id] = true

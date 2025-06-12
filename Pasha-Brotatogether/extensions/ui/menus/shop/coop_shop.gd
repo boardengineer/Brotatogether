@@ -545,7 +545,7 @@ func _set_client_focus_for_player(focus_dict : Dictionary, player_index : int) -
 		return
 	
 	var focus_control = _focus_inventory_item_for_dictionary(focus_dict, player_index)
-	if focus_control != null:
+	if focus_control != null and is_instance_valid(focus_control):
 		var focus_type : String = focus_dict["TYPE"]
 		if focus_type in ["SHOP_ITEM", "ITEM", "WEAPON"]:
 			is_self_call = true
