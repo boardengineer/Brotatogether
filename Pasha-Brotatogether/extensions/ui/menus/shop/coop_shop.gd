@@ -163,6 +163,7 @@ func _on_go_button_pressed_brotatogether(player_index: int)->void :
 
 
 func _receive_leave_shop() -> void:
+	RunData.current_wave += 1
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
 
