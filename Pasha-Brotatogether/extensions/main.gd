@@ -439,6 +439,7 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 			weapon.sprite.rotation = weapon_dict[WeaponState.WEAPON_STATE_SPRITE_ROTATION]
 			weapon.rotation = weapon_dict[WeaponState.WEAPON_STATE_ROTATION]
 			weapon._is_shooting = weapon_dict[WeaponState.WEAPON_STATE_IS_SHOOTING]
+			weapon._current_cooldown = 9999
 
 
 func _dictionary_for_enemy(enemy) -> Dictionary:
