@@ -61,6 +61,7 @@ enum EntityState {
 	ENTITY_STATE_PLAYER_NEXT_LEVEL_XP,
 	ENTITY_STATE_PLAYER_NUM_UPGRADES,
 	ENTITY_STATE_PLAYER_WEAPONS,
+	ENTITY_STATE_PLAYER_LEVEL,
 }
 
 enum WeaponState {
@@ -330,6 +331,7 @@ func _send_client_position() -> void:
 
 
 func _dictionary_for_player(player, player_index) -> Dictionary:
+	var player_run_data = RunData.players_data[player_index]
 	var player_dict = {
 		EntityState.ENTITY_STATE_NETWORK_ID : player.network_id,
 		
@@ -340,6 +342,7 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 		EntityState.ENTITY_STATE_Y_MOVE : player._current_movement.y,
 		
 		EntityState.ENTITY_STATE_SPRITE_SCALE: player.sprite.scale.x,
+		EntityState.ENTITY_STATE_PLAYER_LEVEL: player_run_data.current_level
 	}
 	
 	var weapons_array : Array = []
@@ -365,7 +368,7 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 		
 		var things_to_process = _things_to_process_player_containers[player_index]
 		player_dict[EntityState.ENTITY_STATE_PLAYER_NUM_UPGRADES] = things_to_process.upgrades._elements.size()
-		
+	
 	return player_dict
 
 
@@ -408,7 +411,10 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 			player.emit_signal("health_updated", player, player.current_stats.health, player.max_stats.health)
 		
 		var current_gold = player_dict[EntityState.ENTITY_STATE_PLAYER_GOLD]
+		var current_level = player_dict[EntityState.ENTITY_STATE_PLAYER_LEVEL]
 		RunData.players_data[player_index].gold = current_gold
+		RunData.players_data[player_index].current_level = current_level
+		_players_ui[player_index].update_level_label()
 		RunData.emit_signal("gold_changed", current_gold, player_index)
 		
 		var things_to_process = _things_to_process_player_containers[player_index]
