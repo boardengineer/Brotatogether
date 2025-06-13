@@ -139,6 +139,7 @@ func _send_game_state() -> void:
 	var state_dict = {}
 	
 	state_dict["WAVE_TIME"] = _wave_timer.time_left
+	state_dict["BONUS_GOLD"] = RunData.bonus_gold
 	
 	var players = []
 	for player_index in _players.size():
@@ -210,6 +211,13 @@ func _state_update(state_dict : Dictionary) -> void:
 	if wait_time > 0:
 		_wave_timer.start(wait_time)
 	var wave_timer_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	var bonus_gold = state_dict["BONUS_GOLD"]
+	if bonus_gold > 0:
+		_ui_bonus_gold.show()
+	on_bonus_gold_changed(bonus_gold)
+	var bonus_gold_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
 	var players_array = state_dict["PLAYERS"]
@@ -300,7 +308,7 @@ func _state_update(state_dict : Dictionary) -> void:
 		debug_frame_counter += 1
 		if debug_frame_counter % 100 == 0 || elapsed_time > 1000:
 			print_debug("state update time: ", elapsed_time)
-			print_debug(wave_timer_update_time, " ", player_update_time, " ", enemies_update_time, " ", bosses_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
+			print_debug(wave_timer_update_time, " ", bonus_gold_update_time, " ", player_update_time, " ", enemies_update_time, " ", bosses_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
 
 
 func _input(event) -> void: 
