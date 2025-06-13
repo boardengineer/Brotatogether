@@ -186,7 +186,6 @@ func _on_element_focused(element:InventoryElement, inventory_player_index:int) -
 			element_string = element.item.name
 		elif element.is_random:
 			element_string = "RANDOM"
-		print_debug("focused on ", element_string)
 		steam_connection.character_focused(element_string)
 
 

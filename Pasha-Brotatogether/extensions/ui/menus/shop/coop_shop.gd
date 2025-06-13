@@ -61,7 +61,6 @@ func _process(_delta):
 					waiting_to_start_shop = false
 					
 					# Initial shop state, all players can break focus
-					print_debug("sending shop startup message")
 					send_shop_state([0,1,2,3])
 		_check_for_focus_change()
 
@@ -73,7 +72,6 @@ func _client_status_received(client_data : Dictionary, player_index : int) -> vo
 
 
 func _on_element_focused(element: InventoryElement, player_index: int)->void :
-	print_debug("player focused? ", player_index)
 	._on_element_focused(element,player_index)
 	
 	if in_multiplayer_game:
@@ -81,12 +79,10 @@ func _on_element_focused(element: InventoryElement, player_index: int)->void :
 			is_self_call = false
 		else:
 			var focus_string = _dictionary_for_focus_inventory_element(element, player_index)
-			print_debug("player changed focus: ", player_index, " ", focus_string)
 			steam_connection.shop_focus_inventory_element(focus_string)
 
 
 func _client_shop_focus_updated(shop_item_string : String, player_index : int) -> void:
-	print_debug("player changed focus: ", player_index, " ", shop_item_string)
 	is_self_call = true
 	
 	var shop_item : ShopItem = _shop_item_for_string(shop_item_string, player_index)
@@ -95,8 +91,6 @@ func _client_shop_focus_updated(shop_item_string : String, player_index : int) -
 
 
 func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
-	print_debug("shop item focused ", player_index, " ", shop_item)
-		
 	if in_multiplayer_game:
 		var is_me = player_index == steam_connection.get_my_index()
 		if waiting_to_start_shop and not is_me:
@@ -283,7 +277,7 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		print("WARNING - host shouldn't be updating for remote, returning; data:", shop_dictionary)
 		return
 	
-	print_debug("updating shop for dictionary - ", shop_dictionary)
+#	print_debug("updating shop for dictionary - ", shop_dictionary)
 	
 	for player_index in shop_dictionary["PLAYERS"].size():
 		var player_dict = shop_dictionary["PLAYERS"][player_index]
@@ -301,7 +295,7 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 				checkmark.hide()
 		
 		if not can_update:
-			print_debug("skipping update for player ", player_index)
+#			print_debug("skipping update for player ", player_index)
 			continue
 		
 		_shop_items[player_index].clear()

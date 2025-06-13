@@ -294,7 +294,6 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 			Steam.joinLobby(min_chat_lobby_id)
 	else:
 		if global_chat_lobby_id == -1 and not is_creating_global_chat_lobby:
-			print_debug("requesting new chat lobby")
 			is_creating_global_chat_lobby = true
 			Steam.createLobby(Steam.LOBBY_TYPE_INVISIBLE, 250)
 
@@ -311,7 +310,6 @@ func leave_game_lobby() -> void:
 func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 	if connect == 1:
 		if is_creating_global_chat_lobby:
-			print_debug("creating global chat")
 			is_creating_global_chat_lobby = false
 			global_chat_lobby_id = created_lobby_id
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GLOBAL_CHAT_TYPE)
@@ -339,13 +337,11 @@ func request_lobby_search() -> void:
 func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
 	if response == Steam.CHAT_ROOM_ENTER_RESPONSE_SUCCESS:
 		var lobby_data : Dictionary = Steam.getAllLobbyData(lobby_id)
-		print_debug("joined lobby %s" % lobby_data)
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
 			var value = lobby_data[kvpair_index]["value"]
 			if key == "lobby_type":
 				if value == GLOBAL_CHAT_TYPE:
-					print_debug("setting global chat id ", global_chat_lobby_id)
 					global_chat_lobby_id = lobby_id
 				elif value == GAME_LOBBY_TYPE:
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
@@ -374,7 +370,6 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 				lobby_member_names.push_back(changer_name)
 				emit_signal("lobby_players_updated")
 			print("%s has joined the lobby." % changer_name)
-			print_debug("steam lobby : ", lobby_members)
 
 	# Else if a player has left the lobby
 	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_LEFT:
@@ -719,8 +714,6 @@ func send_character_lobby_update(currently_focused_characters : Array, has_playe
 		"SELECTIONS_CONFIRMED": has_player_selected,
 	}
 	
-	print_debug("sending lobby update ", data)
-	
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE)
 
 
@@ -798,8 +791,6 @@ func _send_weapon_lobby_update() -> void:
 		"SELECTIONS_CONFIRMED": weapon_select_scene._has_player_selected,
 	}
 	
-	print_debug("sending lobby update ", data)
-	
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_LOBBY_UPDATE)
 
 
@@ -827,8 +818,6 @@ func send_weapon_selection_completed(selected_weapons : Array) -> void:
 		"SELECTED_WEAPONS" : selected_weapons,
 	}
 	
-	print_debug("sending weapon completion message ", data)
-	
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED)
 
 
@@ -839,8 +828,6 @@ func _receive_weapon_selection_completed(data : Dictionary) -> void:
 func difficulty_focused() -> void:
 	var difficulty_selection_scene = get_tree().current_scene
 	var focused_difficulty : int = difficulty_selection_scene._get_panels()[0].item_data.value
-	
-	print_debug("emitting signal difficulty focused: ", focused_difficulty)
 	
 	var data = {
 		"FOCUSED_DIFFICULTY": focused_difficulty,
@@ -893,7 +880,6 @@ func get_lobby_index_for_player(player_id : int) -> int:
 
 
 func request_shop_update(changed_shop_player_indeces : Array = []) -> void:
-	print_debug("sending shop request with changed players: ", changed_shop_player_indeces)
 	emit_signal("client_shop_requested", changed_shop_player_indeces)
 
 
@@ -907,14 +893,12 @@ func _receive_shop_update(data : Dictionary) -> void:
 
 func shop_item_focused(shop_item_string : String, force_focus_for_players : Array = []) -> void:
 	if is_host():
-		print_debug("focus update request")
 		request_shop_update(force_focus_for_players)
 	else:
 		var data = {
 			"FOCUSED_ITEM": shop_item_string,
 		}
 		
-		print_debug("sending self focus ", data)
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_ITEM_FOCUS, game_lobby_owner_id)
 
 
@@ -1108,7 +1092,6 @@ func _receive_host_round_start() -> void:
 
 func shop_focus_inventory_element(inventory_item_dict : Dictionary) -> void:
 	if is_host():
-		print_debug("shop focus update???")
 		request_shop_update()
 	else:
 		send_p2p_packet(inventory_item_dict, MessageType.MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS, game_lobby_owner_id)

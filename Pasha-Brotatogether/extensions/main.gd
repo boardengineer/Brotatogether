@@ -185,18 +185,14 @@ func _send_game_state() -> void:
 	
 	if ENABLE_DEBUG:
 		var size_by_key = {}
-		var big_enough_to_show = false
 		for key in state_dict:
 			var compressed_data: PoolByteArray = var2bytes(state_dict[key]).compress(File.COMPRESSION_GZIP)
 			var compressed_size = compressed_data.size()
 			if compressed_size > 200:
-				big_enough_to_show = true
 				if state_dict[key] is Array:
 					size_by_key[key] = "%d (%.1f) " % [compressed_size, compressed_size / state_dict[key].size()]
 				else:
 					size_by_key[key] = compressed_size
-#		if big_enough_to_show:
-#			print_debug(size_by_key)
 	
 	steam_connection.send_game_state(state_dict)
 
@@ -1175,13 +1171,11 @@ func connect_visual_effects(unit: Unit)->void :
 			var _error_floating_text = unit.connect("took_damage", self, "_on_unit_took_damage")
 
 
-func _on_unit_took_damage(unit: Unit, value: int, _knockback_direction: Vector2, is_crit: bool, is_dodge: bool, is_protected: bool, armor_did_something: bool, _args: TakeDamageArgs, hit_type: int)->void :
+func _on_unit_took_damage(unit: Unit, value: int, _knockback_direction: Vector2, is_crit: bool, is_dodge: bool, is_protected: bool, armor_did_something: bool, _args: TakeDamageArgs, _hit_type: int)->void :
 	var color: Color = Color.white
 	var text = str(value)
-	var always_display = false
 
 	if unit is Player:
-		always_display = true
 		if value > 0:
 			color = Color.red
 			text = "-" + text
