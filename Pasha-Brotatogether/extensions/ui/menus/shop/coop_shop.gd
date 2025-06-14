@@ -298,6 +298,7 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 #			print_debug("skipping update for player ", player_index)
 			continue
 		
+		Utils.get_focus_emulator(player_index)._clear_focused_control()
 		_shop_items[player_index].clear()
 		
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
