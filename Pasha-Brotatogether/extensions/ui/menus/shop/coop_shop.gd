@@ -462,7 +462,7 @@ func _weapon_for_dictionary(weapon_dict : Dictionary) -> WeaponData:
 
 
 func _string_for_weapon(weapon_data : WeaponData) -> String:
-	return weapon_data.name
+	return weapon_data.my_id
 
 
 func _weapon_for_string(weapon_string : String, player_index : int) -> WeaponData:
@@ -473,14 +473,14 @@ func _weapon_for_string(weapon_string : String, player_index : int) -> WeaponDat
 
 
 func _string_for_shop_item(shop_item : ShopItem) -> String:
-	return shop_item.item_data.name
+	return shop_item.item_data.my_id
 
 
 func _shop_item_for_string(shop_item_string : String, player_index : int) -> ShopItem:
 	for item in _get_shop_items_container(player_index).get_children():
 		if not item is ShopItem:
 			continue
-		if item.item_data.name == shop_item_string:
+		if item.item_data.my_id == shop_item_string:
 			return item
 	
 	return null
