@@ -47,6 +47,7 @@ margin_right = 789.0
 margin_bottom = 65.0
 
 [node name="CreateLobbyButton" type="Button" parent="HBoxContainer/ChatContainer2/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
 margin_right = 303.0
 margin_bottom = 65.0
 text = "Create Lobby"

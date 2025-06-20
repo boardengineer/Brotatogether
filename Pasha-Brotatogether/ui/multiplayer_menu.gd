@@ -19,6 +19,7 @@ var DEBUG = false
 onready var chat_messages = $"%ChatMessages"
 onready var lobbies_list = $"%Lobbies"
 onready var chat_input : LineEdit = $"%ChatInput"
+onready var create_lobby_button : Button = $"%CreateLobbyButton"
 
 # Manual on ready vars
 var steam_connection
@@ -38,6 +39,7 @@ func _ready():
 		new_message_node.username = "SYSTEM"
 		chat_messages.add_child(new_message_node)
 	steam_connection.pending_system_messages.clear()
+	create_lobby_button.grab_focus()
 	CoopService.clear_coop_players()
 
 
