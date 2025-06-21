@@ -174,6 +174,12 @@ func _send_game_state() -> void:
 	state_dict["BATCHED_UNIT_FLASHES"] = brotatogether_options.batched_unit_flashes.duplicate()
 	brotatogether_options.batched_unit_flashes.clear()
 	
+	state_dict["BATCHED_2D_SOUNDS"] = brotatogether_options.batched_2d_sounds.duplicate()
+	brotatogether_options.batched_2d_sounds.clear()
+	
+	state_dict["BATCHED_SOUNDS"] = brotatogether_options.batched_sounds.duplicate()
+	brotatogether_options.batched_sounds.clear()
+	
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
@@ -293,6 +299,16 @@ func _state_update(state_dict : Dictionary) -> void:
 	before = Time.get_ticks_usec()
 	_update_batched_floating_text(state_dict["BATCHED_FLOATING_TEXT"])
 	var floating_text_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	for sound in state_dict["BATCHED_SOUNDS"]:
+		SoundManager.call_deferred("play", load(sound["RESOURCE_PATH"]))
+	var sound_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
+	for sound in state_dict["BATCHED_2D_SOUNDS"]:
+		SoundManager.call_deferred("play", load(sound["RESOURCE_PATH"]), Vector2(sound["X_POS"], sound["Y_POS"]))
+	var sound_2d_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
 	_update_menu(state_dict["UPGRADE_MENU_STATUS"])

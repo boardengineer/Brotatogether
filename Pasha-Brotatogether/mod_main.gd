@@ -32,6 +32,8 @@ func _init():
 		
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/coop_service.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/run_data.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "singletons/sound_manager.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "singletons/sound_manager_2d.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/utils.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/coop_upgrades_ui_player_container.gd")

@@ -5,6 +5,7 @@ var brotatogether_options
 
 var in_multiplayer_game = false
 
+
 func _ready():
 	steam_connection = $"/root/SteamConnection"
 	brotatogether_options = $"/root/BrotogetherOptions"

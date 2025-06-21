@@ -6,6 +6,8 @@ var multiplayer_button: Button
 # Add a multiplayer button to the main menu
 func _ready():
 	RunData.init_multiplayer()
+	SoundManager.init_multiplayer()
+	SoundManager2D.init_multiplayer()
 	
 	var buttons_node = $"MarginContainer/VBoxContainer/HBoxContainer/ButtonsLeft"
 
