@@ -216,6 +216,7 @@ func _client_shop_unlock_item(item_string : String, player_index : int) -> void:
 
 func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 	var result_dict : Dictionary = {}
+	var abyssal_dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	
 	var players_array = []
 	var player_count: int = RunData.get_player_count()
@@ -227,6 +228,10 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 			
 			item_dict["ID"] = item[0].my_id
 			item_dict["WAVE_VALUE"] = item[1]
+			
+			if abyssal_dlc:
+				if item[0].is_cursed:
+					item_dict["CURSED"] = true
 			
 			shop_items.push_back(item_dict)
 		player_dict["SHOP_ITEMS"] = shop_items
@@ -350,9 +355,16 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 
 
 func _dictionary_for_inventory_item(item : ItemData) -> Dictionary:
-	return {
+	var item_dict = {
 		"ID" : item.my_id
 	}
+	
+	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if dlc:
+		if item.is_cursed:
+			item_dict["CURSED"] = true
+	
+	return item_dict
 
 
 func _client_focused_inventory_element(data : Dictionary, player_index : int) -> void:
@@ -412,16 +424,21 @@ func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index :
 func _inventory_item_for_dictionary(item_dict : Dictionary) -> ItemData:
 	var query_id = item_dict["ID"]
 	
-	print_debug("looking for item with id ", query_id)
+	var result
 	for item in ItemService.items:
 		if item.my_id == query_id:
-			return item.duplicate()
+			result = item.duplicate()
 	
 	for character in ItemService.characters:
 		if character.my_id == query_id:
-			return character.duplicate()
+			result = character.duplicate()
 	
-	return null
+	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if dlc:
+		if item_dict.has("CURSED") and item_dict["CURSED"]:
+			result.is_cursed = true
+	
+	return result
 
 
 func _dictionary_for_shop_item(shop_item : Array) -> Dictionary:
@@ -442,23 +459,41 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 		if weapon.my_id == query_id:
 			item_element = weapon.duplicate()
 	
+	var abyssal_dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if abyssal_dlc:
+		if shop_item_dict.has("CURSED") and shop_item_dict["CURSED"]:
+			item_element.is_cursed = true
+	
 	return [item_element, shop_item_dict["WAVE_VALUE"]]
 
 
 func _dictionary_for_weapon(weapon_data : WeaponData) -> Dictionary:
-	return {
+	var weapon_dict = {
 		"ID" : weapon_data.my_id
 	}
+	
+	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if dlc:
+		if weapon_data.is_cursed:
+			weapon_dict["CURSED"] = true
+	
+	return weapon_dict
 
 
 func _weapon_for_dictionary(weapon_dict : Dictionary) -> WeaponData:
 	var query_id = weapon_dict["ID"]
 	
+	var result
 	for weapon in ItemService.weapons:
 		if weapon.my_id == query_id:
-			return weapon.duplicate()
+			result = weapon.duplicate()
 	
-	return null
+	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if dlc and result:
+		if weapon_dict.has("CURSED") and weapon_dict["CURSED"]:
+			result.is_cursed = true
+	
+	return result
 
 
 func _string_for_weapon(weapon_data : WeaponData) -> String:

@@ -307,7 +307,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	
 	before = Time.get_ticks_usec()
 	for sound in state_dict["BATCHED_2D_SOUNDS"]:
-		SoundManager.call_deferred("play", load(sound["RESOURCE_PATH"]), Vector2(sound["X_POS"], sound["Y_POS"]))
+		SoundManager2D.call_deferred("play", load(sound["RESOURCE_PATH"]), Vector2(sound["X_POS"], sound["Y_POS"]))
 	var sound_2d_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
