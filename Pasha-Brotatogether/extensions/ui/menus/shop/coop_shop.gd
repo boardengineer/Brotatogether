@@ -264,6 +264,8 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		player_dict["REROLL_DICSOUNT"] = _reroll_discount[player_index]
 		player_dict["HAS_BONUS_FREE_REROLL"] = _has_bonus_free_reroll[player_index]
 		
+		player_dict["EFFECTS"] = RunData.players_data[player_index]._serialize_effects(RunData.players_data[player_index].effects)
+		
 		players_array.push_back(player_dict)
 	
 	result_dict["PLAYERS"] = players_array
@@ -305,6 +307,9 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		
 		Utils.get_focus_emulator(player_index)._clear_focused_control()
 		_shop_items[player_index].clear()
+		Utils.reset_stat_cache(player_index)
+		
+		RunData.players_data[player_index].effects = RunData.players_data[player_index]._deserialize_effects(player_dict["EFFECTS"], {})
 		
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
 			_shop_items[player_index].push_back(_shop_item_for_dictionary(shop_item_dict))
@@ -351,6 +356,7 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
+		
 		waiting_to_start_shop = false
 
 
