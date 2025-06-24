@@ -221,6 +221,7 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 	var players_array = []
 	var player_count: int = RunData.get_player_count()
 	for player_index in player_count:
+		var player_data = RunData.players_data[player_index]
 		var player_dict = {}
 		var shop_items = []
 		for item in _shop_items[player_index]:
@@ -235,6 +236,12 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 			
 			shop_items.push_back(item_dict)
 		player_dict["SHOP_ITEMS"] = shop_items
+		
+		player_dict["EFFECTS"] = player_data._serialize_effects(player_data.effects)
+		var active_sets = {}
+		for set in player_data.active_sets:
+			active_sets[set] = player_data.active_sets[set]
+		player_dict["ACTIVE_SETS"] = active_sets
 		
 		var locked_items : Array = []
 		for item in RunData.locked_shop_items[player_index]:
@@ -264,7 +271,6 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		player_dict["REROLL_DICSOUNT"] = _reroll_discount[player_index]
 		player_dict["HAS_BONUS_FREE_REROLL"] = _has_bonus_free_reroll[player_index]
 		
-		player_dict["EFFECTS"] = RunData.players_data[player_index]._serialize_effects(RunData.players_data[player_index].effects)
 		
 		players_array.push_back(player_dict)
 	
@@ -308,8 +314,14 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		Utils.get_focus_emulator(player_index)._clear_focused_control()
 		_shop_items[player_index].clear()
 		Utils.reset_stat_cache(player_index)
+		var player_data = RunData.players_data[player_index]
 		
-		RunData.players_data[player_index].effects = RunData.players_data[player_index]._deserialize_effects(player_dict["EFFECTS"], {})
+		player_data.effects = player_data._deserialize_effects(player_dict["EFFECTS"], {})
+		
+		player_data.active_sets.clear()
+		var active_sets_dict = player_dict["ACTIVE_SETS"]
+		for active_set in player_dict["ACTIVE_SETS"]:
+			player_data.active_sets[active_set] = active_sets_dict[active_set]
 		
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
 			_shop_items[player_index].push_back(_shop_item_for_dictionary(shop_item_dict))
