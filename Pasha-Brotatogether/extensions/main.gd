@@ -132,6 +132,7 @@ func _process(_delta):
 				if all_players_entered:
 					waiting_to_start_round = false
 					_wave_timer.start()
+					_wave_timer.paused = false
 					steam_connection.send_round_start()
 
 
