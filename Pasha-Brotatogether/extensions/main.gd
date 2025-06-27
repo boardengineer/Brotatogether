@@ -544,6 +544,7 @@ func _client_status_received(client_data : Dictionary, player_index : int) -> vo
 func _host_starts_round() -> void:
 	waiting_to_start_round = false
 	_wave_timer.start()
+	_wave_timer.paused = false
 
 
 func _on_WaveTimer_timeout() -> void:
