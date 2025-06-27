@@ -260,7 +260,7 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		var gear_container : PlayerGearContainer = _get_gear_container(player_index)
 		var items_array = []
 		for element in gear_container.items_container._elements.get_children():
-			items_array.push_back(_dictionary_for_inventory_item(element.item))
+			items_array.push_back(_dictionary_for_inventory_item(element))
 #			print_debug("shop container has ", element.item.my_id)
 		player_dict["ITEMS"] = items_array
 		
@@ -336,7 +336,8 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		
 		RunData.players_data[player_index].items.clear()
 		for item in player_dict["ITEMS"]:
-			RunData.players_data[player_index].items.push_back(_inventory_item_for_dictionary(item))
+			for _i in item["NUMBER"]:
+				RunData.players_data[player_index].items.push_back(_inventory_item_for_dictionary(item))
 		player_gear_container.set_items_data(RunData.players_data[player_index].items)
 		
 		
@@ -372,14 +373,16 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		waiting_to_start_shop = false
 
 
-func _dictionary_for_inventory_item(item : ItemData) -> Dictionary:
+func _dictionary_for_inventory_item(inventory_element : InventoryElement) -> Dictionary:
+	var item_data : ItemData = inventory_element.item
 	var item_dict = {
-		"ID" : item.my_id
+		"ID" : item_data.my_id,
+		"NUMBER" : inventory_element.current_number,
 	}
 	
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	if dlc:
-		if item.is_cursed:
+		if item_data.is_cursed:
 			item_dict["CURSED"] = true
 	
 	return item_dict
