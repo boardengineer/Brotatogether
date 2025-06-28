@@ -29,7 +29,9 @@ func _init():
 	
 	ModLoaderMod.install_script_extension(ext_dir + "items/global/item.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
-		
+	
+	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_explosion.gd")
+	
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/coop_service.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/run_data.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "singletons/sound_manager.gd")

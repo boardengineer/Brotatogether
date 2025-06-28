@@ -2,6 +2,7 @@ extends "res://main.gd"
 
 var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
 var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_attack_behavior.gd")
+var explosion_scene = load("res://projectiles/explosion.tscn")
 var DataNode = load("res://mods-unpacked/Pasha-Brotatogether/data_node.gd")
 
 var steam_connection
@@ -37,6 +38,7 @@ var server_enemy_projectile_ids = {}
 const ENTITY_BIRTH_SCENE = preload("res://entities/birth/entity_birth.tscn")
 const TREE_SCENE = preload("res://entities/units/neutral/tree.tscn")
 const CLIENT_TURRET_STATS = preload("res://entities/structures/turret/turret_stats.tres")
+
 const ENABLE_DEBUG = true
 
 var debug_frame_counter : int = 0
@@ -181,6 +183,9 @@ func _send_game_state() -> void:
 	state_dict["BATCHED_SOUNDS"] = brotatogether_options.batched_sounds.duplicate()
 	brotatogether_options.batched_sounds.clear()
 	
+	state_dict["BATCHED_EXPLOSIONS"] = brotatogether_options.batched_explosions.duplicate()
+	brotatogether_options.batched_explosions.clear()
+	
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
@@ -262,6 +267,17 @@ func _state_update(state_dict : Dictionary) -> void:
 	var flashing_units_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
+	for explosion in state_dict["BATCHED_EXPLOSIONS"]:
+		var instance = explosion_scene.instance()
+		call_deferred("add_explosion", instance)
+		
+		var explosion_scale = Vector2(explosion["SCALE"],explosion["SCALE"])
+		instance.call_deferred("start_explosion")
+		instance.set_deferred("scale", explosion_scale)
+		instance.set_deferred("global_position", Vector2(explosion["X_POS"], explosion["Y_POS"]))
+	var explosion_update_time = Time.get_ticks_usec() - before
+	
+	before = Time.get_ticks_usec()
 	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
 	var player_projectiles_update_time = Time.get_ticks_usec() - before
 	
@@ -321,7 +337,7 @@ func _state_update(state_dict : Dictionary) -> void:
 		debug_frame_counter += 1
 		if debug_frame_counter % 100 == 0 || elapsed_time > 1000:
 			print_debug("state update time: ", elapsed_time)
-			print_debug(wave_timer_update_time, " ", bonus_gold_update_time, " ", player_update_time, " ", enemies_update_time, " ", bosses_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
+			print_debug(wave_timer_update_time, " ", bonus_gold_update_time, " ", player_update_time, " ", enemies_update_time, " ", bosses_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", explosion_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
 
 
 func _input(event) -> void: 

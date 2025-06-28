@@ -12,6 +12,7 @@ var batched_enemy_deaths = {}
 var batched_unit_flashes = {}
 var batched_floating_text = []
 var batched_hit_particles = []
+var batched_explosions = []
 var batched_hit_effects = []
 var batched_sounds = []
 var batched_2d_sounds = []
