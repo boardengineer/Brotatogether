@@ -45,6 +45,7 @@ func _ready():
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
 	
 	if is_multiplayer_lobby:
+		print("Joined Mulitplayer Lobby; In Character Selection Screen")
 		ProgressData.settings.coop_mode_toggled = true
 		_coop_button.init()
 		_coop_button.hide()

@@ -272,7 +272,7 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
 			var value = lobby_data[kvpair_index]["value"]
-			if key == "lobby_type":
+			if key.to_lower() == "lobby_type":
 				if value == GLOBAL_CHAT_TYPE:
 					if not found_global_chat_lobby:
 						min_chat_lobby_id = lobby_id
@@ -308,12 +308,15 @@ func leave_game_lobby() -> void:
 
 
 func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
+	print("Created Lobby")
 	if connect == 1:
 		if is_creating_global_chat_lobby:
+			print("Lobby created for chat: ", created_lobby_id)
 			is_creating_global_chat_lobby = false
 			global_chat_lobby_id = created_lobby_id
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GLOBAL_CHAT_TYPE)
 		else:
+			print("Lobby created for game: ", created_lobby_id)
 			game_lobby_id = created_lobby_id
 			game_lobby_owner_id = Steam.getLobbyOwner(game_lobby_id) # This should be me but query to make sure
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
@@ -335,12 +338,14 @@ func request_lobby_search() -> void:
 
 
 func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
+	print("Joined Lobby ", lobby_id)
 	if response == Steam.CHAT_ROOM_ENTER_RESPONSE_SUCCESS:
 		var lobby_data : Dictionary = Steam.getAllLobbyData(lobby_id)
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
 			var value = lobby_data[kvpair_index]["value"]
-			if key == "lobby_type":
+			print("Lobby Data: ", lobby_id, " ----- ", key, ":", value)
+			if key.to_lower() == "lobby_type":
 				if value == GLOBAL_CHAT_TYPE:
 					global_chat_lobby_id = lobby_id
 				elif value == GAME_LOBBY_TYPE:
@@ -353,7 +358,9 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 						lobby_members.push_back(member_id)
 						lobby_member_names.push_back(Steam.getFriendPersonaName(member_id))
 					
+					print("Changing to Character Selection Screen...")
 					var _error = get_tree().change_scene(MenuData.character_selection_scene)
+					print("change scene error : ", _error)
 					
 					_initiate_ping()
 
