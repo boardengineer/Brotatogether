@@ -12,6 +12,6 @@ func start_explosion() -> void:
 				"SCALE" : scale.x,
 			}
 			brotatogether_options.batched_explosions.push_back(explosion_dict)
-			.start_explosion()
+		.start_explosion()
 	else:
 		.start_explosion()
