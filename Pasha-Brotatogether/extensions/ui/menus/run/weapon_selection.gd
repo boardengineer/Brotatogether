@@ -81,6 +81,11 @@ func _set_selected_element(p_player_index:int) -> void:
 	if _has_player_selected[p_player_index]:
 		return
 	
+	# This happens during the base _ready for characters with no weapon slots.
+	if not steam_connection:
+		_has_player_selected[p_player_index] = true
+		return
+	
 	._set_selected_element(p_player_index)
 	
 	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == p_player_index:
@@ -108,7 +113,8 @@ func _on_selections_completed() -> void:
 			weapon = Utils.get_rand_element(available_elements)
 			_player_weapons[player_index] = weapon
 		
-		var _weapon = RunData.add_weapon(weapon, player_index, true)
+		if weapon:
+			var _weapon = RunData.add_weapon(weapon, player_index, true)
 	
 	RunData.add_starting_items_and_weapons()
 	
