@@ -337,7 +337,25 @@ func _state_update(state_dict : Dictionary) -> void:
 		debug_frame_counter += 1
 		if debug_frame_counter % 100 == 0 || elapsed_time > 1000:
 			print_debug("state update time: ", elapsed_time)
-			print_debug(wave_timer_update_time, " ", bonus_gold_update_time, " ", player_update_time, " ", enemies_update_time, " ", bosses_update_time, " ", enemy_deaths_update_time, " ", flashing_units_update_time, " ", explosion_update_time, " ", player_projectiles_update_time, " ", births_update_time, " ", items_update_time, " ", consumables_update_time, " ", neutrals_update_time, " ", structures_update_time, " ", enemy_projectiles_update_time, " ", enemy_hit_effects_update_time, " ", enemy_hit_particles_update_time, " ", floating_text_update_time, " ", menu_update_time)
+			print_debug("Wave Timer: ", wave_timer_update_time,
+				" --- Bonus Gold: ", bonus_gold_update_time,
+				" --- Players: ", player_update_time,
+				" --- Enemies: ", enemies_update_time,
+				" --- Bosses: ", bosses_update_time,
+				" --- Enemy Deaths: ", enemy_deaths_update_time,
+				" --- Flashing Units: ", flashing_units_update_time,
+				" --- Explosions: ", explosion_update_time,
+				" --- Player Projectiles: ", player_projectiles_update_time,
+				" --- Births: ", births_update_time,
+				" --- Items: ", items_update_time,
+				" --- Consumables: ", consumables_update_time,
+				" --- Neutrals: ", neutrals_update_time,
+				" --- Structures: ", structures_update_time,
+				" --- Enemy Projectiles: ", enemy_projectiles_update_time,
+				" --- Enemy Hit Effects: ", enemy_hit_effects_update_time,
+				" --- Enemy Hit Particles: ", enemy_hit_particles_update_time,
+				" --- Floating text: ", floating_text_update_time,
+				" --- Menus: ", menu_update_time)
 
 
 func _input(event) -> void: 
@@ -495,20 +513,7 @@ func _update_enemy(enemy_dict : Dictionary) -> void:
 	if client_enemies.has(enemy_id):
 		var enemy = client_enemies[enemy_id]
 		
-		enemy.position.x = enemy_dict["X_POS"]
-		enemy.position.y = enemy_dict["Y_POS"]
-		
-		enemy._current_movement.x = enemy_dict["MOVE_X"]
-		enemy._current_movement.y = enemy_dict["MOVE_Y"]
-		
-		var modulate_a = enemy_dict["MODULATE_A"]
-		var modulate_r = enemy_dict["MODULATE_R"]
-		var modulate_g = enemy_dict["MODULATE_G"]
-		var modulate_b = enemy_dict["MODULATE_B"]
-		
-		enemy.sprite.self_modulate = Color8(modulate_r, modulate_g, modulate_b, modulate_a)
-		
-		enemy.call_deferred("update_animation", enemy._current_movement)
+		enemy.call_deferred("update_client_enemy", enemy_dict)
 	else:
 		if not client_pending_ids.has(enemy_id):
 			client_pending_ids[enemy_id] = true
