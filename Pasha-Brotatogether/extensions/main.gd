@@ -224,6 +224,8 @@ func _state_update(state_dict : Dictionary) -> void:
 	var bonus_gold = state_dict["BONUS_GOLD"]
 	if bonus_gold > 0:
 		_ui_bonus_gold.show()
+	RunData.bonus_gold = bonus_gold
+	_ui_bonus_gold.update_value(bonus_gold)
 	on_bonus_gold_changed(bonus_gold)
 	var bonus_gold_update_time = Time.get_ticks_usec() - before
 	
@@ -276,7 +278,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	var player_projectiles_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
-	_update_births(state_dict["BIRTHS"])
+	call_deferred("_update_births", state_dict["BIRTHS"])
 	var births_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
