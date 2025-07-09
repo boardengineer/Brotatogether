@@ -268,13 +268,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	
 	before = Time.get_ticks_usec()
 	for explosion in state_dict["BATCHED_EXPLOSIONS"]:
-		var instance = explosion_scene.instance()
-		call_deferred("add_explosion", instance)
-		
-		var explosion_scale = Vector2(explosion["SCALE"],explosion["SCALE"])
-		instance.call_deferred("start_explosion")
-		instance.set_deferred("scale", explosion_scale)
-		instance.set_deferred("global_position", Vector2(explosion["X_POS"], explosion["Y_POS"]))
+		call_deferred("spawn_explosion", explosion)
 	var explosion_update_time = Time.get_ticks_usec() - before
 	
 	before = Time.get_ticks_usec()
@@ -1198,3 +1192,13 @@ func _on_unit_took_damage(unit: Unit, value: int, _knockback_direction: Vector2,
 	text_dict["DURATION"] = _floating_text_manager.duration
 	
 	brotatogether_options.batched_floating_text.push_back(text_dict)
+
+
+func spawn_explosion(explosion_dict : Dictionary) -> void:
+	var instance = explosion_scene.instance()
+	call_deferred("add_explosion", instance)
+	
+	var explosion_scale = Vector2(explosion_dict["SCALE"],explosion_dict["SCALE"])
+	instance.call_deferred("start_explosion")
+	instance.set_deferred("scale", explosion_scale)
+	instance.set_deferred("global_position", Vector2(explosion_dict["X_POS"], explosion_dict["Y_POS"]))
