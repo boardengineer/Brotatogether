@@ -437,56 +437,15 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 	if player_index != my_player_index:
 		if player.dead:
 			return
-		player.position.x = player_dict[EntityState.ENTITY_STATE_X_POS]
-		player.position.y = player_dict[EntityState.ENTITY_STATE_Y_POS]
-		
-		player.sprite.scale.x  = player_dict[EntityState.ENTITY_STATE_SPRITE_SCALE]
-		
-		player._current_movement.x  = player_dict[EntityState.ENTITY_STATE_X_MOVE]
-		player._current_movement.y  = player_dict[EntityState.ENTITY_STATE_Y_MOVE]
-		
-		player.update_animation(_players[player_index]._current_movement)
+		player.call_deferred("update_external_player_position", player_dict)
 	
 	if not steam_connection.is_host():
-		var current_xp = player_dict[EntityState.ENTITY_STATE_PLAYER_CURRENT_XP]
-		var next_level_xp = player_dict[EntityState.ENTITY_STATE_PLAYER_NEXT_LEVEL_XP]
-		RunData.players_data[player_index].current_xp = current_xp
-		RunData.emit_signal("xp_added", current_xp, next_level_xp, player_index)
-		
-		var current_hp = player_dict[EntityState.ENTITY_STATE_CURRENT_HP]
-		var max_hp = player_dict[EntityState.ENTITY_STATE_MAX_HP]
-		var should_send_hp_signal = false
-		if current_hp != player.current_stats.health:
-			should_send_hp_signal = true
-		player.current_stats.health = current_hp
-		if max_hp != player.max_stats.health:
-			should_send_hp_signal = true
-		player.max_stats.health = max_hp
-		if should_send_hp_signal:
-			player.emit_signal("health_updated", player, player.current_stats.health, player.max_stats.health)
-		
-		var current_gold = player_dict[EntityState.ENTITY_STATE_PLAYER_GOLD]
-		var current_level = player_dict[EntityState.ENTITY_STATE_PLAYER_LEVEL]
-		RunData.players_data[player_index].gold = current_gold
-		RunData.players_data[player_index].current_level = current_level
-		_players_ui[player_index].update_level_label()
-		RunData.emit_signal("gold_changed", current_gold, player_index)
+		_players_ui[player_index].call_deferred("update_level_label")
+		player.call_deferred("update_client_player", player_dict, player_index)
 		
 		var things_to_process = _things_to_process_player_containers[player_index]
 		if player_dict[EntityState.ENTITY_STATE_PLAYER_NUM_UPGRADES] > things_to_process.upgrades._elements.size():
 			things_to_process.upgrades.add_element(ItemService.get_icon("icon_upgrade_to_process"), 1)
-		
-		var weapons_array = player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS]
-		for weapon_index in weapons_array.size():
-			var weapon_dict = weapons_array[weapon_index]
-			var weapon = player.current_weapons[weapon_index]
-			
-			weapon.sprite.position.x = weapon_dict[WeaponState.WEAPON_STATE_X_POS]
-			weapon.sprite.position.y = weapon_dict[WeaponState.WEAPON_STATE_Y_POS]
-			weapon.sprite.rotation = weapon_dict[WeaponState.WEAPON_STATE_SPRITE_ROTATION]
-			weapon.rotation = weapon_dict[WeaponState.WEAPON_STATE_ROTATION]
-			weapon._is_shooting = weapon_dict[WeaponState.WEAPON_STATE_IS_SHOOTING]
-			weapon._current_cooldown = 9999
 
 
 func _dictionary_for_enemy(enemy) -> Dictionary:
