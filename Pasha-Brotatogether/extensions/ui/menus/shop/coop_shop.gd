@@ -191,18 +191,18 @@ func _client_shop_buy_item(item_string : String, player_index : int) -> void:
 	_get_shop_items_container(player_index).on_shop_item_buy_button_pressed(_shop_item_for_string(item_string, player_index))
 
 
-func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int, is_upgrade: bool = false)->void :
+func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int)->void :
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			pending_force_focus.push_back(player_index)
-			._on_item_combine_button_pressed(weapon_data, player_index, is_upgrade)
-		steam_connection.shop_combine_weapon(_string_for_weapon(weapon_data), is_upgrade, player_index)
+			._on_item_combine_button_pressed(weapon_data, player_index)
+		steam_connection.shop_combine_weapon(_string_for_weapon(weapon_data), false, player_index)
 	else:
-		._on_item_combine_button_pressed(weapon_data, player_index, is_upgrade)
+		._on_item_combine_button_pressed(weapon_data, player_index)
 
 
 func _client_shop_combine_weapon(weapon_string : String, is_upgrade: bool, player_index : int) -> void:
-	_on_item_combine_button_pressed(_weapon_for_string(weapon_string, player_index), player_index, is_upgrade)
+	_on_item_combine_button_pressed(_weapon_for_string(weapon_string, player_index), player_index)
 	steam_connection.request_close_client_shop_popup(player_index)
 
 
