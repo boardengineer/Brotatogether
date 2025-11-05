@@ -67,27 +67,23 @@ func _ready():
 		panel_parent_container = _run_options_panel.get_parent()
 		
 		var username_label_player_1 : Label = UsernameLabel.instance()
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel1".add_child(username_label_player_1)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel1".move_child(username_label_player_1, 0)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel1/MarginContainer".set("custom_constants/margin_top", 50)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel1/vboxContainer".add_child(username_label_player_1)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel1/vboxContainer".move_child(username_label_player_1, 0)
 		username_labels.push_back(username_label_player_1)
 		
 		var username_label_player_2 : Label = UsernameLabel.instance()
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2".add_child(username_label_player_2)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2".move_child(username_label_player_2, 0)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel2/MarginContainer".set("custom_constants/margin_top", 50)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel2/vboxContainer".add_child(username_label_player_2)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel2/vboxContainer".move_child(username_label_player_2, 0)
 		username_labels.push_back(username_label_player_2)
 		
 		var username_label_player_3 : Label = UsernameLabel.instance()
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel3".add_child(username_label_player_3)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel3".move_child(username_label_player_3, 0)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel3/MarginContainer".set("custom_constants/margin_top", 50)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel3/vboxContainer".add_child(username_label_player_3)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel3/vboxContainer".move_child(username_label_player_3, 0)
 		username_labels.push_back(username_label_player_3)
 		
 		var username_label_player_4 : Label = UsernameLabel.instance()
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4".add_child(username_label_player_4)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4".move_child(username_label_player_4, 0)
-		$"MarginContainer/VBoxContainer/DescriptionContainer/Panel4/MarginContainer".set("custom_constants/margin_top", 50)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel4/vboxContainer".add_child(username_label_player_4)
+		$"MarginContainer/VBoxContainer/DescriptionContainer/HBoxContainer/Panel4/vboxContainer".move_child(username_label_player_4, 0)
 		username_labels.push_back(username_label_player_4)
 		
 		for index in steam_connection.lobby_member_names.size():
@@ -178,7 +174,7 @@ func _on_lobby_chat_text_entered(message):
 	lobby_chat_input.clear()
 
 
-func _on_element_focused(element:InventoryElement, inventory_player_index:int) -> void:
+func _on_element_focused(element:InventoryElement, inventory_player_index:int, displayPanelData: bool = true) -> void:
 	._on_element_focused(element, inventory_player_index)
 	
 	if is_multiplayer_lobby:
