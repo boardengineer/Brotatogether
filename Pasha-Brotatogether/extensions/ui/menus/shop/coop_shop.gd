@@ -201,7 +201,7 @@ func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int)
 		._on_item_combine_button_pressed(weapon_data, player_index)
 
 
-func _client_shop_combine_weapon(weapon_string : String, is_upgrade: bool, player_index : int) -> void:
+func _client_shop_combine_weapon(weapon_string : String, _is_upgrade: bool, player_index : int) -> void:
 	_on_item_combine_button_pressed(_weapon_for_string(weapon_string, player_index), player_index)
 	steam_connection.request_close_client_shop_popup(player_index)
 

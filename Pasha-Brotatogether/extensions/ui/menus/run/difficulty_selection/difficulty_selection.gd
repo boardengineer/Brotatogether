@@ -24,7 +24,7 @@ func _ready():
 	print_debug("created difficulty element map ", inventory_by_string_key)
 
 
-func _on_element_focused(element:InventoryElement, inventory_player_index:int, displayPanelData: bool = true) -> void:
+func _on_element_focused(element:InventoryElement, inventory_player_index:int, _displayPanelData: bool = true) -> void:
 	# Disregard difficulty updates from clients
 	if is_multiplayer_lobby:
 		if not steam_connection.is_host():

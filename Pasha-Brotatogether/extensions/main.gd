@@ -351,6 +351,8 @@ func _state_update(state_dict : Dictionary) -> void:
 				" --- Enemy Hit Effects: ", enemy_hit_effects_update_time,
 				" --- Enemy Hit Particles: ", enemy_hit_particles_update_time,
 				" --- Floating text: ", floating_text_update_time,
+				" --- Sound: ", sound_update_time,
+				" --- Sounds 2d: ", sound_2d_update_time,
 				" --- Menus: ", menu_update_time)
 
 

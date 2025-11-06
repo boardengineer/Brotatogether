@@ -46,7 +46,7 @@ func _lobby_weapons_updated(player_weapons : Array, has_player_selected : Array)
 		_selections_completed_timer.start()
 
 
-func _on_element_focused(element:InventoryElement, inventory_player_index:int, displayPanelData: bool = true) -> void:
+func _on_element_focused(element:InventoryElement, inventory_player_index:int, _displayPanelData: bool = true) -> void:
 	._on_element_focused(element, inventory_player_index)
 	
 	if is_multiplayer_lobby:

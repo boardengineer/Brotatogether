@@ -174,7 +174,7 @@ func _on_lobby_chat_text_entered(message):
 	lobby_chat_input.clear()
 
 
-func _on_element_focused(element:InventoryElement, inventory_player_index:int, displayPanelData: bool = true) -> void:
+func _on_element_focused(element:InventoryElement, inventory_player_index:int, _displayPanelData: bool = true) -> void:
 	._on_element_focused(element, inventory_player_index)
 	
 	if is_multiplayer_lobby:
