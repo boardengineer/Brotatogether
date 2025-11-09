@@ -5,6 +5,7 @@ var brotatogether_options
 var is_multiplayer_lobby = false
 
 var inventory_by_string_key : Dictionary
+var selection_by_string_key : Dictionary
 
 
 func _ready():
@@ -20,8 +21,10 @@ func _ready():
 		brotatogether_options.in_multiplayer_game = true
 		
 		for difficulty_data in ItemService.difficulties:
-			inventory_by_string_key[difficulty_data.value] = difficulty_data
-	print_debug("created difficulty element map ", inventory_by_string_key)
+			selection_by_string_key[difficulty_data.value] = difficulty_data
+		
+		for inventory_item in _get_inventories()[0].get_children():
+			inventory_by_string_key[inventory_item.item.value] = inventory_item
 
 
 func _on_element_focused(element:InventoryElement, inventory_player_index:int, _displayPanelData: bool = true) -> void:
@@ -49,12 +52,10 @@ func _on_element_pressed(element: InventoryElement, _inventory_player_index: int
 
 
 func _difficulty_selected(difficutly : int) -> void:
-	print_debug("received difficulty focus update: ", difficutly)
 	var _error = get_tree().change_scene(MenuData.game_scene)
 
 
 func _difficulty_focused(difficutly : int) -> void:
-	print_debug("received difficulty focus update: ", difficutly)
 	
 	# Hosts don't respect update calls
 	if is_multiplayer_lobby:
@@ -62,8 +63,11 @@ func _difficulty_focused(difficutly : int) -> void:
 			return
 	
 	var selected_item = null
-	if inventory_by_string_key.has(difficutly):
-		selected_item = inventory_by_string_key[difficutly]
+	if selection_by_string_key.has(difficutly):
+		selected_item = selection_by_string_key[difficutly]
+		
+	Utils.get_focus_emulator(0).focused_control = inventory_by_string_key[difficutly]
+		
 	if selected_item != null:
 		_get_panels()[0].visible = true
 		_get_panels()[0].set_data(selected_item, 0)
