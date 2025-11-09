@@ -24,9 +24,17 @@ var panel_parent_container
 var panels_array
 var visible_panel_index : int = 0
 
+# Mapped inventory item by item keys.  Used to reset focus based on external
+# calls.
 var inventory_by_string_key : Dictionary
 
+# Mapped Selections by item keys.  Kept independent of itnentory items to
+# avoid complications around randoms, locked items, etc.
+var selections_by_string_key : Dictionary
+
 var username_labels = []
+var external_focus = false
+
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -45,7 +53,6 @@ func _ready():
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
 	
 	if is_multiplayer_lobby:
-		print("Joined Mulitplayer Lobby; In Character Selection Screen")
 		ProgressData.settings.coop_mode_toggled = true
 		_coop_button.init()
 		_coop_button.hide()
@@ -113,7 +120,7 @@ func _ready():
 		lobby_chat_input = lobby_chat_panel.get_node("MarginContainer/VBoxContainer/ChatInput")
 		lobby_chat_input.connect("text_entered", self, "_on_lobby_chat_text_entered")
 		
-		panels_array = [_run_options_panel, global_chat_panel, lobby_chat_panel]
+		panels_array = [_run_options_panel,  global_chat_panel, lobby_chat_panel]
 		update_panel_visiblility()
 		
 		for member_index in steam_connection.lobby_members.size():
@@ -124,12 +131,15 @@ func _ready():
 				CoopService._add_player(100 + member_index, MULTIPLAYER_CLIENT_PLAYER_TYPE)
 			
 		for character_data in _get_all_possible_elements(0):
-			inventory_by_string_key[character_item_to_string(character_data)] = character_data
+			selections_by_string_key[character_item_to_string(character_data)] = character_data
 		
 		# Find the random element in the inventory
 		for character_data in _get_inventories()[0].get_children():
 			if character_data.is_random:
 				inventory_by_string_key[character_item_to_string(character_data)] = character_data
+				selections_by_string_key[character_item_to_string(character_data)] = character_data
+			else:
+				inventory_by_string_key[character_item_to_string(character_data.item)] = character_data
 
 
 func _on_pressed_left_menu_arrow() -> void:
@@ -183,7 +193,10 @@ func _on_element_focused(element:InventoryElement, inventory_player_index:int, _
 			element_string = element.item.name
 		elif element.is_random:
 			element_string = "RANDOM"
-		steam_connection.character_focused(element_string)
+		if not external_focus:
+			steam_connection.character_focused(element_string)
+		else:
+			external_focus = false
 
 
 func character_item_to_string(item : Resource) -> String:
@@ -194,10 +207,21 @@ func character_item_to_string(item : Resource) -> String:
 
 func _player_focused_character(player_index : int , character : String) -> void:
 	var selected_item = null
+	var focused_element = null
+	
+	if selections_by_string_key.has(character):
+		selected_item = selections_by_string_key[character]
+		
 	if inventory_by_string_key.has(character):
-		selected_item = inventory_by_string_key[character]
+		focused_element = inventory_by_string_key[character]
+		
 	_clear_selected_element(player_index)
 	_player_characters[player_index] = selected_item
+	if player_index < RunData.get_player_count() and player_index != steam_connection.get_my_index():
+		if focused_element != null:
+			if Utils.get_focus_emulator(player_index).focused_control != focused_element:
+				external_focus = true
+				Utils.get_focus_emulator(player_index).focused_control = focused_element
 	
 	var panel = _get_panels()[player_index]
 	
@@ -219,7 +243,7 @@ func reload_scene() -> void:
 
 
 func _lobby_characters_updated(player_characters : Array, has_player_selected : Array) -> void:
-	for player_index in player_characters.size():
+	for player_index in RunData.get_player_count():
 		if player_characters[player_index] != null:
 			_player_focused_character(player_index, player_characters[player_index])
 	
