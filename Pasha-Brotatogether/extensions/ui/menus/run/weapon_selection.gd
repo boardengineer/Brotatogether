@@ -4,7 +4,11 @@ var steam_connection
 var brotatogether_options
 var is_multiplayer_lobby = false
 
-var inventory_by_string_key : Dictionary
+var selections_by_string_key : Dictionary
+var external_focus = false
+
+
+var inventory_maps : Array
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -19,14 +23,20 @@ func _ready():
 	
 	if is_multiplayer_lobby:
 		for weapon_data in ItemService.weapons:
-			inventory_by_string_key[weapon_item_to_string(weapon_data)] = weapon_data
+			selections_by_string_key[weapon_item_to_string(weapon_data)] = weapon_data
+	
+	inventory_maps = []
+	for player_index in RunData.get_player_count():
+		var inventory_map = {}
+		for inventory_item in _get_inventories()[player_index].get_children():
+			inventory_map[weapon_item_to_string(inventory_item.item)] = inventory_item
+		inventory_maps.push_back(inventory_map)
 
 
 func weapon_item_to_string(item : Resource) -> String:
 	if item == null:
 		return "RANDOM"
 	return item.my_id
-
 
 
 func _lobby_weapons_updated(player_weapons : Array, has_player_selected : Array) -> void:
@@ -56,13 +66,26 @@ func _on_element_focused(element:InventoryElement, inventory_player_index:int, _
 		elif element.is_random:
 			element_string = "RANDOM"
 		
-		steam_connection.weapon_focused(element_string)
+		if not external_focus:
+			steam_connection.weapon_focused(element_string)
+		else:
+			external_focus = false
 
 
 func _player_focused_weapon(player_index : int , weapon : String) -> void:
 	var selected_item = null
-	if inventory_by_string_key.has(weapon):
-		selected_item = inventory_by_string_key[weapon]
+	if selections_by_string_key.has(weapon):
+		selected_item = selections_by_string_key[weapon]
+		
+	var focused_weapon = null
+	if inventory_maps[player_index].has(weapon):
+		focused_weapon = inventory_maps[player_index][weapon]
+	
+	if focused_weapon != null:
+			if Utils.get_focus_emulator(player_index).focused_control != focused_weapon:
+				external_focus = true
+				Utils.get_focus_emulator(player_index).focused_control = focused_weapon
+	
 	_player_weapons[player_index] = selected_item
 	_clear_selected_element(player_index)
 	
@@ -134,6 +157,6 @@ func _weapon_selection_completed(selected_weapons : Array) -> void:
 	for player_index in RunData.get_player_count():
 		RunData.players_data[player_index].weapons.clear()
 		for weapon_index in selected_weapons[player_index].size():
-			RunData.players_data[player_index].weapons.push_back(inventory_by_string_key[selected_weapons[player_index][weapon_index]])
+			RunData.players_data[player_index].weapons.push_back(selections_by_string_key[selected_weapons[player_index][weapon_index]])
 	
 	_change_scene(MenuData.difficulty_selection_scene)
