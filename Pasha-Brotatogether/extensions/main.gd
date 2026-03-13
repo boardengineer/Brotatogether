@@ -930,6 +930,7 @@ func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
 	enemy_projectile.position.y = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_Y_POS]
 	
 	enemy_projectile.rotation = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_ROTATION]
+	enemy_projectile.set_meta("pool_id", 0)
 	
 	_enemy_projectiles.add_child(enemy_projectile)
 	_enemy_projectiles.set_physics_process(false)

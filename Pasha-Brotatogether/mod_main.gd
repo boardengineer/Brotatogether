@@ -23,8 +23,6 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "entities/birth/entity_birth.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "entities/units/movement_behaviors/player_movement_behavior.gd")
 	
-	# TODO replace this
-#	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "items/global/item.gd")

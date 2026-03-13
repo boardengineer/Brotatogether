@@ -1,18 +1,7 @@
 extends Control
 
-# must be greater than 1024
-var SERVER_PORT = 11111
-var MAX_PLAYERS = 5
-
 const ChatMessage = preload("res://mods-unpacked/Pasha-Brotatogether/ui/chat/chat_message.tscn")
 const LobbyEntry = preload("res://mods-unpacked/Pasha-Brotatogether/ui/lobby_entry.tscn")
-
-const DirectConnection = preload("res://mods-unpacked/Pasha-Brotatogether/networking/direct_connection.gd")
-
-var GameController = load("res://mods-unpacked/Pasha-Brotatogether/networking/game_controller.gd")
-
-var direct_connection
-var game_controller
 
 var DEBUG = false
 
