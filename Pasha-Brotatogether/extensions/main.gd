@@ -201,7 +201,7 @@ func _send_game_state() -> void:
 			var compressed_data: PoolByteArray = var2bytes(state_dict[key]).compress(File.COMPRESSION_GZIP)
 			var compressed_size = compressed_data.size()
 			if compressed_size > 200:
-				if state_dict[key] is Array:
+				if state_dict[key] is Array and state_dict[key].size() > 0:
 					size_by_key[key] = "%d (%.1f) " % [compressed_size, compressed_size / state_dict[key].size()]
 				else:
 					size_by_key[key] = compressed_size
@@ -609,11 +609,14 @@ func _update_births(births_array : Array) -> void:
 		birth._color.b = birth_dict["COLOR_B"]
 		birth._color.a = birth_dict["COLOR_A"]
 	
+	var to_remove = []
 	for network_id in client_births:
-		var old_birth = client_births[network_id]
 		if not current_births.has(network_id):
-			client_births.erase(network_id)
-			old_birth.queue_free()
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		var old_birth = client_births[network_id]
+		client_births.erase(network_id)
+		old_birth.queue_free()
 
 
 func _host_player_projectiles_array() -> Array:
@@ -658,11 +661,14 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 				client_pending_ids[network_id] = true
 				call_deferred("_spawn_player_projectile", player_projectile_dict)
 	
+	var to_remove = []
 	for network_id in client_player_projectiles:
 		if not current_projectiles.has(network_id):
-			if is_instance_valid(client_player_projectiles[network_id]):
-				client_player_projectiles[network_id].queue_free()
-			client_player_projectiles.erase(network_id)
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		if is_instance_valid(client_player_projectiles[network_id]):
+			client_player_projectiles[network_id].queue_free()
+		client_player_projectiles.erase(network_id)
 
 
 func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
@@ -716,10 +722,14 @@ func _update_items(items_array : Array) -> void:
 		else:
 			call_deferred("_spawn_item", item_dict)
 	
+	var to_remove = []
 	for network_id in client_items:
 		if not current_items.has(network_id):
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		if is_instance_valid(client_items[network_id]):
 			client_items[network_id].queue_free()
-			client_items.erase(network_id)
+		client_items.erase(network_id)
 
 
 func _spawn_item(item_dict : Dictionary) -> void:
@@ -762,10 +772,14 @@ func _update_consumables(consumables_array : Array) -> void:
 		else:
 			call_deferred("_spawn_consumable", consumable_dict)
 	
+	var to_remove = []
 	for network_id in client_consumables:
 		if not current_consumables.has(network_id):
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		if is_instance_valid(client_consumables[network_id]):
 			client_consumables[network_id].queue_free()
-			client_consumables.erase(network_id)
+		client_consumables.erase(network_id)
 
 
 func _spawn_consumable(consumable_dict : Dictionary) -> void:
@@ -808,10 +822,14 @@ func _update_neutrals(neutrals_array : Array) -> void:
 		else:
 			call_deferred("_spawn_neutral", neutral_dict)
 	
+	var to_remove = []
 	for network_id in client_neutrals:
 		if not network_id in current_neutrals:
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		if is_instance_valid(client_neutrals[network_id]):
 			client_neutrals[network_id].queue_free()
-			client_neutrals.erase(network_id)
+		client_neutrals.erase(network_id)
 
 
 func _spawn_neutral(neutral_dict : Dictionary) -> void:
@@ -853,10 +871,14 @@ func _update_structures(structures_array : Array) -> void:
 		else:
 			call_deferred("_spawn_structure", structure_dict)
 	
+	var to_remove = []
 	for network_id in client_structures:
 		if not network_id in current_structures:
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		if is_instance_valid(client_structures[network_id]):
 			client_structures[network_id].queue_free()
-			client_structures.erase(network_id)
+		client_structures.erase(network_id)
 
 
 func _spawn_structure(structure_dict : Dictionary) -> void:
@@ -914,11 +936,14 @@ func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 		else:
 			call_deferred("_spawn_enemy_projectile", enemy_projectile_dict)
 	
+	var to_remove = []
 	for network_id in client_enemy_projectiles:
 		if not current_enemy_projectiles.has(network_id):
-			if is_instance_valid(client_enemy_projectiles[network_id]):
-				client_enemy_projectiles[network_id].queue_free()
-			client_enemy_projectiles.erase(network_id)
+			to_remove.push_back(network_id)
+	for network_id in to_remove:
+		if is_instance_valid(client_enemy_projectiles[network_id]):
+			client_enemy_projectiles[network_id].queue_free()
+		client_enemy_projectiles.erase(network_id)
 
 
 func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
@@ -933,23 +958,23 @@ func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
 	enemy_projectile.set_meta("pool_id", 0)
 	
 	_enemy_projectiles.add_child(enemy_projectile)
-	_enemy_projectiles.set_physics_process(false)
-	_enemy_projectiles.show()
+	enemy_projectile.set_physics_process(false)
+	enemy_projectile.show()
 
 
-func _update_batched_hit_particles(batched_hit_effects_array : Array) -> void:
+func _update_batched_hit_particles(batched_hit_particles_array : Array) -> void:
+	for hit_particles_dict in batched_hit_particles_array:
+		var effect_pos = Vector2(hit_particles_dict["X_POS"], hit_particles_dict["Y_POS"])
+		var effect_scale = hit_particles_dict["SCALE"]
+		_effects_manager.play_hit_particles(effect_pos, Vector2.ZERO, effect_scale)
+
+
+func _update_batched_hit_effects(batched_hit_effects_array : Array) -> void:
 	for hit_effect_dict in batched_hit_effects_array:
 		var effect_pos = Vector2(hit_effect_dict["X_POS"], hit_effect_dict["Y_POS"])
 		var direction = Vector2(hit_effect_dict["X_DIR"], hit_effect_dict["Y_DIR"])
 		var effect_scale = hit_effect_dict["SCALE"]
 		_effects_manager.play_hit_effect(effect_pos, direction, effect_scale)
-
-
-func _update_batched_hit_effects(batched_hit_particles_array : Array) -> void:
-	for hit_particles_dict in batched_hit_particles_array:
-		var effect_pos = Vector2(hit_particles_dict["X_POS"], hit_particles_dict["Y_POS"])
-		var effect_scale = hit_particles_dict["SCALE"]
-		_effects_manager.play_hit_particles(effect_pos, Vector2.ZERO, effect_scale)
 
 
 func _update_batched_floating_text(batched_floating_text_array : Array) -> void:

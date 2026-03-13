@@ -392,6 +392,8 @@ func _dictionary_for_inventory_item(inventory_element : InventoryElement) -> Dic
 
 
 func _client_focused_inventory_element(data : Dictionary, player_index : int) -> void:
+	if not data.has("TYPE"):
+		return
 	var focused_element = _focus_inventory_item_for_dictionary(data, player_index)
 	
 	is_self_call = true
@@ -458,7 +460,7 @@ func _inventory_item_for_dictionary(item_dict : Dictionary) -> ItemData:
 			result = character.duplicate()
 	
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
-	if dlc:
+	if dlc and result:
 		if item_dict.has("CURSED") and item_dict["CURSED"]:
 			result.is_cursed = true
 	

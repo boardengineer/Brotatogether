@@ -111,7 +111,7 @@ func update_client_player(player_dict : Dictionary, player_index : int) -> void:
 	
 		
 	var weapons_array = player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS]
-	for weapon_index in weapons_array.size():
+	for weapon_index in min(weapons_array.size(), self.current_weapons.size()):
 		var weapon_dict = weapons_array[weapon_index]
 		var weapon = self.current_weapons[weapon_index]
 		
