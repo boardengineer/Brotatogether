@@ -16,9 +16,16 @@ var is_self_call = false
 var player_in_scene = [true, false, false, false]
 var waiting_to_start_round = false
 
-const SEND_RATE : float = 1.0 / 30.0
+const SEND_RATE : float = 1.0 / 60.0   # was 1/30; payload is ~1KB so 2x is trivial and halves snapshot staleness
 var send_timer = SEND_RATE
 var my_player_index
+
+# Split-channel state sync: positional snapshot goes unreliable and carries a monotonic
+# sequence so the client drops out-of-order packets; deaths/effects go reliable. SEQ resets
+# per wave because both Main scenes are recreated each wave (these are scene-instance vars).
+var _state_seq : int = 0        # host: increments per snapshot sent
+var _last_state_seq : int = 0   # client: highest SEQ applied so far
+var client_dead_ids := {}       # client: enemy/boss ids confirmed dead, so a stale roster can't respawn them
 
 var client_players = {}
 var client_enemies = {}
@@ -59,11 +66,11 @@ var _frame_log_counter: int = 0
 var _physics_step_count: int = 0
 
 # This is currently a half-completed attempt ot shrink some of the overhead
-# in messaging.  With a bit of testing, the gains weren't that great given 
+# in messaging.  With a bit of testing, the gains weren't that great given
 # compression so it may not get done.
 enum EntityState {
 	ENTITY_STATE_NETWORK_ID,
-	
+
 	ENTITY_STATE_X_POS,
 	ENTITY_STATE_Y_POS,
 	ENTITY_STATE_X_MOVE,
@@ -71,7 +78,7 @@ enum EntityState {
 	ENTITY_STATE_CURRENT_HP,
 	ENTITY_STATE_MAX_HP,
 	ENTITY_STATE_SPRITE_SCALE,
-	
+
 	# Player-specific entity state.
 	ENTITY_STATE_PLAYER_GOLD,
 	ENTITY_STATE_PLAYER_CURRENT_XP,
@@ -91,7 +98,7 @@ enum WeaponState {
 
 enum ProjectileState {
 	PROJECTILE_STATE_NETWORK_ID,
-	
+
 	PROJECTILE_STATE_X_POS,
 	PROJECTILE_STATE_Y_POS,
 	PROJECTILE_STATE_ROTATION,
@@ -104,23 +111,24 @@ func _ready():
 	steam_connection = $"/root/SteamConnection"
 	brotatogether_options = $"/root/BrotogetherOptions"
 	in_multiplayer_game = brotatogether_options.in_multiplayer_game
-	
+
 	if in_multiplayer_game:
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
 		steam_connection.connect("state_update", self, "_state_update")
+		steam_connection.connect("state_events", self, "_state_events")
 		steam_connection.connect("client_position", self, "_update_player_position")
 		steam_connection.connect("client_menu_focus", self, "_update_client_focus")
-		
+
 		steam_connection.connect("client_main_scene_reroll_button_pressed", self, "_client_reroll_button_pressed")
 		steam_connection.connect("client_main_scene_choose_upgrade_pressed", self, "_client_choose_upgrade_button_pressed")
 		steam_connection.connect("client_main_scene_take_button_pressed", self, "_client_take_button_pressed")
 		steam_connection.connect("client_main_scene_discard_button_pressed", self, "_client_discard_button_pressed")
-		
+
 		steam_connection.connect("host_entered_shop", self, "_host_entered_shop")
-		
+
 		my_player_index = steam_connection.get_my_index()
-		
+
 		call_deferred("multiplayer_ready")
 
 
@@ -182,52 +190,28 @@ func _process(_delta):
 
 func _send_game_state() -> void:
 	var state_dict = {}
-	
+
 	state_dict["WAVE_TIME"] = _wave_timer.time_left
 	state_dict["BONUS_GOLD"] = RunData.bonus_gold
-	
+
 	var players = []
 	for player_index in _players.size():
 		var player = _players[player_index]
 		players.push_back(_dictionary_for_player(player, player_index))
 	state_dict["PLAYERS"] = players
-	
+
 	var enemies = []
 	for enemy in _entity_spawner.enemies:
 		if is_instance_valid(enemy):
 			enemies.push_back(_dictionary_for_enemy(enemy))
 	state_dict["ENEMIES"] = enemies
-	
+
 	var bosses = []
 	for boss in _entity_spawner.bosses:
 		if is_instance_valid(boss):
 			bosses.push_back(_dictionary_for_enemy(boss))
 	state_dict["BOSSES"] = bosses
-	
-	state_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
-	brotatogether_options.batched_enemy_deaths.clear()
-	
-	state_dict["BATCHED_HIT_EFFECTS"] = brotatogether_options.batched_hit_effects.duplicate()
-	brotatogether_options.batched_hit_effects.clear()
-	
-	state_dict["BATCHED_HIT_PARTICLES"] = brotatogether_options.batched_hit_particles.duplicate()
-	brotatogether_options.batched_hit_particles.clear()
-	
-	state_dict["BATCHED_FLOATING_TEXT"] = brotatogether_options.batched_floating_text.duplicate()
-	brotatogether_options.batched_floating_text.clear()
-	
-	state_dict["BATCHED_UNIT_FLASHES"] = brotatogether_options.batched_unit_flashes.duplicate()
-	brotatogether_options.batched_unit_flashes.clear()
-	
-	state_dict["BATCHED_2D_SOUNDS"] = brotatogether_options.batched_2d_sounds.duplicate()
-	brotatogether_options.batched_2d_sounds.clear()
-	
-	state_dict["BATCHED_SOUNDS"] = brotatogether_options.batched_sounds.duplicate()
-	brotatogether_options.batched_sounds.clear()
-	
-	state_dict["BATCHED_EXPLOSIONS"] = brotatogether_options.batched_explosions.duplicate()
-	brotatogether_options.batched_explosions.clear()
-	
+
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
 	state_dict["ITEMS"] = _host_items_array()
@@ -237,26 +221,58 @@ func _send_game_state() -> void:
 	state_dict["PETS"] = _host_pets_array()
 	state_dict["ENEMY_PROJECTILES"] = _host_enemy_projectiles_array()
 	state_dict["UPGRADE_MENU_STATUS"] = _host_menu_status()
-	
-	if ENABLE_DEBUG:
-		var size_by_key = {}
-		for key in state_dict:
-			var compressed_data: PoolByteArray = var2bytes(state_dict[key]).compress(File.COMPRESSION_GZIP)
-			var compressed_size = compressed_data.size()
-			if compressed_size > 200:
-				if state_dict[key] is Array:
-					size_by_key[key] = "%d (%.1f) " % [compressed_size, compressed_size / state_dict[key].size()]
-				else:
-					size_by_key[key] = compressed_size
-	
+
+	# One-shot deltas -> reliable events channel (see steam_connection.send_game_events).
+	# These MUST NOT be dropped (a lost death leaves a ghost enemy), so they never ride
+	# the unreliable snapshot below. Batches are drained here at the send cadence.
+	var events_dict = {}
+	events_dict["BATCHED_ENEMY_DEATHS"] = brotatogether_options.batched_enemy_deaths.duplicate()
+	brotatogether_options.batched_enemy_deaths.clear()
+	events_dict["BATCHED_HIT_EFFECTS"] = brotatogether_options.batched_hit_effects.duplicate()
+	brotatogether_options.batched_hit_effects.clear()
+	events_dict["BATCHED_HIT_PARTICLES"] = brotatogether_options.batched_hit_particles.duplicate()
+	brotatogether_options.batched_hit_particles.clear()
+	events_dict["BATCHED_FLOATING_TEXT"] = brotatogether_options.batched_floating_text.duplicate()
+	brotatogether_options.batched_floating_text.clear()
+	events_dict["BATCHED_UNIT_FLASHES"] = brotatogether_options.batched_unit_flashes.duplicate()
+	brotatogether_options.batched_unit_flashes.clear()
+	events_dict["BATCHED_2D_SOUNDS"] = brotatogether_options.batched_2d_sounds.duplicate()
+	brotatogether_options.batched_2d_sounds.clear()
+	events_dict["BATCHED_SOUNDS"] = brotatogether_options.batched_sounds.duplicate()
+	brotatogether_options.batched_sounds.clear()
+	events_dict["BATCHED_EXPLOSIONS"] = brotatogether_options.batched_explosions.duplicate()
+	brotatogether_options.batched_explosions.clear()
+
+	_state_seq += 1
+	state_dict["SEQ"] = _state_seq
 	state_dict["SENT_AT_MS"] = Time.get_ticks_msec()
 	steam_connection.send_game_state(state_dict)
 
+	# Only send the reliable events packet when something actually happened this tick.
+	var has_events = false
+	for k in events_dict:
+		if events_dict[k].size() > 0:
+			has_events = true
+			break
+	if has_events:
+		steam_connection.send_game_events(events_dict)
+
 	if brotatogether_options.is_solo_test:
-		_ghost_queue.push_back({"time": Time.get_ticks_msec(), "state": state_dict})
+		# Solo ghost replay expects one combined dict (positions + batches together).
+		var merged = state_dict.duplicate()
+		for k in events_dict:
+			merged[k] = events_dict[k]
+		_ghost_queue.push_back({"time": Time.get_ticks_msec(), "state": merged})
 
 
-func _state_update(state_dict : Dictionary) -> void:	
+func _state_update(state_dict : Dictionary) -> void:
+	# Unreliable snapshots can arrive out of order; only apply a strictly newer SEQ so a
+	# late packet never rewinds positions. SEQ resets each wave (fresh Main scene instance).
+	var seq = state_dict.get("SEQ", 0)
+	if seq <= _last_state_seq:
+		return
+	_last_state_seq = seq
+
 	var start_time : int = Time.get_ticks_usec()
 	var before : int
 
@@ -265,7 +281,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	if wait_time > 0:
 		_wave_timer.start(wait_time)
 	var _wave_timer_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	var bonus_gold = state_dict["BONUS_GOLD"]
 	if bonus_gold > 0:
@@ -274,73 +290,48 @@ func _state_update(state_dict : Dictionary) -> void:
 	_ui_bonus_gold.update_value(bonus_gold)
 	on_bonus_gold_changed(bonus_gold)
 	var _bonus_gold_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	var players_array = state_dict["PLAYERS"]
 	for player_index in players_array.size():
 		_update_player_position(players_array[player_index], player_index)
 	var _player_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	var enemies_array = state_dict["ENEMIES"]
 	for enemy in enemies_array:
 		_update_enemy(enemy)
 	var enemies_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	var bosses_array = state_dict["BOSSES"]
 	for boss in bosses_array:
 		_update_enemy(boss)
 	var bosses_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	for enemy_id in state_dict["BATCHED_ENEMY_DEATHS"]:
-		if client_enemies.has(enemy_id):
-			if not client_enemies[enemy_id].dead:
-				client_enemies[enemy_id].die()
-			else:
-				push_warning("BT: ghost enemy %s already dead at death batch time" % str(enemy_id))
-			client_enemies.erase(enemy_id)
-	var enemy_deaths_update_time = Time.get_ticks_usec() - before
 
-	before = Time.get_ticks_usec()
-	for flashing_unit_id in state_dict["BATCHED_UNIT_FLASHES"]:
-		var flashing_unit
-		if client_enemies.has(flashing_unit_id):
-			flashing_unit = client_enemies[flashing_unit_id]
-		elif client_players.has(flashing_unit_id):
-			flashing_unit = client_players[flashing_unit_id]
-		elif client_neutrals.has(flashing_unit_id):
-			flashing_unit = client_neutrals[flashing_unit_id]
-		if flashing_unit and is_instance_valid(flashing_unit):
-			flashing_unit.flash()
-	var _flashing_units_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	for explosion in state_dict["BATCHED_EXPLOSIONS"]:
-		call_deferred("spawn_explosion", explosion)
-	var _explosion_update_time = Time.get_ticks_usec() - before
-	
+	# Enemy deaths + flashes + explosions moved to _state_events (reliable channel).
+	var enemy_deaths_update_time = 0
+
 	before = Time.get_ticks_usec()
 	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
 	var player_projectiles_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	call_deferred("_update_births", state_dict["BIRTHS"])
 	var births_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	_update_items(state_dict["ITEMS"])
 	var items_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	_update_consumables(state_dict["CONSUMABLES"])
 	var consumables_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	_update_neutrals(state_dict["NEUTRALS"])
 	var neutrals_update_time = Time.get_ticks_usec() - before
-	
+
 	before = Time.get_ticks_usec()
 	_update_structures(state_dict["STRUCTURES"])
 	var structures_update_time = Time.get_ticks_usec() - before
@@ -352,33 +343,18 @@ func _state_update(state_dict : Dictionary) -> void:
 	before = Time.get_ticks_usec()
 	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"])
 	var enemy_projectiles_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	_update_batched_hit_effects(state_dict["BATCHED_HIT_EFFECTS"])
-	var enemy_hit_effects_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	_update_batched_hit_particles(state_dict["BATCHED_HIT_PARTICLES"])
-	var enemy_hit_particles_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	_update_batched_floating_text(state_dict["BATCHED_FLOATING_TEXT"])
-	var floating_text_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	for sound in state_dict["BATCHED_SOUNDS"]:
-		SoundManager.call_deferred("play", load(sound["RESOURCE_PATH"]))
-	var sound_update_time = Time.get_ticks_usec() - before
-	
-	before = Time.get_ticks_usec()
-	for sound in state_dict["BATCHED_2D_SOUNDS"]:
-		SoundManager2D.call_deferred("play", load(sound["RESOURCE_PATH"]), Vector2(sound["X_POS"], sound["Y_POS"]))
-	var sound_2d_update_time = Time.get_ticks_usec() - before
-	
+
+	# Hit effects/particles/floating-text/sounds moved to _state_events (reliable channel).
+	var enemy_hit_effects_update_time = 0
+	var enemy_hit_particles_update_time = 0
+	var floating_text_update_time = 0
+	var sound_update_time = 0
+	var sound_2d_update_time = 0
+
 	before = Time.get_ticks_usec()
 	_update_menu(state_dict["UPGRADE_MENU_STATUS"])
 	var _menu_update_time = Time.get_ticks_usec() - before
-	
+
 	if ENABLE_DEBUG:
 		var total_us = Time.get_ticks_usec() - start_time
 		var net_ms = Time.get_ticks_msec() - state_dict.get("SENT_AT_MS", Time.get_ticks_msec())
@@ -400,7 +376,42 @@ func _state_update(state_dict : Dictionary) -> void:
 				state_dict["PETS"].size(), state_dict["BIRTHS"].size()])
 
 
-func _input(event) -> void: 
+func _state_events(events_dict : Dictionary) -> void:
+	# Reliable one-shot deltas split out of the positional snapshot. Deaths are recorded in
+	# client_dead_ids so a late/reordered unreliable roster snapshot can't respawn a killed
+	# enemy (_update_enemy consults it). Effects/sounds are cosmetic and simply applied.
+	for enemy_id in events_dict["BATCHED_ENEMY_DEATHS"]:
+		client_dead_ids[enemy_id] = true
+		if client_enemies.has(enemy_id):
+			if not client_enemies[enemy_id].dead:
+				client_enemies[enemy_id].die()
+			client_enemies.erase(enemy_id)
+
+	for flashing_unit_id in events_dict["BATCHED_UNIT_FLASHES"]:
+		var flashing_unit
+		if client_enemies.has(flashing_unit_id):
+			flashing_unit = client_enemies[flashing_unit_id]
+		elif client_players.has(flashing_unit_id):
+			flashing_unit = client_players[flashing_unit_id]
+		elif client_neutrals.has(flashing_unit_id):
+			flashing_unit = client_neutrals[flashing_unit_id]
+		if flashing_unit and is_instance_valid(flashing_unit):
+			flashing_unit.flash()
+
+	for explosion in events_dict["BATCHED_EXPLOSIONS"]:
+		call_deferred("spawn_explosion", explosion)
+
+	_update_batched_hit_effects(events_dict["BATCHED_HIT_EFFECTS"])
+	_update_batched_hit_particles(events_dict["BATCHED_HIT_PARTICLES"])
+	_update_batched_floating_text(events_dict["BATCHED_FLOATING_TEXT"])
+
+	for sound in events_dict["BATCHED_SOUNDS"]:
+		SoundManager.call_deferred("play", load(sound["RESOURCE_PATH"]))
+	for sound in events_dict["BATCHED_2D_SOUNDS"]:
+		SoundManager2D.call_deferred("play", load(sound["RESOURCE_PATH"]), Vector2(sound["X_POS"], sound["Y_POS"]))
+
+
+func _input(event) -> void:
 	if not ENABLE_DEBUG:
 		return
 	if event is InputEventKey:
@@ -431,60 +442,60 @@ func _dictionary_for_player(player, player_index) -> Dictionary:
 	var player_run_data = RunData.players_data[player_index]
 	var player_dict = {
 		EntityState.ENTITY_STATE_NETWORK_ID : player.network_id,
-		
+
 		EntityState.ENTITY_STATE_X_POS : player.position.x,
 		EntityState.ENTITY_STATE_Y_POS : player.position.y,
-		
+
 		EntityState.ENTITY_STATE_X_MOVE : player._current_movement.x,
 		EntityState.ENTITY_STATE_Y_MOVE : player._current_movement.y,
-		
+
 		EntityState.ENTITY_STATE_SPRITE_SCALE: player.sprite.scale.x,
 		EntityState.ENTITY_STATE_PLAYER_LEVEL: player_run_data.current_level
 	}
-	
+
 	var weapons_array : Array = []
 	var weapons = player.current_weapons
 	for weapon in weapons:
 		var weapon_dict = {}
-		
+
 		weapon_dict[WeaponState.WEAPON_STATE_SPRITE_ROTATION] = weapon.sprite.rotation
 		weapon_dict[WeaponState.WEAPON_STATE_ROTATION] = weapon.rotation
 		weapon_dict[WeaponState.WEAPON_STATE_X_POS] = weapon.sprite.position.x
 		weapon_dict[WeaponState.WEAPON_STATE_Y_POS] = weapon.sprite.position.y
 		weapon_dict[WeaponState.WEAPON_STATE_IS_SHOOTING] = weapon._is_shooting
-		
+
 		weapons_array.push_back(weapon_dict)
 	player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS] = weapons_array
-	
+
 	if steam_connection.is_host():
 		player_dict[EntityState.ENTITY_STATE_PLAYER_GOLD] = RunData.players_data[player_index].gold
 		player_dict[EntityState.ENTITY_STATE_PLAYER_CURRENT_XP] = RunData.players_data[player_index].current_xp
 		player_dict[EntityState.ENTITY_STATE_PLAYER_NEXT_LEVEL_XP] = RunData.get_next_level_xp_needed(player_index)
 		player_dict[EntityState.ENTITY_STATE_CURRENT_HP] = player.current_stats.health
 		player_dict[EntityState.ENTITY_STATE_MAX_HP] = player.max_stats.health
-		
+
 		var things_to_process = _things_to_process_player_containers[player_index]
 		player_dict[EntityState.ENTITY_STATE_PLAYER_NUM_UPGRADES] = things_to_process.upgrades._elements.size()
-	
+
 	return player_dict
 
 
 func _update_player_position(player_dict : Dictionary, player_index : int) -> void:
 	var player = _players[player_index]
 	var network_id = player_dict[EntityState.ENTITY_STATE_NETWORK_ID]
-	
+
 	if not client_players.has(network_id):
 		client_players[network_id] = player
-	
+
 	if player_index != my_player_index:
 		if player.dead:
 			return
 		player.call_deferred("update_external_player_position", player_dict)
-	
+
 	if not steam_connection.is_host():
 		_players_ui[player_index].call_deferred("update_level_label")
 		player.call_deferred("update_client_player", player_dict, player_index)
-		
+
 		var things_to_process = _things_to_process_player_containers[player_index]
 		if player_dict[EntityState.ENTITY_STATE_PLAYER_NUM_UPGRADES] > things_to_process.upgrades._elements.size():
 			things_to_process.upgrades.add_element(ItemService.get_icon(Keys.icon_upgrade_to_process_hash), 1)
@@ -492,7 +503,7 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 
 func _dictionary_for_enemy(enemy) -> Dictionary:
 	var enemy_dict = {}
-	
+
 	enemy_dict["NETWORK_ID"] = enemy.network_id
 	enemy_dict["RESOURCE_PATH"] = enemy.stats.resource_path
 	enemy_dict["FILENAME"] = enemy.filename
@@ -500,20 +511,24 @@ func _dictionary_for_enemy(enemy) -> Dictionary:
 	enemy_dict["Y_POS"] = enemy.position.y
 	enemy_dict["MOVE_X"] = enemy._current_movement.x
 	enemy_dict["MOVE_Y"] = enemy._current_movement.y
-	
+
 	enemy_dict["MODULATE_A"] = enemy.sprite.self_modulate.a8
 	enemy_dict["MODULATE_R"] = enemy.sprite.self_modulate.r8
 	enemy_dict["MODULATE_G"] = enemy.sprite.self_modulate.g8
 	enemy_dict["MODULATE_B"] = enemy.sprite.self_modulate.b8
-	
+
 	return enemy_dict
 
 
 func _update_enemy(enemy_dict : Dictionary) -> void:
 	var enemy_id = enemy_dict["NETWORK_ID"]
+	# A reliable death for this id already arrived; ignore any lingering/reordered roster
+	# entry so we never respawn a corpse (deaths ride a separate reliable channel now).
+	if client_dead_ids.has(enemy_id):
+		return
 	if client_enemies.has(enemy_id):
 		var enemy = client_enemies[enemy_id]
-		
+
 		enemy.call_deferred("update_client_enemy", enemy_dict)
 	else:
 		if not client_pending_ids.has(enemy_id):
@@ -528,24 +543,29 @@ func spawn_enemy(enemy_dict) -> void:
 	var filename = enemy_dict["FILENAME"]
 	var resource_path = enemy_dict["RESOURCE_PATH"]
 	var enemy_id = enemy_dict["NETWORK_ID"]
-	
+
+	# Death may have landed between _update_enemy's check and this deferred call.
+	if client_dead_ids.has(enemy_id):
+		client_pending_ids.erase(enemy_id)
+		return
+
 	var enemy = load(filename).instance()
 	enemy._entity_spawner_ref = _entity_spawner
-	
+
 	var position : Vector2 = Vector2(enemy_dict["X_POS"], enemy_dict["Y_POS"])
 	enemy.position = position
 	enemy.stats = load(resource_path)
-	
+
 	client_enemies[enemy_id] = enemy
 	client_pending_ids.erase(enemy_id)
-	
+
 	var movement_behavior = enemy.get_node("MovementBehavior")
 	enemy.remove_child(movement_behavior)
 	var client_movement_behavior = ClientMovementBehavior.new()
 	client_movement_behavior.set_name("MovementBehavior")
 	enemy.add_child(client_movement_behavior, true)
 	enemy._current_movement_behavior = client_movement_behavior
-	
+
 	var attack_behaviors_to_replace = []
 	for child in enemy.get_children():
 		if child is AttackBehavior:
@@ -559,7 +579,7 @@ func spawn_enemy(enemy_dict) -> void:
 	var replaced_ab = enemy.get_node_or_null("AttackBehavior")
 	if replaced_ab:
 		enemy._current_attack_behavior = replaced_ab
-	
+
 	if brotatogether_options.is_solo_test:
 		enemy.collision_layer = 0
 		enemy.collision_mask = 0
@@ -808,14 +828,14 @@ func _on_WaveTimer_timeout() -> void:
 			_wave_cleared_label.hide()
 			_wave_timer_label.hide()
 			_hud.hide()
-			
+
 			_coop_upgrades_ui.propagate_call("set_process_input", [true])
 			DebugService.log_data("_on_EndWaveTimer_timeout")
 			SoundManager.clear_queue()
 			SoundManager2D.clear_queue()
 			InputService.set_gamepad_echo_processing(true)
 			_cleaning_up = true
-			
+
 			for player in _players:
 				if is_instance_valid(player):
 					player._can_move = false
@@ -836,35 +856,35 @@ func _on_EndWaveTimer_timeout()->void :
 
 func _host_births_array() -> Array:
 	var births_array = []
-	
+
 	for birth in _births_container.get_children():
 		if birth._collision_shape.disabled:
 			continue
 		var birth_dict = {}
-		
+
 		birth_dict["NETWORK_ID"] = birth.network_id
-		
+
 		birth_dict["X_POS"] = birth.global_position.x
 		birth_dict["Y_POS"] = birth.global_position.y
-		
+
 		birth_dict["COLOR_R"] = birth._color.r
 		birth_dict["COLOR_G"] = birth._color.g
 		birth_dict["COLOR_B"] = birth._color.b
 		birth_dict["COLOR_A"] = birth._color.a
 		birth_dict["TYPE"] = birth.type
-		
+
 		births_array.push_back(birth_dict)
-	
+
 	return births_array
 
 
 func _update_births(births_array : Array) -> void:
 	var current_births : Dictionary = {}
-	
+
 	for birth_dict in births_array:
 		var network_id = birth_dict["NETWORK_ID"]
 		current_births[network_id] = true
-		
+
 		var birth
 		if client_births.has(network_id):
 			birth = client_births[network_id]
@@ -874,13 +894,13 @@ func _update_births(births_array : Array) -> void:
 			_births_container.add_child(birth)
 			client_births[network_id] = birth
 			birth.start(birth_dict["TYPE"], ENTITY_BIRTH_SCENE, Vector2(birth_dict["X_POS"], birth_dict["Y_POS"]))
-		
+
 		# TODO, I don't think we need these colors anymore
 		birth._color.r = birth_dict["COLOR_R"]
 		birth._color.g = birth_dict["COLOR_G"]
 		birth._color.b = birth_dict["COLOR_B"]
 		birth._color.a = birth_dict["COLOR_A"]
-	
+
 	for network_id in client_births:
 		var old_birth = client_births[network_id]
 		if not current_births.has(network_id):
@@ -890,7 +910,7 @@ func _update_births(births_array : Array) -> void:
 
 func _host_player_projectiles_array() -> Array:
 	var player_projectiles_array = []
-	
+
 	for child in _player_projectiles.get_children():
 		if child is PlayerProjectile and child._hitbox.active:
 			var projectile_dict = {}
@@ -901,26 +921,26 @@ func _host_player_projectiles_array() -> Array:
 				network_id = brotatogether_options.current_network_id
 				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
 				server_player_projectile_ids[child] = network_id
-			
+
 			projectile_dict["NETWORK_ID"] = network_id
 			projectile_dict["X_POS"] = child.position.x
 			projectile_dict["Y_POS"] = child.position.y
 			projectile_dict["ROTATION"] = child.rotation
 			projectile_dict["FILENAME"] = child.filename
 			player_projectiles_array.push_back(projectile_dict)
-	return player_projectiles_array 
+	return player_projectiles_array
 
 
 func _update_player_projectiles(player_projectiles_array : Array) -> void:
 	var current_projectiles = {}
-	
+
 	for player_projectile_dict in player_projectiles_array:
 		var network_id = player_projectile_dict["NETWORK_ID"]
 		current_projectiles[network_id] = true
-		
+
 		if client_player_projectiles.has(network_id):
 			var projectile = client_player_projectiles[network_id]
-			
+
 			if is_instance_valid(projectile):
 				projectile.position.x = player_projectile_dict["X_POS"]
 				projectile.position.y = player_projectile_dict["Y_POS"]
@@ -929,7 +949,7 @@ func _update_player_projectiles(player_projectiles_array : Array) -> void:
 			if not client_pending_ids.has(network_id):
 				client_pending_ids[network_id] = true
 				call_deferred("_spawn_player_projectile", player_projectile_dict)
-	
+
 	for network_id in client_player_projectiles:
 		if not current_projectiles.has(network_id):
 			var proj = client_player_projectiles[network_id]
@@ -944,20 +964,20 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 
 	var network_id = player_projectile_dict["NETWORK_ID"]
 	var projectile = load(player_projectile_dict["FILENAME"]).instance()
-	
+
 	client_pending_ids.erase(network_id)
 	client_player_projectiles[network_id] = projectile
-	
+
 	projectile.position.x = player_projectile_dict["X_POS"]
 	projectile.position.y = player_projectile_dict["Y_POS"]
 	projectile.spawn_position.x = player_projectile_dict["X_POS"]
 	projectile.spawn_position.y = player_projectile_dict["Y_POS"]
 
-	# The projectile will despawn if max_range is too low, the host will 
+	# The projectile will despawn if max_range is too low, the host will
 	# erase the projectile at the right time so set max range very high to
 	# disable client-side logic in this regard.
 	projectile._max_range = 9999
- 
+
 	projectile.rotation = player_projectile_dict["ROTATION"]
 
 	projectile.set_meta("pool_id", Keys.generate_hash(player_projectile_dict["FILENAME"]))
@@ -985,7 +1005,7 @@ func _host_items_array() -> Array:
 
 func _update_items(items_array : Array) -> void:
 	var current_items = {}
-	
+
 	for item_dict in items_array:
 		var network_id = item_dict["NETWORK_ID"]
 		current_items[network_id] = true
@@ -995,7 +1015,7 @@ func _update_items(items_array : Array) -> void:
 			item.global_position.y = item_dict["Y_POS"]
 		else:
 			call_deferred("_spawn_item", item_dict)
-	
+
 	for network_id in client_items:
 		if not current_items.has(network_id):
 			client_items[network_id].queue_free()
@@ -1017,7 +1037,7 @@ func _spawn_item(item_dict : Dictionary) -> void:
 
 func _host_consumables_array() -> Array:
 	var consumables_array = []
-	
+
 	for consumable in _consumables_container.get_children():
 		if consumable.visible and consumable.consumable_data != null:
 			var consumable_dict = {}
@@ -1026,13 +1046,13 @@ func _host_consumables_array() -> Array:
 			consumable_dict["Y_POS"] = consumable.global_position.y
 			consumable_dict["LOAD_PATH"] = consumable.consumable_data.icon.load_path
 			consumables_array.push_back(consumable_dict)
-	
+
 	return consumables_array
 
 
 func _update_consumables(consumables_array : Array) -> void:
 	var current_consumables = {}
-	
+
 	for consumable_dict in consumables_array:
 		var network_id = consumable_dict["NETWORK_ID"]
 		current_consumables[network_id] = true
@@ -1042,7 +1062,7 @@ func _update_consumables(consumables_array : Array) -> void:
 			consumable.global_position.y = consumable_dict["Y_POS"]
 		else:
 			call_deferred("_spawn_consumable", consumable_dict)
-	
+
 	for network_id in client_consumables:
 		if not current_consumables.has(network_id):
 			client_consumables[network_id].queue_free()
@@ -1054,7 +1074,7 @@ func _spawn_consumable(consumable_dict : Dictionary) -> void:
 	if consumable == null:
 		consumable = consumable_scene.instance()
 		_consumables_container.add_child(consumable)
-	
+
 	var file_path = consumable_dict["LOAD_PATH"]
 	consumable.set_texture(load(file_path))
 	consumable.global_position.x = consumable_dict["X_POS"]
@@ -1065,20 +1085,20 @@ func _spawn_consumable(consumable_dict : Dictionary) -> void:
 
 func _host_neutrals_array() -> Array:
 	var neutrals_array = []
-	
+
 	for neutral in _entity_spawner.neutrals:
 		var neutral_dict = {}
 		neutral_dict["NETWORK_ID"] = neutral.network_id
 		neutral_dict["X_POS"] = neutral.global_position.x
 		neutral_dict["Y_POS"] = neutral.global_position.y
 		neutrals_array.push_back(neutral_dict)
-	
+
 	return neutrals_array
 
 
 func _update_neutrals(neutrals_array : Array) -> void:
 	var current_neutrals = {}
-	
+
 	for neutral_dict in neutrals_array:
 		var network_id = neutral_dict["NETWORK_ID"]
 		current_neutrals[network_id] = true
@@ -1086,7 +1106,7 @@ func _update_neutrals(neutrals_array : Array) -> void:
 			pass
 		else:
 			call_deferred("_spawn_neutral", neutral_dict)
-	
+
 	for network_id in client_neutrals:
 		if not network_id in current_neutrals:
 			client_neutrals[network_id].queue_free()
@@ -1119,22 +1139,22 @@ func _spawn_neutral(neutral_dict : Dictionary) -> void:
 
 func _host_structures_array() -> Array:
 	var structures_array = []
-	
+
 	for structure in _entity_spawner.structures:
 		var structure_dict = {}
-		
+
 		structure_dict["NETWORK_ID"] = structure.network_id
 		structure_dict["FILENAME"] = structure.filename
 		structure_dict["X_POS"] = structure.position.x
 		structure_dict["Y_POS"] = structure.position.y
 		structures_array.push_back(structure_dict)
-		
+
 	return structures_array
 
 
 func _update_structures(structures_array : Array) -> void:
 	var current_structures = {}
-	
+
 	for structure_dict in structures_array:
 		var network_id = structure_dict["NETWORK_ID"]
 		current_structures[network_id] = true
@@ -1142,7 +1162,7 @@ func _update_structures(structures_array : Array) -> void:
 			pass
 		else:
 			call_deferred("_spawn_structure", structure_dict)
-	
+
 	for network_id in client_structures:
 		if not network_id in current_structures:
 			client_structures[network_id].queue_free()
@@ -1152,12 +1172,12 @@ func _update_structures(structures_array : Array) -> void:
 func _spawn_structure(structure_dict : Dictionary) -> void:
 	var filename = structure_dict["FILENAME"]
 	var structure = load(filename).instance()
-	
+
 	structure.position.x = structure_dict["X_POS"]
 	structure.position.y = structure_dict["Y_POS"]
-	
+
 	structure.stats = CLIENT_TURRET_STATS
-	
+
 	client_structures[structure_dict["NETWORK_ID"]] = structure
 
 	Utils.get_scene_node().add_child(structure)
@@ -1258,7 +1278,7 @@ func _spawn_pet(pet_dict: Dictionary) -> void:
 
 func _host_enemy_projectiles_array() -> Array:
 	var enemy_projectiles_array = []
-	
+
 	if is_instance_valid(_enemy_projectiles):
 		for enemy_projectile in _enemy_projectiles.get_children():
 			if enemy_projectile is Projectile and enemy_projectile._hitbox.active:
@@ -1270,7 +1290,7 @@ func _host_enemy_projectiles_array() -> Array:
 					network_id = brotatogether_options.current_network_id
 					brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
 					server_enemy_projectile_ids[enemy_projectile] = network_id
-				
+
 				projectile_dict[ProjectileState.PROJECTILE_STATE_NETWORK_ID] = network_id
 				projectile_dict[ProjectileState.PROJECTILE_STATE_X_POS] = enemy_projectile.global_position.x
 				projectile_dict[ProjectileState.PROJECTILE_STATE_Y_POS] = enemy_projectile.global_position.y
@@ -1285,19 +1305,19 @@ func _update_enemy_projectiles(enemy_projectiles_array : Array) -> void:
 	for enemy_projectile_dict in enemy_projectiles_array:
 		var network_id = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_NETWORK_ID]
 		current_enemy_projectiles[network_id] = true
-		
+
 		if client_enemy_projectiles.has(network_id):
 			var enemy_projectile = client_enemy_projectiles[network_id]
-			
+
 			if not is_instance_valid(enemy_projectile):
 				continue
-			
+
 			enemy_projectile.position.x = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_X_POS]
 			enemy_projectile.position.y = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_Y_POS]
 			enemy_projectile.rotation = enemy_projectile_dict[ProjectileState.PROJECTILE_STATE_ROTATION]
 		else:
 			call_deferred("_spawn_enemy_projectile", enemy_projectile_dict)
-	
+
 	for network_id in client_enemy_projectiles:
 		if not current_enemy_projectiles.has(network_id):
 			var proj = client_enemy_projectiles[network_id]
@@ -1354,23 +1374,23 @@ func _update_batched_floating_text(batched_floating_text_array : Array) -> void:
 
 func _host_menu_status() -> Dictionary:
 	var menu_dict = {}
-	
+
 	var showing_upgrade_menus : bool = _coop_upgrades_ui.visible
 	menu_dict["MENU_VISIBLE"] = showing_upgrade_menus
-	
+
 	if showing_upgrade_menus:
 		var player_menus = []
 		for player_index in RunData.get_player_count():
 			var player_menu_dict = {}
 #			_coop_upgrades_ui
 			var player_container = _coop_upgrades_ui._get_player_container(player_index)
-			
+
 			var showing_player_items_container = player_container._items_container.visible
 			var showing_player_upgrades_container = player_container._upgrades_container.visible
 			player_menu_dict["SHOWING_ITEMS"] = showing_player_items_container
 			player_menu_dict["SHOWING_UPGRADES"] = showing_player_upgrades_container
 			player_menu_dict["PLAYER_FINISHED"] = player_container._checkmark_group.visible
-			
+
 			if showing_player_upgrades_container:
 				var upgrade_options = []
 				for upgrade in player_container._old_upgrades:
@@ -1381,29 +1401,29 @@ func _host_menu_status() -> Dictionary:
 				player_menu_dict["REROLL_PRICE"] = player_container._reroll_price
 			elif showing_player_items_container:
 				player_menu_dict["ITEM_ID"] = player_container._item_data.my_id
-			
+
 			player_menu_dict["FOCUS"] = _string_for_menu_focus(player_container)
 			player_menus.push_back(player_menu_dict)
 		menu_dict["PLAYER_MENUS"] = player_menus
-	
+
 	return menu_dict
 
 
 func _update_menu(menu_dict : Dictionary) -> void:
 	var showing_upgrade_menus : bool = menu_dict["MENU_VISIBLE"]
-	
+
 	if showing_upgrade_menus and not _coop_upgrades_ui.visible:
 		_coop_upgrades_ui.show()
 	elif not showing_upgrade_menus:
 		if _coop_upgrades_ui.visible:
 			_coop_upgrades_ui.hide()
 		return
-	
+
 	var player_menus = menu_dict["PLAYER_MENUS"]
 	for player_index in RunData.get_player_count():
 		var player_container = _coop_upgrades_ui._get_player_container(player_index)
 		var player_menu_dict = player_menus[player_index]
-		
+
 		var showing_player_items_container = player_menu_dict["SHOWING_ITEMS"]
 		var showing_player_upgrades_container = player_menu_dict["SHOWING_UPGRADES"]
 		var player_finished = player_menu_dict["PLAYER_FINISHED"]
@@ -1434,16 +1454,16 @@ func _update_menu(menu_dict : Dictionary) -> void:
 				var reroll_price = player_menu_dict["REROLL_PRICE"]
 				player_container._reroll_button.init(reroll_price, player_index)
 				player_container._update_gold_label()
-				
+
 				player_container._items_container.hide()
 				player_container._upgrades_container.show()
 				player_container.focus()
-				
+
 			player_container._items_container.hide()
 			player_container._upgrades_container.show()
 		elif showing_player_items_container:
 			var item_id = player_menu_dict["ITEM_ID"]
-			
+
 			if player_container._item_data == null or item_id != player_container._item_data.my_id:
 				var item_data
 				for item_candidate in ItemService.items:
@@ -1456,7 +1476,7 @@ func _update_menu(menu_dict : Dictionary) -> void:
 						break
 				player_container.show_item(item_data)
 				player_container.focus()
-			
+
 			player_container._items_container.show()
 			player_container._upgrades_container.hide()
 		if player_index != my_player_index:
@@ -1477,7 +1497,7 @@ func _string_for_menu_focus(player_container : CoopUpgradesUIPlayerContainer) ->
 	var focus_emulator = player_container.focus_emulator
 	if not focus_emulator.focused_control:
 		return ""
-	
+
 	var focused_control = focus_emulator.focused_control
 	if focused_control == player_container._take_button:
 		return "take"
@@ -1493,13 +1513,13 @@ func _string_for_menu_focus(player_container : CoopUpgradesUIPlayerContainer) ->
 		return "upgrade_4"
 	elif focused_control == player_container._reroll_button:
 		return "reroll"
-	
+
 	return ""
 
 
 func _focus_for_string(player_container : CoopUpgradesUIPlayerContainer, focus_key: String) -> void:
 	var requested_focused_control = null
-	
+
 	if focus_key == "take":
 		requested_focused_control = player_container._take_button
 	elif focus_key == "discard":
@@ -1514,7 +1534,7 @@ func _focus_for_string(player_container : CoopUpgradesUIPlayerContainer, focus_k
 		requested_focused_control = player_container._upgrade_ui_4.button
 	elif focus_key == "reroll":
 		requested_focused_control = player_container._reroll_button
-	
+
 	if requested_focused_control:
 		player_container.focus_emulator.focused_control = requested_focused_control
 
@@ -1552,7 +1572,7 @@ func _check_for_pause() -> void:
 
 func connect_visual_effects(unit: Unit)->void :
 	.connect_visual_effects(unit)
-	
+
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			var _error_floating_text = unit.connect("took_damage", self, "_on_unit_took_damage")
@@ -1585,7 +1605,7 @@ func _on_unit_took_damage(unit: Unit, value: int, _knockback_direction: Vector2,
 	text_dict["A_COLOR"] = color.a8
 	text_dict["VALUE"] = text
 	text_dict["DURATION"] = _floating_text_manager.duration
-	
+
 	brotatogether_options.batched_floating_text.push_back(text_dict)
 
 

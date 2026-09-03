@@ -88,6 +88,12 @@ enum MessageType {
 	MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED,
 	
 	MESSAGE_TYPE_HOST_ENTERED_SHOP,
+
+	# Reliable event/delta channel split out of MAIN_STATE: enemy deaths, spawn births,
+	# hit effects/particles/flashes, floating text, sounds and explosions -- one-shot
+	# deltas that must arrive. Lets the high-rate positional MAIN_STATE snapshot go
+	# UNRELIABLE (newest-wins) without head-of-line blocking. host -> client
+	MESSAGE_TYPE_MAIN_STATE_EVENTS,
 }
 
 var global_chat_lobby_id : int = -1
@@ -201,6 +207,8 @@ signal close_popup()
 signal receive_leave_shop()
 
 signal state_update(state_dict)
+
+signal state_events(events_dict)
 
 signal client_position(client_position_dict, player_index)
 
@@ -416,9 +424,10 @@ func create_new_game_lobby() -> void:
 
 
 # Sends data to a receipient or to all others if target_id is -1
-func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1) -> void:
-	# Set the send_type and channel
-	var send_type: int = Steam.P2P_SEND_RELIABLE
+func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1, p_send_type : int = -1) -> void:
+	# Set the send_type and channel. p_send_type overrides the default RELIABLE delivery
+	# (e.g. Steam.P2P_SEND_UNRELIABLE for the high-rate positional state snapshot).
+	var send_type: int = p_send_type if p_send_type != -1 else Steam.P2P_SEND_RELIABLE
 	var channel: int = message_type
 	
 	if game_lobby_id == -1:
@@ -519,6 +528,8 @@ func read_p2p_packet() -> void:
 			# Main scene channels
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
 				_receive_game_state(data)
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS:
+				_receive_game_events(data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
 			
@@ -1130,15 +1141,29 @@ func _receive_leave_shop() -> void:
 
 func send_game_state(state_dict : Dictionary) -> void:
 	if is_host():
-		send_p2p_packet(state_dict, MessageType.MESSAGE_TYPE_MAIN_STATE)
+		# Positional snapshot -> UNRELIABLE: a dropped/late packet is simply superseded by
+		# the next one, so we avoid reliable in-order head-of-line blocking under jitter.
+		send_p2p_packet(state_dict, MessageType.MESSAGE_TYPE_MAIN_STATE, -1, Steam.P2P_SEND_UNRELIABLE)
+
+
+func send_game_events(events_dict : Dictionary) -> void:
+	if is_host():
+		# One-shot deltas (deaths/spawns/effects) -> RELIABLE so none are ever lost.
+		send_p2p_packet(events_dict, MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS)
 
 
 func _receive_game_state(state_dict : Dictionary) -> void:
 	if is_host():
 		print("ERR - HOST SHOULD NOT BE GETTING STATE UPDATES")
 		return
-	
+
 	emit_signal("state_update", state_dict)
+
+
+func _receive_game_events(events_dict : Dictionary) -> void:
+	if is_host():
+		return
+	emit_signal("state_events", events_dict)
 
 
 func send_client_position(client_position_dict : Dictionary) -> void:
