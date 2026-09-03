@@ -2,6 +2,7 @@ extends Node
 
 const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/steam_connection.gd")
 const BrotogetherOptions = preload("res://mods-unpacked/Pasha-Brotatogether/brotatogether_options.gd")
+const BTHarness = preload("res://mods-unpacked/Pasha-Brotatogether/bt_harness.gd")
 
 const MOD_DIR = "Pasha-Brotatogether/"
 
@@ -61,3 +62,7 @@ func _ready():
 	var options_node = BrotogetherOptions.new()
 	options_node.set_name("BrotogetherOptions")
 	$"/root".call_deferred("add_child",options_node)
+
+	var bt_harness = BTHarness.new()
+	bt_harness.set_name("BTHarness")
+	$"/root".call_deferred("add_child",bt_harness)
