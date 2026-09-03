@@ -27,6 +27,12 @@ var _ap_scene_id := 0
 var _ap_frames := 0
 var _ap_done := {}
 var _traced := false
+const CHOOSER_COOLDOWN_FRAMES = 30   # ~0.5s between post-wave presses: never spam the sync
+var _chooser_cooldown := 0
+const HB_INTERVAL_MS = 5000
+var _hb_last_ms := 0
+var _last_scene_name := ""
+var _chooser_idle_frames := 0
 
 
 func _ready() -> void:
@@ -44,10 +50,20 @@ func _ready() -> void:
 		set_process(false)
 		return
 	_local_idx = 0 if _mode == "host" else 1
+	if _autoplay:
+		# Soak runs are unattended: nobody dodges, so players die by wave 1-3 and the host's
+		# run-lost path tears the lobby down (leave_game_lobby). Make players invulnerable
+		# (DebugService -> RunData.reset copies it -> player disables its hurtbox). Only set
+		# when the harness is armed with --bt-autoplay; normal play is untouched.
+		DebugService.invulnerable = true
+		print("BTHARNESS autoplay: DebugService.invulnerable = true (soak survivability)")
 	print("BTHARNESS armed mode=%s join_name=%s autoplay=%s local_idx=%d" % [_mode, _join_name, str(_autoplay), _local_idx])
+	# Keep ticking while the tree is paused so the heartbeat can report a pause/freeze.
+	pause_mode = Node.PAUSE_MODE_PROCESS
 
 
 func _process(_delta: float) -> void:
+	_hb_tick()
 	var sc = get_node_or_null("/root/SteamConnection")
 	if sc == null or not Steam.loggedOn():
 		return
@@ -100,6 +116,10 @@ func _autoplay_tick(sc) -> void:
 	var scene = get_tree().current_scene
 	if scene == null:
 		return
+	# Post-wave chooser lives INSIDE Main (no scene change), so it needs a per-frame poll
+	# rather than the instance-keyed once-per-scene dispatch below.
+	if scene.name == "Main":
+		_ap_postwave_tick(sc, scene)
 	# Key on the scene INSTANCE, not its name: the host's CharacterSelection reloads
 	# itself when the client joins (lobby_players_updated -> reload_scene), producing a
 	# fresh instance with the same name. Name-keying skipped it; instance-keying re-drives.
@@ -118,6 +138,10 @@ func _autoplay_tick(sc) -> void:
 		_ap_select(sc, scene, "weapon")
 	elif sname == "DifficultySelection":
 		_ap_difficulty(sc, scene)
+	elif sname == "Shop" or sname == "CoopShop":
+		# Solo shop root is "Shop"; the co-op shop scene (what a multiplayer run actually
+		# loads between waves) is rooted "CoopShop".
+		_ap_shop(sc, scene)
 
 
 func _ap_select(sc, scene, kind) -> void:
@@ -177,6 +201,62 @@ func _ap_difficulty(sc, scene) -> void:
 	print("BTHARNESS autoplay difficulty: _on_element_pressed called")
 
 
+# Shop (between waves): each side presses its OWN GO once. The client's press syncs to the
+# host (shop_go_button_pressed -> _client_shop_go_button_pressed); whichever press completes
+# the set makes the host run leave_shop() + current_wave += 1 and both scenes change to the
+# game, where main.gd's waiting_to_start_round handshake starts the next wave. Buying
+# nothing is fine for a soak test. _ap_done's instance keying guarantees exactly one press
+# per shop per side (a second _on_GoButton_pressed would TOGGLE the ready state back off).
+func _ap_shop(sc, scene) -> void:
+	var pc = RunData.get_player_count()
+	print("BTHARNESS autoplay shop: wave=%d is_host=%s local_idx=%d player_count=%d" % [RunData.current_wave, str(sc.is_host()), _local_idx, pc])
+	if _local_idx < pc and scene.has_method("_on_GoButton_pressed"):
+		scene._on_GoButton_pressed(_local_idx)
+		print("BTHARNESS autoplay shop: GO pressed for player %d" % _local_idx)
+
+
+# Post-wave chooser (inside Main, no scene change): after each wave the host shows
+# CoopUpgradesUI when any player has a level-up or a crate to process and yields on
+# "options_processed" until EVERY player has finished; with nobody pressing anything the
+# host parks there forever and the client never gets HOST_ENTERED_SHOP. Each side drives
+# only its own container: Take for items/crates, first option for level-ups. The mod's
+# container override makes the same call act locally on the host and send the sync packet
+# on the client (the client's container mirrors the host's via UPGRADE_MENU_STATUS).
+func _ap_postwave_tick(sc, scene) -> void:
+	if _chooser_cooldown > 0:
+		_chooser_cooldown -= 1
+		return
+	if not ("_coop_upgrades_ui" in scene):
+		return
+	var ui = scene._coop_upgrades_ui
+	if ui == null or not ui.visible:
+		return
+	if _local_idx >= RunData.get_player_count():
+		return
+	var pc = ui._get_player_container(_local_idx)
+	if pc == null or pc._checkmark_group.visible:
+		return   # our choices are done; the host's yield resumes once everyone is
+	if pc._items_container.visible:
+		var item_id = "?"
+		if pc._item_data != null:
+			item_id = str(pc._item_data.my_id)
+		print("BTHARNESS postwave: take item %s (player %d, wave %d, is_host=%s)" % [item_id, _local_idx, RunData.current_wave, str(sc.is_host())])
+		pc._on_TakeButton_pressed()
+		_chooser_cooldown = CHOOSER_COOLDOWN_FRAMES
+		_chooser_idle_frames = 0
+	elif pc._upgrades_container.visible and pc._old_upgrades.size() > 0:
+		var up = pc._old_upgrades[0]
+		print("BTHARNESS postwave: choose upgrade %s (player %d, wave %d, is_host=%s)" % [str(up.my_id), _local_idx, RunData.current_wave, str(sc.is_host())])
+		pc._on_choose_button_pressed(up)
+		_chooser_cooldown = CHOOSER_COOLDOWN_FRAMES
+		_chooser_idle_frames = 0
+	else:
+		# Chooser visible for us but nothing actionable: log what we're looking at, ~once/2s.
+		_chooser_idle_frames += 1
+		if _chooser_idle_frames % 120 == 1:
+			print("BTHARNESS postwave: idle -- items_visible=%s upgrades_visible=%s old_upgrades=%d checkmark=%s (player %d, wave %d, is_host=%s)" % [str(pc._items_container.visible), str(pc._upgrades_container.visible), pc._old_upgrades.size(), str(pc._checkmark_group.visible), _local_idx, RunData.current_wave, str(sc.is_host())])
+
+
 # --- Diagnostics: trace stage-completion signals on both sides. These fire on RECEIPT
 # (the _receive_* handlers emit them), so a missing line pinpoints where a stage stalls:
 # packet-not-received (no line) vs handler-no-op (line but no scene change). ------------
@@ -198,3 +278,45 @@ func _trace_wsc(_a = null) -> void:
 
 func _trace_ds(_a = null) -> void:
 	print("BTHARNESS signal difficulty_selected (local_idx=%d)" % _local_idx)
+
+
+func _wall_clock() -> String:
+	var tm = OS.get_time()
+	return "%02d:%02d:%02d" % [tm.hour, tm.minute, tm.second]
+
+
+# Liveness: a scene-change line plus a 5s heartbeat with wall clock, scene, tree paused,
+# Main's wave_time, current wave and lobby id. A heartbeat that stops = the process hung
+# (log flushes per print in this editor build); one that continues = look at the state.
+func _hb_tick() -> void:
+	var tree = get_tree()
+	var scene = tree.current_scene
+	var sname = "<none>"
+	if scene != null:
+		sname = scene.name
+	if sname != _last_scene_name:
+		print("BTHARNESS scene %s -> %s (%s)" % [_last_scene_name, sname, _wall_clock()])
+		_last_scene_name = sname
+	var now = OS.get_ticks_msec()
+	if now - _hb_last_ms < HB_INTERVAL_MS:
+		return
+	_hb_last_ms = now
+	var wave_time = "n/a"
+	if scene != null and ("_wave_timer" in scene) and is_instance_valid(scene._wave_timer):
+		wave_time = "%.1f" % scene._wave_timer.time_left
+	var chooser = "n/a"
+	if scene != null and ("_coop_upgrades_ui" in scene) and scene._coop_upgrades_ui != null:
+		chooser = str(scene._coop_upgrades_ui.visible)
+	var lobby = -1
+	var net = "n/a"
+	var sc = get_node_or_null("/root/SteamConnection")
+	if sc != null and ("game_lobby_id" in sc):
+		lobby = sc.game_lobby_id
+	if sc != null and ("last_packet_bytes" in sc) and ("unreliable_fallbacks" in sc):
+		net = "%d/%d" % [sc.last_packet_bytes, sc.unreliable_fallbacks]
+	# seq = host snapshots sent / client snapshots applied (per Main instance). On the client
+	# an applied count that stops climbing mid-wave means snapshots are not arriving.
+	var seq = "n/a"
+	if scene != null and ("_state_seq" in scene) and ("_last_state_seq" in scene):
+		seq = "%d/%d" % [scene._state_seq, scene._last_state_seq]
+	print("BTHARNESS hb %s scene=%s paused=%s wave=%d wave_time=%s chooser=%s lobby=%d seq=%s net=%s" % [_wall_clock(), sname, str(tree.paused), RunData.current_wave, wave_time, chooser, lobby, seq, net])

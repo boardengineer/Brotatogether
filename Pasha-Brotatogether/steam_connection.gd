@@ -9,84 +9,84 @@ enum PlayerStatus {CONNECTING, LOBBYING, PLAYING, SELF}
 enum MessageType {
 	# Start a latency ping. client -> host
 	MESSAGE_TYPE_PING,
-	
+
 	# Respond to a latency ping. host -> client
 	MESSAGE_TYPE_PONG,
-	
+
 	# Report the results of a latency ping. client -> host
 	MESSAGE_TYPE_LATENCY_REPORT,
-	
+
 	# Report the status of all players to clients. host -> client
 	MESSAGE_TYPE_PLAYER_STATUS,
-	
+
 	# Report a change in focus of the currently selected character. client -> host
 	MESSAGE_TYPE_CHARACTER_FOCUS,
-	
+
 	# Report that a character has been selected (clicked). client -> host
 	MESSAGE_TYPE_CHARACTER_SELECTED,
-	
+
 	MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED,
-	
-	# Report the state of all player selections so far 
+
+	# Report the state of all player selections so far
 	MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE,
-	
+
 	# Report a change in focus of the currently selected weapon.  client -> host
 	MESSAGE_TYPE_WEAPON_FOCUS,
-	
+
 	# Report that a weapon has been selected (clicked). client -> host
 	MESSAGE_TYPE_WEAPON_SELECTED,
-	
+
 	# Report the state of all player selections for weapons.
 	MESSAGE_TYPE_WEAPON_LOBBY_UPDATE,
-	
+
 	MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED,
-	
+
 	# Report that the host has focused on a difficulty
 	MESSAGE_TYPE_DIFFICULTY_FOCUSED,
-	
+
 	# Report that the host has selected a difficulty
 	MESSAGE_TYPE_DIFFICULTY_PRESSED,
-	
+
 	MESSAGE_TYPE_SHOP_ITEM_FOCUS,
-	
+
 	MESSAGE_TYPE_SHOP_INVENTORY_ITEM_FOCUS,
-	
+
 	MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED,
-	
+
 	MESSAGE_TYPE_SHOP_WEAPON_DISCARD,
-	
+
 	MESSAGE_TYPE_SHOP_CLOSE_POPUP,
-	
+
 	MESSAGE_TYPE_SHOP_BUY_ITEM,
-	
+
 	MESSAGE_TYPE_SHOP_REROLL,
-	
+
 	MESSAGE_TYPE_SHOP_LOCK_ITEM,
-	
+
 	MESSAGE_TYPE_SHOP_UNLOCK_ITEM,
-	
+
 	MESSAGE_TYPE_SHOP_COMBINE_WEAPON,
-	
+
 	MESSAGE_TYPE_SHOP_LOBBY_UPDATE,
-	
+
 	MESSAGE_TYPE_LEAVE_SHOP,
-	
+
 	MESSAGE_TYPE_HOST_ROUND_START,
-	
+
 	MESSAGE_TYPE_MAIN_STATE,
-	
+
 	MESSAGE_TYPE_CLIENT_POSITION,
-	
+
 	MESSAGE_TYPE_CLIENT_FOCUS_MAIN_SCENE,
-	
+
 	MESSAGE_TYPE_MAIN_SCENE_REROLL_BUTTON_PRESSED,
-	
+
 	MESSAGE_TYPE_MAIN_SCENE_CHOOSE_UPGRADE_PRESSED,
-	
+
 	MESSAGE_TYPE_MAIN_SCENE_TAKE_BUTTON_PRESSED,
-	
+
 	MESSAGE_TYPE_MAIN_SCENE_DISCARD_BUTTON_PRESSED,
-	
+
 	MESSAGE_TYPE_HOST_ENTERED_SHOP,
 
 	# Reliable event/delta channel split out of MAIN_STATE: enemy deaths, spawn births,
@@ -128,6 +128,13 @@ var ping_timer : Timer
 # Random string to map ping requests
 var ping_key
 var ping_start_time_msec = -1
+
+# Steam P2P unreliable sends fail (return false, silently) above ~1200 B (UDP MTU); reliable
+# allows up to 1 MB. Snapshots that outgrow the MTU are sent RELIABLE instead of being lost.
+const UNRELIABLE_MAX_BYTES : int = 1150
+var last_packet_bytes : int = 0          # compressed size of the last packet sent (diagnostics)
+var unreliable_fallbacks : int = 0       # how many snapshots had to fall back to reliable
+var _send_fail_logged := {}              # channel -> true once a failed send was logged
 
 # Received a global chat, should be connected to chat panels to display the new chat message.
 signal global_chat_received (username, message)
@@ -227,9 +234,9 @@ signal host_entered_shop()
 func _ready():
 	if not Steam.loggedOn():
 		return
-	
+
 	var _err
-	
+
 	_err = Steam.connect("lobby_match_list", self, "_on_lobby_match_list")
 	_err = Steam.connect("lobby_created", self, "_on_lobby_created")
 	_err = Steam.connect("lobby_joined", self, "_on_lobby_joined")
@@ -237,24 +244,24 @@ func _ready():
 	_err = Steam.connect("lobby_chat_update", self, "_on_lobby_chat_update")
 	_err = Steam.connect("p2p_session_request", self, "_on_p2p_session_request")
 	_err = Steam.connect("p2p_session_connect_fail", self, "_on_p2p_session_connect_fail")
-	
+
 	global_chat_check_timer = Timer.new()
 	_err = global_chat_check_timer.connect("timeout", self, "_request_global_chat_search")
 	add_child(global_chat_check_timer)
 	global_chat_check_timer.start(3.0)
-	
+
 	ping_timer = Timer.new()
 	_err = ping_timer.connect("timeout", self, "_ping_timer_timeout")
 	add_child(ping_timer)
 	ping_timer.start(2.0)
-	
+
 	_request_global_chat_search()
 	steam_id = Steam.getSteamID()
 
 
 func _physics_process(_delta : float) -> void:
 	Steam.run_callbacks()
-	
+
 	if game_lobby_id > 0:
 		read_p2p_packet()
 
@@ -270,13 +277,13 @@ func send_lobby_chat_message(message : String) -> void:
 func _on_lobby_match_list(lobbies: Array) -> void:
 	var found_global_chat_lobby : bool = false
 	var min_chat_lobby_id : int = -1
-	
+
 	for lobby_id in lobbies:
 		var lobby_data : Dictionary = Steam.getAllLobbyData(lobby_id)
-		
+
 		var is_game_lobby : bool = false
 		var game_lobby_name : String
-		
+
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
 			var value = lobby_data[kvpair_index]["value"]
@@ -284,19 +291,19 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 				if value == GLOBAL_CHAT_TYPE:
 					if not found_global_chat_lobby:
 						min_chat_lobby_id = lobby_id
-				
+
 					if lobby_id < min_chat_lobby_id:
 						min_chat_lobby_id = lobby_id
-					
+
 					found_global_chat_lobby = true
 				elif value == GAME_LOBBY_TYPE:
 					is_game_lobby = true
 			elif key == "lobby_name":
 				game_lobby_name = value
-	
+
 		if is_game_lobby:
 			emit_signal("game_lobby_found", lobby_id, game_lobby_name)
-		
+
 	if found_global_chat_lobby:
 		if min_chat_lobby_id != global_chat_lobby_id:
 			Steam.joinLobby(min_chat_lobby_id)
@@ -310,7 +317,7 @@ func leave_game_lobby() -> void:
 	if game_lobby_id > 0:
 		lobby_members.clear()
 		lobby_member_names.clear()
-		
+
 		Steam.leaveLobby(game_lobby_id)
 		game_lobby_id = 0
 
@@ -360,16 +367,16 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
 					game_lobby_id = lobby_id
 					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
-					
+
 					for member_index in Steam.getNumLobbyMembers(lobby_id):
 						var member_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
 						lobby_members.push_back(member_id)
 						lobby_member_names.push_back(Steam.getFriendPersonaName(member_id))
-					
+
 					print("Changing to Character Selection Screen...")
 					var _error = get_tree().change_scene(MenuData.character_selection_scene)
 					print("change scene error : ", _error)
-					
+
 					_initiate_ping()
 
 
@@ -429,45 +436,64 @@ func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1, p_se
 	# (e.g. Steam.P2P_SEND_UNRELIABLE for the high-rate positional state snapshot).
 	var send_type: int = p_send_type if p_send_type != -1 else Steam.P2P_SEND_RELIABLE
 	var channel: int = message_type
-	
+
 	if game_lobby_id == -1:
-		
+
 		return
-		
+
 	var packet_data: PoolByteArray = PoolByteArray()
 	# Compress the PoolByteArray we create from our dictionary  using the GZIP compression method
-	
+
 	var compressed_data: PoolByteArray = var2bytes(data).compress(File.COMPRESSION_GZIP)
 	packet_data.append_array(compressed_data)
-	
-#	print_debug("[", MessageType.keys()[message_type], "] sending packet size: ", compressed_data.size())
-	
+	last_packet_bytes = compressed_data.size()
+
+	# Unreliable P2P packets are capped at ~1200 B by Steam; an oversize unreliable send
+	# returns false and the packet is lost. Fall back to reliable for this packet so a large
+	# snapshot still arrives (late beats never).
+	if send_type == Steam.P2P_SEND_UNRELIABLE and last_packet_bytes > UNRELIABLE_MAX_BYTES:
+		send_type = Steam.P2P_SEND_RELIABLE
+		unreliable_fallbacks += 1
+		if unreliable_fallbacks == 1 or unreliable_fallbacks % 600 == 0:
+			print("BTNET unreliable->reliable fallback #%d channel=%d bytes=%d" % [unreliable_fallbacks, channel, last_packet_bytes])
+
 	if target_id == -1:
 		for lobby_member_id in lobby_members:
 			if lobby_member_id != steam_id:
-				var _err = Steam.sendP2PPacket(lobby_member_id, packet_data, send_type, channel)
+				var sent = Steam.sendP2PPacket(lobby_member_id, packet_data, send_type, channel)
+				_check_send(sent, channel, send_type, last_packet_bytes)
 	else:
 		if target_id == steam_id:
 			print("WARNING - Attempting to send data to myself:\n", data)
 			return
-		
-		var _err = Steam.sendP2PPacket(target_id, packet_data, send_type, channel)
+
+		var sent = Steam.sendP2PPacket(target_id, packet_data, send_type, channel)
+		_check_send(sent, channel, send_type, last_packet_bytes)
+
+
+# Log the first failed send per channel (Steam returns false for oversize/invalid/queue-full)
+# so transport failures are never silent again.
+func _check_send(sent : bool, channel : int, send_type : int, bytes : int) -> void:
+	if sent or _send_fail_logged.has(channel):
+		return
+	_send_fail_logged[channel] = true
+	print("BTNET sendP2PPacket FAILED channel=%d send_type=%d bytes=%d (further failures on this channel not logged)" % [channel, send_type, bytes])
 
 
 func read_p2p_packet() -> void:
 	for channel in MessageType.values():
 		var packet_size: int = Steam.getAvailableP2PPacketSize(channel)
-		
+
 		while packet_size > 0:
 			var packet : Dictionary = Steam.readP2PPacket(packet_size, channel)
-		
+
 			if packet == null or packet.empty():
 				packet_size = 0
 				continue
-			
+
 			var sender_id : int = packet["remote_steam_id"]
 			var data : Dictionary = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
-			
+
 			if channel == MessageType.MESSAGE_TYPE_PING:
 				_respond_to_ping(data, sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_PONG:
@@ -492,7 +518,7 @@ func read_p2p_packet() -> void:
 				_receive_difficutly_focus_update(data)
 			elif channel == MessageType.MESSAGE_TYPE_DIFFICULTY_PRESSED:
 				_receive_difficutly_pressed(data)
-			
+
 			# Shop channels
 			elif channel == MessageType.MESSAGE_TYPE_SHOP_LOBBY_UPDATE:
 				_receive_shop_update(data)
@@ -524,7 +550,7 @@ func read_p2p_packet() -> void:
 				_receive_shop_close_popup()
 			elif channel == MessageType.MESSAGE_TYPE_LEAVE_SHOP:
 				_receive_leave_shop()
-		
+
 			# Main scene channels
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
 				_receive_game_state(data)
@@ -532,7 +558,7 @@ func read_p2p_packet() -> void:
 				_receive_game_events(data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
-			
+
 			## Post-wave menu channels
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_FOCUS_MAIN_SCENE:
 				_receive_client_menu_focus(data, sender_id)
@@ -546,7 +572,7 @@ func read_p2p_packet() -> void:
 				_receive_main_scene_client_discard_button_pressed(sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_HOST_ENTERED_SHOP:
 				_receive_host_entered_shop()
-			
+
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
 
@@ -561,7 +587,7 @@ func _generate_ping_key() -> String:
 func _ping_timer_timeout() -> void:
 	if game_lobby_id == -1 or game_lobby_owner_id == -1:
 		return
-		
+
 	if steam_id == game_lobby_owner_id:
 		_send_player_statuses()
 	else:
@@ -572,15 +598,15 @@ func _initiate_ping() -> void:
 	if game_lobby_owner_id == -1:
 		print("WARNING - Attempting to send ping to unknown lobby host")
 		return
-	
+
 	ping_key = _generate_ping_key()
 	ping_start_time_msec = Time.get_ticks_msec()
-	
+
 	var data = {
 		"PING_KEY": ping_key,
 		"CURRENT_SCENE": get_tree().current_scene.name,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_PING, game_lobby_owner_id)
 
 
@@ -588,7 +614,7 @@ func _respond_to_ping(data : Dictionary, sender_id : int) -> void:
 	if not data.has("PING_KEY"):
 		print("WARNING - Ping sent without key")
 		return
-		
+
 	emit_signal("client_status_received", data, get_lobby_index_for_player(sender_id))
 	send_p2p_packet({"PING_KEY": data["PING_KEY"]}, MessageType.MESSAGE_TYPE_PONG, sender_id)
 
@@ -597,18 +623,18 @@ func _respond_to_pong(data : Dictionary) -> void:
 	if not data.has("PING_KEY"):
 		print("WARNING - Pong sent without key")
 		return
-		
+
 	if data["PING_KEY"] != ping_key:
 		print("WARNING - Ping response key doesn't match")
 		return
-	
+
 	if ping_start_time_msec == -1:
 		print("WARNING - Ping request send without starting timer")
 		return
-	
+
 	var current_time_msec = Time.get_ticks_msec()
 	var latency_msec = current_time_msec - ping_start_time_msec
-	
+
 	send_p2p_packet({"LATENCY": str(latency_msec)}, MessageType.MESSAGE_TYPE_LATENCY_REPORT, game_lobby_owner_id)
 
 
@@ -616,7 +642,7 @@ func _accept_latency_report(data : Dictionary, sender_id : int) -> void:
 	if not data.has("LATENCY"):
 		print("WARNING - Received latency report without result")
 		return
-		
+
 	player_latencies[sender_id] = int(data["LATENCY"])
 
 
@@ -624,17 +650,17 @@ func _send_player_statuses() -> void:
 	if game_lobby_id == -1 or game_lobby_owner_id == -1:
 		print("WARNING - Attempting to send player latencies to unknown lobby or unknown lobby owner")
 		return
-	
+
 	if game_lobby_owner_id != steam_id:
 		print("WARNING - Attempting to send player latencies when not the lobby owner")
 		return
-	
+
 #	print_debug("sending player latencies : ", player_latencies)
-	
+
 	for player_id in lobby_members:
 		if player_id == steam_id:
 			continue
-		
+
 		send_p2p_packet({"PLAYER_LATENCIES": player_latencies}, MessageType.MESSAGE_TYPE_PLAYER_STATUS)
 
 
@@ -642,7 +668,7 @@ func _receive_player_statuses(data : Dictionary) -> void:
 	if not data.has("PLAYER_LATENCIES"):
 		print("WARNING - player statuses returned without latencies")
 		return
-	
+
 	player_latencies = data["PLAYER_LATENCIES"]
 #	print_debug("received player latencies: ", player_latencies)
 
@@ -676,15 +702,15 @@ func _receive_character_focus(data : Dictionary, sender_id : int) -> void:
 	if not data.has("CHARACTER"):
 		print("WARNING - received character focus for player ", sender_id)
 		return
-	
+
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received character focus for player ", sender_id)
 		return
-	
+
 	var player_index = get_lobby_index_for_player(sender_id)
 	if player_index == -1:
 		return
-	
+
 	emit_signal("player_focused_character", player_index, data["CHARACTER"])
 	emit_signal("request_character_lobby_update")
 
@@ -699,13 +725,13 @@ func character_selected() -> void:
 func send_character_selection_completed(some_player_has_weapon_slots : bool, currently_focused_characters : Array) -> void:
 	if not is_host():
 		return
-	
+
 	var _err = Steam.setLobbyData(game_lobby_id, "lobby_status", "CLOSED")
 	var data = {
 		"HAS_WEAPON_SLOTS" : some_player_has_weapon_slots,
 		"SELECTED_CHARACTERS": currently_focused_characters,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_CHARACTER_SELECTION_COMPLETED)
 
 
@@ -717,11 +743,11 @@ func _receive_character_select(_data : Dictionary, sender_id : int) -> void:
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received character select for player ", sender_id)
 		return
-	
+
 	var player_index = get_lobby_index_for_player(sender_id)
 	if player_index == -1:
 		return
-	
+
 	emit_signal("player_selected_character", player_index)
 	emit_signal("request_character_lobby_update")
 
@@ -731,7 +757,7 @@ func send_character_lobby_update(currently_focused_characters : Array, has_playe
 		"SELECTED_CHARACTERS": currently_focused_characters,
 		"SELECTIONS_CONFIRMED": has_player_selected,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_CHARACTER_LOBBY_UPDATE)
 
 
@@ -739,7 +765,7 @@ func _receive_character_lobby_update(data : Dictionary) -> void:
 	if not data.has("SELECTED_CHARACTERS") or not data.has("SELECTIONS_CONFIRMED"):
 		print("WARNING - received lobby player update wihtout player selections", data)
 		return
-	
+
 	emit_signal("character_lobby_update", data["SELECTED_CHARACTERS"], data["SELECTIONS_CONFIRMED"])
 
 
@@ -755,15 +781,15 @@ func _receive_weapon_focus(data : Dictionary, sender_id : int) -> void:
 	if not data.has("WEAPON"):
 		print("WARNING - received weapon focus for player without weapon id ", sender_id)
 		return
-	
+
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received weapon focus for player ", sender_id)
 		return
-	
+
 	var player_index = get_lobby_index_for_player(sender_id)
 	if player_index == -1:
 		return
-	
+
 	emit_signal("player_focused_weapon", player_index, data["WEAPON"])
 	_send_weapon_lobby_update()
 
@@ -779,11 +805,11 @@ func _receive_weapon_select(_data : Dictionary, sender_id : int) -> void:
 	if sender_id == -1 or sender_id == steam_id or sender_id == game_lobby_owner_id:
 		print("WARNING - received character select for player ", sender_id)
 		return
-	
+
 	var player_index = get_lobby_index_for_player(sender_id)
 	if player_index == -1:
 		return
-	
+
 	emit_signal("player_selected_weapon", player_index)
 
 
@@ -791,9 +817,9 @@ func _send_weapon_lobby_update() -> void:
 	if not get_tree().current_scene.name == "WeaponSelection":
 		print("WARNING - attempting to send weapon selection when no longer in the weapon select; scene actual scene: ", get_tree().current_scene.name)
 		return
-	
+
 	var weapon_select_scene = get_tree().current_scene
-	
+
 	var currently_focused_weapons = []
 	for panel in weapon_select_scene._get_panels():
 		var selected_item = panel.item_data
@@ -803,12 +829,12 @@ func _send_weapon_lobby_update() -> void:
 			currently_focused_weapons.push_back("RANDOM")
 		else:
 			currently_focused_weapons.push_back(weapon_select_scene.weapon_item_to_string(selected_item))
-	
+
 	var data = {
 		"SELECTED_WEAPONS": currently_focused_weapons,
 		"SELECTIONS_CONFIRMED": weapon_select_scene._has_player_selected,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_LOBBY_UPDATE)
 
 
@@ -816,7 +842,7 @@ func _receive_weapon_lobby_update(data : Dictionary) -> void:
 	if not data.has("SELECTED_WEAPONS") or not data.has("SELECTIONS_CONFIRMED"):
 		print("WARNING - received lobby player update wihtout player selections", data)
 		return
-	
+
 	emit_signal("weapon_lobby_update", data["SELECTED_WEAPONS"], data["SELECTIONS_CONFIRMED"])
 
 
@@ -825,17 +851,17 @@ func send_difficulty_lobby_update() -> void:
 	if not get_tree().current_scene.name == "DifficultySelection":
 		print("WARNING - attempting to send difficulty selection when no longer in the scene, actual scene: ", get_tree().current_scene.name)
 		return
-	
+
 
 
 func send_weapon_selection_completed(selected_weapons : Array) -> void:
 	if not is_host():
 		return
-	
+
 	var data = {
 		"SELECTED_WEAPONS" : selected_weapons,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED)
 
 
@@ -846,11 +872,11 @@ func _receive_weapon_selection_completed(data : Dictionary) -> void:
 func difficulty_focused() -> void:
 	var difficulty_selection_scene = get_tree().current_scene
 	var focused_difficulty : int = difficulty_selection_scene._get_panels()[0].item_data.value
-	
+
 	var data = {
 		"FOCUSED_DIFFICULTY": focused_difficulty,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_DIFFICULTY_FOCUSED)
 
 
@@ -858,22 +884,22 @@ func _receive_difficutly_focus_update(data : Dictionary) -> void:
 	if not data.has("FOCUSED_DIFFICULTY"):
 		print("WARNING - received lobby player update wihtout difficulty focus; data:", data)
 		return
-	
+
 	if not get_tree().current_scene.name == "DifficultySelection":
 		print("WARNING - Received difficulty focus update when not in the current scene, current scene:", get_tree().current_scene.name)
 		return
-	
+
 	emit_signal("difficulty_focused", data["FOCUSED_DIFFICULTY"])
 
 
 func difficulty_pressed() -> void:
 	var difficulty_selection_scene = get_tree().current_scene
 	var selected_difficulty : int = difficulty_selection_scene._get_panels()[0].item_data.value
-	
+
 	var data = {
 		"SELECTED_DIFFICULTY": selected_difficulty,
 	}
-	
+
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_DIFFICULTY_PRESSED)
 
 
@@ -881,11 +907,11 @@ func _receive_difficutly_pressed(data : Dictionary) -> void:
 	if not data.has("SELECTED_DIFFICULTY"):
 		print("WARNING - received lobby player update wihtout difficulty focus; data:", data)
 		return
-		
+
 	if not get_tree().current_scene.name == "DifficultySelection":
 		print("WARNING - Received difficulty focus update when not in the current scene, current scene:", get_tree().current_scene.name)
 		return
-		
+
 	emit_signal("difficulty_selected", data["SELECTED_DIFFICULTY"])
 
 # returns -1 if the player isn't in the lobby
@@ -893,7 +919,7 @@ func get_lobby_index_for_player(player_id : int) -> int:
 	for index in lobby_members.size():
 		if lobby_members[index] == player_id:
 			return index
-	
+
 	return -1
 
 
@@ -916,7 +942,7 @@ func shop_item_focused(shop_item_string : String, force_focus_for_players : Arra
 		var data = {
 			"FOCUSED_ITEM": shop_item_string,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_ITEM_FOCUS, game_lobby_owner_id)
 
 
@@ -924,13 +950,13 @@ func _receive_shop_item_focus(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop item focus as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("FOCUSED_ITEM"):
 		print("WARNING - received shop item focus message without focused item; data:", data)
 		return
-	
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
-	
+
 	emit_signal("client_shop_focus_updated", data["FOCUSED_ITEM"], player_index)
 
 
@@ -941,7 +967,7 @@ func shop_go_button_pressed(current_state : bool) -> void:
 		var data = {
 			"CURRENT_STATE": current_state,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_GO_BUTTON_UPDATED, game_lobby_owner_id)
 
 
@@ -949,11 +975,11 @@ func _receive_shop_go_button_pressed(data : Dictionary, sender_id : int) -> void
 	if not is_host():
 		print("WARNING - received shop go button press as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("CURRENT_STATE"):
 		print("WARNING - received shop go button press without CURRENT_STATE; data:", data)
 		return
-		
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_go_button_pressed", data["CURRENT_STATE"], player_index)
 
@@ -969,7 +995,7 @@ func shop_buy_item(item_string : String, player_index : int) -> void:
 		var data = {
 			"ITEM": item_string,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_BUY_ITEM, game_lobby_owner_id)
 
 
@@ -977,11 +1003,11 @@ func _receive_shop_buy_item(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop item buy as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("ITEM"):
 		print("WARNING - received shop buy item without ITEM; data:", data)
 		return
-	
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_buy_item", data["ITEM"], player_index)
 
@@ -998,7 +1024,7 @@ func _receive_shop_reroll(sender_id : int) -> void:
 	if not is_host():
 		print("WARNING : client received reroll from client signal ", player_index)
 		return
-	
+
 	emit_signal("client_shop_reroll", player_index)
 
 
@@ -1009,7 +1035,7 @@ func shop_weapon_discard(weapon_string : String, player_index : int) -> void:
 		var data = {
 			"WEAPON": weapon_string,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_WEAPON_DISCARD, game_lobby_owner_id)
 
 
@@ -1017,11 +1043,11 @@ func _receive_shop_weapon_discard(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop discard as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("WEAPON"):
 		print("WARNING - received shop discard without WEAPON; data:", data)
 		return
-	
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_discard_weapon", data["WEAPON"], player_index)
 
@@ -1034,7 +1060,7 @@ func shop_lock_item(item_string : String, wave_value : int) -> void:
 			"ITEM": item_string,
 			"WAVE_VALUE": wave_value,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_LOCK_ITEM, game_lobby_owner_id)
 
 
@@ -1042,11 +1068,11 @@ func _receive_shop_lock_item(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop lock as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("ITEM") or not data.has("WAVE_VALUE"):
 		print("WARNING - received shop item lock without item or wave_value; data:", data)
 		return
-	
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_lock_item", data["ITEM"], data["WAVE_VALUE"], player_index)
 
@@ -1058,7 +1084,7 @@ func shop_unlock_item(item_string : String) -> void:
 		var data = {
 			"ITEM": item_string,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_UNLOCK_ITEM, game_lobby_owner_id)
 
 
@@ -1066,11 +1092,11 @@ func _receive_shop_unlock_item(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop unlock as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("ITEM"):
 		print("WARNING - received shop item unlock without item; data:", data)
 		return
-	
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_unlock_item", data["ITEM"], player_index)
 
@@ -1083,7 +1109,7 @@ func shop_combine_weapon(weapon_string : String, is_upgrade : bool, player_index
 			"WEAPON": weapon_string,
 			"IS_UPGRADE": is_upgrade,
 		}
-		
+
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_COMBINE_WEAPON, game_lobby_owner_id)
 
 
@@ -1091,11 +1117,11 @@ func _receive_shop_combine_weapon(data : Dictionary, sender_id : int) -> void:
 	if not is_host():
 		print("WARNING - received shop weapon combine as non-host, ignroing; data:", data)
 		return
-	
+
 	if not data.has("WEAPON") or not data.has("IS_UPGRADE"):
 		print("WARNING - received shop weapon combine without weapon or is_upgrade; data:", data)
 		return
-	
+
 	var player_index : int = get_lobby_index_for_player(sender_id)
 	emit_signal("client_shop_combine_weapon", data["WEAPON"], data["IS_UPGRADE"], player_index)
 
