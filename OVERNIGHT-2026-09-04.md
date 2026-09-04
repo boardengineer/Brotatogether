@@ -1,5 +1,20 @@
 # Overnight work — 2026-09-04
 
+## TL;DR — morning checklist
+- **Gold divergence: root-caused.** The client skips base `manage_harvesting()`, so wave-end harvest
+  gold/xp are host-only. Gold self-heals via the shop; **xp/level did not** — that's the worse half.
+- **Candidate fixes on this branch (all `[UNVALIDATED]`):** (1) host pushes an authoritative snapshot
+  right after harvest [`4cdc8e9`], (2) xp/level added to the reliable shop packet [`356d39a`].
+- **Safe, ship-ready fix:** lobby-chat "host left" guard [`336e4cd`] (defensive, no wire change).
+- **Bonus:** a full host/client divergence audit (§4) turned up F1–F6; F1/F2 (xp/level) are addressed,
+  F3 (`on_wave_end`/`LinkedStats` skip) documented for you to decide.
+- **To validate the gold/xp fixes:** both machines on the SAME manifest version (compat gate!), set
+  `ENABLE_DEBUG = true` in `extensions/main.gd` on both, run a wave, compare the `BTGOLD host` vs
+  `BTGOLD client` lines. Details in §1.
+- Nothing on `main`, nothing pushed. Cherry-pick/merge what you want.
+
+---
+
 Branch: `overnight-2026-09-04` (off `main` @ 3220f02, 1.4.1). Nothing committed to `main`, nothing pushed.
 All changes below are on this branch and mirrored source⇄install; each is parse-checked solo
 (boots clean, only the benign `pd_turret` reload noise). Netcode-affecting changes are marked
