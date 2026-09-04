@@ -434,7 +434,10 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 
 	# Else if a player has left the lobby
 	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_LEFT:
-		if change_id == game_lobby_owner_id:
+		# Only treat an owner-left as "host left" for OUR game lobby. Without the lobby_id guard a
+		# LEFT in the global chat lobby (or a lobby we bailed out of, e.g. an incompatible join)
+		# whose leaver id matched game_lobby_owner_id would spuriously kick us back to the menu.
+		if lobby_id == game_lobby_id and game_lobby_id != -1 and change_id == game_lobby_owner_id:
 			pending_system_messages.push_back("Host left the lobby")
 			leave_game_lobby()
 			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
