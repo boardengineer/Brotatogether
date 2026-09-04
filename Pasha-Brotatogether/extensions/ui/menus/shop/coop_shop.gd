@@ -22,13 +22,13 @@ var pending_force_focus = []
 
 func _ready():
 	steam_connection = $"/root/SteamConnection"
-	
+
 	brotatogether_options = $"/root/BrotogetherOptions"
 	in_multiplayer_game = brotatogether_options.in_multiplayer_game
-	
+
 	if in_multiplayer_game:
 		waiting_to_start_shop = true
-		
+
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("shop_lobby_update", self, "_update_shop")
 		steam_connection.connect("client_shop_focus_updated", self, "_client_shop_focus_updated")
@@ -43,7 +43,7 @@ func _ready():
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
 		steam_connection.connect("close_popup", self, "_remote_close_client_popup")
 		steam_connection.connect("receive_leave_shop", self, "_receive_leave_shop")
-		
+
 		if steam_connection.is_host():
 			steam_connection.send_host_entered_shop()
 
@@ -59,7 +59,7 @@ func _process(_delta):
 						break
 				if all_players_entered:
 					waiting_to_start_shop = false
-					
+
 					# Initial shop state, all players can break focus
 					send_shop_state([0,1,2,3])
 		_check_for_focus_change()
@@ -73,7 +73,7 @@ func _client_status_received(client_data : Dictionary, player_index : int) -> vo
 
 func _on_element_focused(element: InventoryElement, player_index: int)->void :
 	._on_element_focused(element,player_index)
-	
+
 	if in_multiplayer_game:
 		if is_self_call:
 			is_self_call = false
@@ -84,7 +84,7 @@ func _on_element_focused(element: InventoryElement, player_index: int)->void :
 
 func _client_shop_focus_updated(shop_item_string : String, player_index : int) -> void:
 	is_self_call = true
-	
+
 	var shop_item : ShopItem = _shop_item_for_string(shop_item_string, player_index)
 	if shop_item:
 		Utils.get_focus_emulator(player_index).focused_control = shop_item._button
@@ -136,21 +136,21 @@ func _on_GoButton_pressed(player_index: int) -> void:
 
 func _on_go_button_pressed_brotatogether(player_index: int)->void :
 	if get_tree().paused:
-		return 
+		return
 
 	if _player_pressed_go_button[player_index]:
 		_clear_go_button_pressed(player_index)
-		return 
+		return
 
 	_player_pressed_go_button[player_index] = true
 	var checkmark = _get_checkmark(player_index)
 	if checkmark != null:
 		checkmark.show()
-	
+
 	for other_player_index in RunData.get_player_count():
 		if not _player_pressed_go_button[other_player_index]:
-			return 
-	
+			return
+
 	RunData.current_wave += 1
 	steam_connection.leave_shop()
 	var _error = get_tree().change_scene(MenuData.game_scene)
@@ -168,7 +168,7 @@ func _clear_go_button_pressed(player_index: int) -> void :
 		steam_connection.shop_go_button_pressed(false)
 	else:
 		._clear_go_button_pressed(player_index)
-	
+
 
 func _client_shop_go_button_pressed(latest_go_state : bool, player_index : int) -> void:
 	# Make the go function change the state to the new state by setting to the
@@ -217,7 +217,7 @@ func _client_shop_unlock_item(item_string : String, player_index : int) -> void:
 func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 	var result_dict : Dictionary = {}
 	var abyssal_dlc = ProgressData.get_dlc_data("abyssal_terrors")
-	
+
 	var players_array = []
 	var player_count: int = RunData.get_player_count()
 	for player_index in player_count:
@@ -226,23 +226,23 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		var shop_items = []
 		for item in _shop_items[player_index]:
 			var item_dict : Dictionary = {}
-			
+
 			item_dict["ID"] = item[0].my_id
 			item_dict["WAVE_VALUE"] = item[1]
-			
+
 			if abyssal_dlc:
 				if item[0].is_cursed:
 					item_dict["CURSED"] = true
-			
+
 			shop_items.push_back(item_dict)
 		player_dict["SHOP_ITEMS"] = shop_items
-		
+
 		player_dict["EFFECTS"] = player_data._serialize_effects(player_data.effects)
 		var active_sets = {}
 		for set in player_data.active_sets:
 			active_sets[set] = player_data.active_sets[set]
 		player_dict["ACTIVE_SETS"] = active_sets
-		
+
 		var locked_items : Array = []
 		for item in RunData.locked_shop_items[player_index]:
 			var item_dict : Dictionary = {}
@@ -250,33 +250,40 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 			item_dict["WAVE_VALUE"] = item[1]
 			locked_items.push_back(item_dict)
 		player_dict["LOCKED_ITEMS"] = locked_items
-		
+
 		var weapons_array = []
 		for weapon in RunData.get_player_weapons(player_index):
 			weapons_array.push_back(_dictionary_for_weapon(weapon))
 		player_dict["WEAPONS"] = weapons_array
 		player_dict["GO_PRESSED"] = _player_pressed_go_button[player_index]
-		
+
 		var gear_container : PlayerGearContainer = _get_gear_container(player_index)
 		var items_array = []
 		for element in gear_container.items_container._elements.get_children():
 			items_array.push_back(_dictionary_for_inventory_item(element))
 #			print_debug("shop container has ", element.item.my_id)
 		player_dict["ITEMS"] = items_array
-		
+
 		player_dict["GOLD"] = RunData.get_player_gold(player_index)
+		# XP and level ride ONLY the unreliable wave-end snapshot (main.gd:490-491, 471) and have no
+		# other reliable correction -- unlike gold/effects/items, which this shop packet already
+		# re-syncs. Include them so a dropped wave-end snapshot can't leave the client showing a
+		# stale xp bar / level through the whole shop. (UNVALIDATED 2026-09-04.)
+		player_dict["CURRENT_XP"] = RunData.players_data[player_index].current_xp
+		player_dict["NEXT_LEVEL_XP"] = RunData.get_next_level_xp_needed(player_index)
+		player_dict["CURRENT_LEVEL"] = RunData.players_data[player_index].current_level
 		player_dict["FOCUS"] = _focus_dictionary_for_player(player_index)
-		
+
 		player_dict["REROLL_PRICE"] = _reroll_price[player_index]
 		player_dict["REROLL_DICSOUNT"] = _reroll_discount[player_index]
 		player_dict["HAS_BONUS_FREE_REROLL"] = _has_bonus_free_reroll[player_index]
-		
-		
+
+
 		players_array.push_back(player_dict)
-	
+
 	result_dict["PLAYERS"] = players_array
 	result_dict["CHANGED_PLAYERS"] = changed_shop_player_indeces
-	
+
 #	print_debug("sending shop state with dict ", result_dict)
 	steam_connection.send_shop_update(result_dict)
 
@@ -285,19 +292,19 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 	if not shop_dictionary.has("PLAYERS"):
 		print("WARNING - received shop update without PLAYERS element, ignoring; data:", shop_dictionary)
 		return
-	
+
 	if steam_connection.is_host():
 		print("WARNING - host shouldn't be updating for remote, returning; data:", shop_dictionary)
 		return
-	
+
 #	print_debug("updating shop for dictionary - ", shop_dictionary)
-	
+
 	for player_index in shop_dictionary["PLAYERS"].size():
 		var player_dict = shop_dictionary["PLAYERS"][player_index]
-		
+
 		var is_me = steam_connection.get_my_index() == player_index
 		var can_update = not is_me or shop_dictionary["CHANGED_PLAYERS"].has(player_index)
-		
+
 		var go_pressed = player_dict["GO_PRESSED"]
 		_player_pressed_go_button[player_index] = go_pressed
 		var checkmark = _get_checkmark(player_index)
@@ -306,73 +313,80 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 				checkmark.show()
 			else:
 				checkmark.hide()
-		
+
 		if not can_update:
 #			print_debug("skipping update for player ", player_index)
 			continue
-		
+
 		Utils.get_focus_emulator(player_index)._clear_focused_control()
 		_shop_items[player_index].clear()
 		Utils.reset_stat_cache(player_index)
 		var player_data = RunData.players_data[player_index]
-		
+
 		var reserilaized_effects = {}
 		for key in player_dict["EFFECTS"]:
 			reserilaized_effects[str(key)] = player_dict["EFFECTS"][key]
 		player_data.effects = player_data._deserialize_effects(reserilaized_effects, {})
-		
+
 		player_data.active_sets.clear()
 		var active_sets_dict = player_dict["ACTIVE_SETS"]
 		for active_set in player_dict["ACTIVE_SETS"]:
 			player_data.active_sets[active_set] = active_sets_dict[active_set]
-		
+
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
 			_shop_items[player_index].push_back(_shop_item_for_dictionary(shop_item_dict))
 		_get_shop_items_container(player_index).set_shop_items(_shop_items[player_index])
-		
+
 		var player_gear_container = _get_gear_container(player_index)
-		
+
 		RunData.players_data[player_index].weapons.clear()
 		for weapon in player_dict["WEAPONS"]:
 			RunData.players_data[player_index].weapons.push_back(_weapon_for_dictionary(weapon))
 		player_gear_container.set_weapons_data(RunData.players_data[player_index].weapons)
-		
+
 		RunData.players_data[player_index].items.clear()
 		for item in player_dict["ITEMS"]:
 			for _i in item["NUMBER"]:
 				RunData.players_data[player_index].items.push_back(_inventory_item_for_dictionary(item))
 		player_gear_container.set_items_data(RunData.players_data[player_index].items)
-		
-		
+
+
 		if player_dict.has("FOCUS"):
 			_set_client_focus_for_player(player_dict["FOCUS"], player_index)
 		else:
 			print_debug("WARN - missing focus for player ", player_index, " ", player_dict)
-		
+
 		_reroll_price[player_index] = player_dict["REROLL_PRICE"]
 		_reroll_discount[player_index] = player_dict["REROLL_DICSOUNT"]
 		_has_bonus_free_reroll[player_index] = player_dict["HAS_BONUS_FREE_REROLL"]
 		set_reroll_button_price(player_index)
-		
+
 		var locked_items : Array = player_dict["LOCKED_ITEMS"]
 		for item in _get_shop_items_container(player_index).get_children():
 			if not item is ShopItem:
 				continue
-			
+
 			var is_locked = false
 			for locked_item in locked_items:
 				if locked_item["ID"] == item.item_data.my_id:
 					is_locked = true
 					break
-			
+
 			if is_locked:
 				item.lock_visually()
 			else:
 				item.unlock_visually()
-		
+
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
-		
+
+		# Reliable xp/level backstop (see send side). .has() guard keeps compatibility with a host
+		# that predates these fields; xp_added refreshes the client's xp bar / level display.
+		if player_dict.has("CURRENT_XP"):
+			RunData.players_data[player_index].current_xp = player_dict["CURRENT_XP"]
+			RunData.players_data[player_index].current_level = player_dict.get("CURRENT_LEVEL", RunData.players_data[player_index].current_level)
+			RunData.emit_signal("xp_added", player_dict["CURRENT_XP"], player_dict.get("NEXT_LEVEL_XP", 0), player_index)
+
 		waiting_to_start_shop = false
 
 
@@ -382,25 +396,25 @@ func _dictionary_for_inventory_item(inventory_element : InventoryElement) -> Dic
 		"ID" : item_data.my_id,
 		"NUMBER" : inventory_element.current_number,
 	}
-	
+
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	if dlc:
 		if item_data.is_cursed:
 			item_dict["CURSED"] = true
-	
+
 	return item_dict
 
 
 func _client_focused_inventory_element(data : Dictionary, player_index : int) -> void:
 	var focused_element = _focus_inventory_item_for_dictionary(data, player_index)
-	
+
 	is_self_call = true
 	Utils.get_focus_emulator(player_index).focused_control = focused_element
 
 
 func _dictionary_for_focus_inventory_element(element: InventoryElement, player_index : int) -> Dictionary:
 	var gear_container : PlayerGearContainer = _get_gear_container(player_index)
-	
+
 	var weapons : Array = gear_container.weapons_container._elements.get_children()
 	for weapon_index in weapons.size():
 		if element == weapons[weapon_index]:
@@ -408,7 +422,7 @@ func _dictionary_for_focus_inventory_element(element: InventoryElement, player_i
 				"TYPE" : "WEAPON",
 				"INDEX" : weapon_index
 			}
-	
+
 	var items : Array = gear_container.items_container._elements.get_children()
 	for item_index in items.size():
 		if element == items[item_index]:
@@ -416,13 +430,13 @@ func _dictionary_for_focus_inventory_element(element: InventoryElement, player_i
 				"TYPE" : "ITEM",
 				"INDEX" : item_index
 			}
-	
+
 	return {}
 
 
 func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index : int) -> Control:
 	var gear_container : PlayerGearContainer = _get_gear_container(player_index)
-	
+
 	var focus_type = item_dict["TYPE"]
 	if focus_type == "WEAPON":
 		var weapon_index = item_dict["INDEX"]
@@ -440,28 +454,28 @@ func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index :
 			return shop_item._button
 	else:
 		print("ERR - Focusing inventgory element of unknown type ", item_dict)
-	
+
 	print("ERR - failed to found focus for dict ", item_dict, " ", player_index)
 	return null
 
 
 func _inventory_item_for_dictionary(item_dict : Dictionary) -> ItemData:
 	var query_id = item_dict["ID"]
-	
+
 	var result
 	for item in ItemService.items:
 		if item.my_id == query_id:
 			result = item.duplicate()
-	
+
 	for character in ItemService.characters:
 		if character.my_id == query_id:
 			result = character.duplicate()
-	
+
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	if dlc:
 		if item_dict.has("CURSED") and item_dict["CURSED"]:
 			result.is_cursed = true
-	
+
 	return result
 
 
@@ -474,7 +488,7 @@ func _dictionary_for_shop_item(shop_item : Array) -> Dictionary:
 
 func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 	var item_element
-	
+
 	var query_id = shop_item_dict["ID"]
 	for item in ItemService.items:
 		if item.my_id == query_id:
@@ -482,12 +496,12 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 	for weapon in ItemService.weapons:
 		if weapon.my_id == query_id:
 			item_element = weapon.duplicate()
-	
+
 	var abyssal_dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	if abyssal_dlc:
 		if shop_item_dict.has("CURSED") and shop_item_dict["CURSED"]:
 			item_element.is_cursed = true
-	
+
 	return [item_element, shop_item_dict["WAVE_VALUE"]]
 
 
@@ -495,28 +509,28 @@ func _dictionary_for_weapon(weapon_data : WeaponData) -> Dictionary:
 	var weapon_dict = {
 		"ID" : weapon_data.my_id
 	}
-	
+
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	if dlc:
 		if weapon_data.is_cursed:
 			weapon_dict["CURSED"] = true
-	
+
 	return weapon_dict
 
 
 func _weapon_for_dictionary(weapon_dict : Dictionary) -> WeaponData:
 	var query_id = weapon_dict["ID"]
-	
+
 	var result
 	for weapon in ItemService.weapons:
 		if weapon.my_id == query_id:
 			result = weapon.duplicate()
-	
+
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
 	if dlc and result:
 		if weapon_dict.has("CURSED") and weapon_dict["CURSED"]:
 			result.is_cursed = true
-	
+
 	return result
 
 
@@ -541,7 +555,7 @@ func _shop_item_for_string(shop_item_string : String, player_index : int) -> Sho
 			continue
 		if item.item_data.my_id == shop_item_string:
 			return item
-	
+
 	return null
 
 
@@ -563,7 +577,7 @@ func _focus_dictionary_for_player(player_index : int) -> Dictionary:
 				"TYPE" : "SHOP_ITEM",
 				"ID" : _string_for_shop_item(shop_item)
 			}
-	
+
 	var gear_container : PlayerGearContainer = _get_gear_container(player_index)
 	var weapons : Array = gear_container.weapons_container._elements.get_children()
 	for weapon_index in weapons.size():
@@ -572,7 +586,7 @@ func _focus_dictionary_for_player(player_index : int) -> Dictionary:
 				"TYPE" : "WEAPON",
 				"INDEX" : weapon_index
 			}
-	
+
 	var items : Array = gear_container.items_container._elements.get_children()
 	for item_index in items.size():
 		if focused_control == items[item_index]:
@@ -580,17 +594,17 @@ func _focus_dictionary_for_player(player_index : int) -> Dictionary:
 				"TYPE" : "ITEM",
 				"INDEX" : item_index
 			}
-	
+
 	if focused_control == _get_go_button(player_index):
 		return {
 			"TYPE" : "GO",
 		}
-	
+
 	if focused_control == _get_reroll_button(player_index):
 		return {
 			"TYPE" : "REROLL",
 		}
-	
+
 	return {}
 
 
@@ -598,7 +612,7 @@ func _set_client_focus_for_player(focus_dict : Dictionary, player_index : int) -
 	if not focus_dict.has("TYPE"):
 		print("ERR - unkown client focus ", player_index, " ", focus_dict)
 		return
-	
+
 	var focus_control = _focus_inventory_item_for_dictionary(focus_dict, player_index)
 	if focus_control != null and is_instance_valid(focus_control):
 		var focus_type : String = focus_dict["TYPE"]
@@ -609,19 +623,19 @@ func _set_client_focus_for_player(focus_dict : Dictionary, player_index : int) -
 		print("ERR - Invalid focus dict", focus_dict, " ", player_index)
 
 
-# Process time check for focusing reroll or go buttons which don't have 
+# Process time check for focusing reroll or go buttons which don't have
 # exisiting connected functions
 func _check_for_focus_change() -> void:
 	var player_index : int = steam_connection.get_my_index()
 	var focused_control = Utils.get_focus_emulator(player_index).focused_control
-	
+
 	if focused_control == _get_reroll_button(player_index):
 		if not focusing_reroll_button and not waiting_to_start_shop:
 			steam_connection.shop_focus_inventory_element(_focus_dictionary_for_player(player_index))
 		focusing_reroll_button = true
 	else:
 		focusing_reroll_button = false
-		
+
 	if focused_control == _get_go_button(player_index):
 		if not focusing_go_button and not waiting_to_start_shop:
 			steam_connection.shop_focus_inventory_element(_focus_dictionary_for_player(player_index))
