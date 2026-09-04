@@ -25,6 +25,9 @@ onready var create_lobby_button : Button = $"%CreateLobbyButton"
 var steam_connection
 var brotatogether_options
 
+# "Friends only" toggle for the lobby we create; added next to the Create Lobby button in _ready.
+var friends_only_checkbox : CheckBox
+
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	steam_connection = $"/root/SteamConnection"
@@ -40,6 +43,14 @@ func _ready():
 		new_message_node.username = "SYSTEM"
 		chat_messages.add_child(new_message_node)
 	steam_connection.pending_system_messages.clear()
+
+	# Add a "Friends only" checkbox next to Create Lobby (built in code so the decompiled .tscn
+	# doesn't need editing). When ticked, the created lobby is only listed to the host's friends.
+	friends_only_checkbox = CheckBox.new()
+	friends_only_checkbox.text = "Friends only"
+	create_lobby_button.get_parent().add_child(friends_only_checkbox)
+	create_lobby_button.get_parent().move_child(friends_only_checkbox, create_lobby_button.get_index())
+
 	create_lobby_button.grab_focus()
 	CoopService.clear_coop_players()
 
@@ -95,7 +106,8 @@ func _on_solo_test_button_pressed() -> void:
 
 
 func _on_create_lobby_button_pressed():
-	steam_connection.create_new_game_lobby()
+	var friends_only = friends_only_checkbox != null and friends_only_checkbox.pressed
+	steam_connection.create_new_game_lobby(friends_only)
 
 
 func _on_refresh_lobbies_button_pressed():

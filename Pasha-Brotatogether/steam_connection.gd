@@ -111,6 +111,10 @@ var game_lobby_id : int = -1
 var lobby_members : Array = []
 var lobby_member_names : Array = []
 
+# When true, a game lobby we create is tagged friends_only so the lobby list only shows it to the
+# host's Steam friends (see _on_lobby_match_list). Carries the create-time toggle to _on_lobby_created.
+var host_friends_only : bool = false
+
 # Messages to be displayed in the global lobby chat next time its entered
 var pending_system_messages : Array = []
 
@@ -295,6 +299,8 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 
 		var is_game_lobby : bool = false
 		var game_lobby_name : String
+		var lobby_friends_only : bool = false
+		var lobby_owner_id : String = ""
 
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
@@ -312,8 +318,15 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 					is_game_lobby = true
 			elif key == "lobby_name":
 				game_lobby_name = value
+			elif key == "friends_only":
+				lobby_friends_only = (value == "1")
+			elif key == "owner_id":
+				lobby_owner_id = value
 
 		if is_game_lobby:
+			# A friends_only lobby is only listed for the host's friends (and the host).
+			if lobby_friends_only and not _is_self_or_friend(lobby_owner_id):
+				continue
 			emit_signal("game_lobby_found", lobby_id, game_lobby_name)
 
 	if found_global_chat_lobby:
@@ -349,6 +362,10 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
 			_err = Steam.setLobbyData(created_lobby_id,"lobby_name", Steam.getFriendPersonaName(Steam.getSteamID()))
 			_err = Steam.setLobbyData(created_lobby_id,"lobby_status", "OPEN")
+			# Friends-only visibility: the lobby stays discoverable, but the lobby list only shows
+			# it to the host's friends (owner_id lets a searcher check the friend relationship).
+			_err = Steam.setLobbyData(created_lobby_id, "friends_only", "1" if host_friends_only else "0")
+			_err = Steam.setLobbyData(created_lobby_id, "owner_id", str(Steam.getSteamID()))
 			# Stamp our version/DLC/mods so joining clients can refuse an incompatible game.
 			_stamp_compat_lobby_data(created_lobby_id)
 
@@ -595,8 +612,23 @@ func attempt_join_game_lobby(lobby_id : int) -> void:
 	Steam.joinLobby(lobby_id)
 
 
-func create_new_game_lobby() -> void:
+func create_new_game_lobby(friends_only : bool = false) -> void:
+	host_friends_only = friends_only
 	Steam.createLobby(Steam.LOBBY_TYPE_PUBLIC, 4)
+
+
+# True if `owner_id_str` (a Steam id) is the local user or one of their Steam friends. Used to
+# hide friends_only lobbies from strangers in the lobby list.
+func _is_self_or_friend(owner_id_str : String) -> bool:
+	if owner_id_str == "":
+		return false
+	var owner_id := int(owner_id_str)
+	if owner_id == 0:
+		return false
+	if owner_id == Steam.getSteamID():
+		return true
+	# EFriendRelationship: k_EFriendRelationshipFriend == 3 (stable Steamworks value).
+	return Steam.getFriendRelationship(owner_id) == 3
 
 
 # Sends data to a receipient or to all others if target_id is -1

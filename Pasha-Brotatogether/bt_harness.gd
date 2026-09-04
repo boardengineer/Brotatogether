@@ -40,6 +40,7 @@ var _chat_wait_frames := 0
 var _chat_sends := 0
 var _chat_last_send_frame := -600
 var _chat_tag := "A"
+var _friends_only := false   # --bt-friends-only: host creates a friends-only game lobby
 
 
 func _ready() -> void:
@@ -57,6 +58,8 @@ func _ready() -> void:
 			_mode = "chat"
 		elif a.begins_with("--bt-chat-tag="):
 			_chat_tag = a.substr(14)
+		elif a == "--bt-friends-only":
+			_friends_only = true
 	if _mode == "":
 		set_process(false)
 		return
@@ -104,8 +107,8 @@ func _drive(sc) -> void:
 		print("BTHARNESS chat-test: parked on multiplayer menu, waiting for global_chat_lobby_id")
 		return
 	if _mode == "host":
-		print("BTHARNESS create_new_game_lobby")
-		sc.create_new_game_lobby()
+		print("BTHARNESS create_new_game_lobby (friends_only=%s)" % str(_friends_only))
+		sc.create_new_game_lobby(_friends_only)
 	else:
 		if not sc.is_connected("game_lobby_found", self, "_on_lobby_found"):
 			var _c = sc.connect("game_lobby_found", self, "_on_lobby_found")
