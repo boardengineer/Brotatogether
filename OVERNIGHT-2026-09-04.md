@@ -1,5 +1,18 @@
 # Overnight work — 2026-09-04
 
+## ✅ VALIDATED 2026-09-04 (two-machine test)
+The gold + xp/level fix (commits `4cdc8e9` + `356d39a`) **passed** a two-machine test. A genuinely
+divergent case: host authoritative per-player values were p0 `gold=64 xp=34 level=0` / p1 `gold=53
+xp=7 level=1` at shop 1, and p0 `gold=108 xp=41 level=1` at shop 2. The **client applied the exact
+same values** (a temp `BTGOLDSHOP` trace, since removed, confirmed host-send == client-apply per
+player), and the client's vanilla `log.txt` showed post-harvest totals (P0 64 / P1 53) carried into
+wave 2 — i.e. the old stale-30/30 symptom is gone. No SCRIPT ERROR from the extra wave-end send or
+the shop xp/level apply. The `[UNVALIDATED]` tags on those two commits can now be considered cleared.
+(Minor: a cosmetic 1-line baseline drift in each machine's pre-existing `coop_shop.gd` — a commented
+`print_debug` — will reconcile when the branch is pushed and B pulls the repo copy.)
+
+---
+
 ## TL;DR — morning checklist
 - **Gold divergence: root-caused.** The client skips base `manage_harvesting()`, so wave-end harvest
   gold/xp are host-only. Gold self-heals via the shop; **xp/level did not** — that's the worse half.
