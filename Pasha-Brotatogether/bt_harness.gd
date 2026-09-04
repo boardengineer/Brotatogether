@@ -33,6 +33,13 @@ const HB_INTERVAL_MS = 5000
 var _hb_last_ms := 0
 var _last_scene_name := ""
 var _chooser_idle_frames := 0
+# --bt-chat-test state: prove the global chat lobby joins + messages round-trip (self-echo and,
+# across two machines, cross-client). _chat_tag labels this instance's pings (--bt-chat-tag=X).
+var _chat_connected := false
+var _chat_wait_frames := 0
+var _chat_sends := 0
+var _chat_last_send_frame := -600
+var _chat_tag := "A"
 
 
 func _ready() -> void:
@@ -46,6 +53,10 @@ func _ready() -> void:
 			_join_name = a.substr(10)
 		elif a == "--bt-autoplay":
 			_autoplay = true
+		elif a == "--bt-chat-test":
+			_mode = "chat"
+		elif a.begins_with("--bt-chat-tag="):
+			_chat_tag = a.substr(14)
 	if _mode == "":
 		set_process(false)
 		return
@@ -76,6 +87,9 @@ func _process(_delta: float) -> void:
 			_acted = true
 			call_deferred("_drive", sc)
 		return
+	if _mode == "chat":
+		_chat_tick(sc)
+		return
 	if _autoplay:
 		_autoplay_tick(sc)
 
@@ -84,6 +98,11 @@ func _drive(sc) -> void:
 	print("BTHARNESS entering multiplayer menu")
 	var _e = get_tree().change_scene(MP_MENU_SCENE)
 	yield(get_tree().create_timer(1.0), "timeout")
+	if _mode == "chat":
+		# Chat test: sit on the multiplayer menu and let SteamConnection's own 3s timer
+		# find/create/join the global chat lobby. _chat_tick drives send + receive logging.
+		print("BTHARNESS chat-test: parked on multiplayer menu, waiting for global_chat_lobby_id")
+		return
 	if _mode == "host":
 		print("BTHARNESS create_new_game_lobby")
 		sc.create_new_game_lobby()
@@ -98,6 +117,35 @@ func _drive(sc) -> void:
 			sc.request_lobby_search()
 			tries += 1
 			yield(get_tree().create_timer(3.0), "timeout")
+
+
+# --bt-chat-test: once SteamConnection has found/created the global chat lobby, send one
+# message and log every global_chat_received. Steam echoes lobby chat back to the sender, so
+# a solo run that RECEIVES its own ping proves create/join + send + receive + signal end to end.
+func _chat_tick(sc) -> void:
+	if not _chat_connected:
+		if not sc.is_connected("global_chat_received", self, "_on_chat_received"):
+			var _c = sc.connect("global_chat_received", self, "_on_chat_received")
+		_chat_connected = true
+		print("BTHARNESS chat-test: connected to global_chat_received")
+	_chat_wait_frames += 1
+	var lid = sc.global_chat_lobby_id
+	if lid == null or int(lid) <= 0:
+		if _chat_wait_frames % 180 == 0:
+			print("BTHARNESS chat-test: waiting for global chat lobby (frames=%d id=%s creating=%s querying=%s)" % [_chat_wait_frames, str(lid), str(sc.is_creating_global_chat_lobby), str(sc.is_querying_global_chat)])
+		return
+	# In a lobby. Send a tagged ping every ~10s (up to 8) so whichever moment the other client
+	# converges onto this lobby, it will catch a later ping -- robust to join-order timing.
+	if _chat_sends < 8 and (_chat_wait_frames - _chat_last_send_frame) >= 600:
+		_chat_last_send_frame = _chat_wait_frames
+		_chat_sends += 1
+		var msg = "BTCHAT %s #%d %s" % [_chat_tag, _chat_sends, _wall_clock()]
+		sc.send_global_chat_message(msg)
+		print("BTHARNESS chat-test: lobby=%s SENT '%s'" % [str(lid), msg])
+
+
+func _on_chat_received(user, message) -> void:
+	print("BTHARNESS chat-test: RECEIVED from '%s': '%s'" % [str(user), str(message)])
 
 
 func _on_lobby_found(lobby_id, lobby_name) -> void:
@@ -319,4 +367,9 @@ func _hb_tick() -> void:
 	var seq = "n/a"
 	if scene != null and ("_state_seq" in scene) and ("_last_state_seq" in scene):
 		seq = "%d/%d" % [scene._state_seq, scene._last_state_seq]
-	print("BTHARNESS hb %s scene=%s paused=%s wave=%d wave_time=%s chooser=%s lobby=%d seq=%s net=%s" % [_wall_clock(), sname, str(tree.paused), RunData.current_wave, wave_time, chooser, lobby, seq, net])
+	# cli = client enemies alive / statics known / spawns pending. On the client a wave with a
+	# growing host roster but cli enemies stuck at 0 means rows are not being decoded/spawned.
+	var cli = "n/a"
+	if scene != null and ("client_enemies" in scene) and ("client_enemy_statics" in scene) and ("client_pending_ids" in scene):
+		cli = "%d/%d/%d" % [scene.client_enemies.size(), scene.client_enemy_statics.size(), scene.client_pending_ids.size()]
+	print("BTHARNESS hb %s scene=%s paused=%s wave=%d wave_time=%s chooser=%s lobby=%d seq=%s net=%s cli=%s" % [_wall_clock(), sname, str(tree.paused), RunData.current_wave, wave_time, chooser, lobby, seq, net, cli])

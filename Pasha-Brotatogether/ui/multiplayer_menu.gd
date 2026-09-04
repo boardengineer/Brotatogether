@@ -30,9 +30,10 @@ func _ready():
 	steam_connection = $"/root/SteamConnection"
 	steam_connection.connect("global_chat_received", self, "_received_global_chat")
 	steam_connection.connect("game_lobby_found", self, "_game_lobby_found")
-	
+	steam_connection.connect("join_blocked", self, "_on_join_blocked")
+
 	brotatogether_options = $"/root/BrotogetherOptions"
-	
+
 	for message in steam_connection.pending_system_messages:
 		var new_message_node = ChatMessage.instance()
 		new_message_node.message = message
@@ -73,6 +74,13 @@ func _received_global_chat(user, message) -> void:
 	var new_message_node = ChatMessage.instance()
 	new_message_node.message = message
 	new_message_node.username = user
+	chat_messages.add_child(new_message_node)
+
+
+func _on_join_blocked(reason) -> void:
+	var new_message_node = ChatMessage.instance()
+	new_message_node.message = "Cannot join that game:\n" + reason
+	new_message_node.username = "SYSTEM"
 	chat_messages.add_child(new_message_node)
 
 

@@ -14,4 +14,5 @@ func _ready():
 
 
 func _on_join_button_pressed():
-	Steam.joinLobby(lobby_id)
+	# Version/DLC/mod compatibility is checked before we actually join (see SteamConnection).
+	steam_connection.attempt_join_game_lobby(lobby_id)

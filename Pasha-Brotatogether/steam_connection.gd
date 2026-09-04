@@ -3,6 +3,14 @@ extends Node
 const GLOBAL_CHAT_TYPE := "BROTATOGETHER_GLOBAL_CHAT"
 const GAME_LOBBY_TYPE := "BROTATOGETHER_GAME_LOBBY"
 
+# Compatibility fingerprint keys stamped into a game lobby's Steam metadata by the host and
+# checked by a joining client (compat_mismatch_reason / attempt_join_game_lobby). A client whose
+# game version, active-DLC set, or loaded-mod set (id:version) differs is refused before the run
+# starts, so a version/content skew can never desync a co-op game.
+const COMPAT_KEY_GAME_VERSION := "bt_game_version"
+const COMPAT_KEY_DLC := "bt_dlc"
+const COMPAT_KEY_MODS := "bt_mods"
+
 enum PlayerStatus {CONNECTING, LOBBYING, PLAYING, SELF}
 
 # Channels will be mapped 1:1 with channels
@@ -135,6 +143,10 @@ const UNRELIABLE_MAX_BYTES : int = 1150
 var last_packet_bytes : int = 0          # compressed size of the last packet sent (diagnostics)
 var unreliable_fallbacks : int = 0       # how many snapshots had to fall back to reliable
 var _send_fail_logged := {}              # channel -> true once a failed send was logged
+
+# Emitted when a game-lobby join is refused for a version/DLC/mod mismatch. `reason` is a
+# human-readable, multi-line description of what differs; the multiplayer menu shows it.
+signal join_blocked (reason)
 
 # Received a global chat, should be connected to chat panels to display the new chat message.
 signal global_chat_received (username, message)
@@ -337,6 +349,8 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
 			_err = Steam.setLobbyData(created_lobby_id,"lobby_name", Steam.getFriendPersonaName(Steam.getSteamID()))
 			_err = Steam.setLobbyData(created_lobby_id,"lobby_status", "OPEN")
+			# Stamp our version/DLC/mods so joining clients can refuse an incompatible game.
+			_stamp_compat_lobby_data(created_lobby_id)
 
 
 func _request_global_chat_search() -> void:
@@ -364,6 +378,14 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 				if value == GLOBAL_CHAT_TYPE:
 					global_chat_lobby_id = lobby_id
 				elif value == GAME_LOBBY_TYPE:
+					# Backstop for join paths that skip attempt_join_game_lobby (e.g. a Steam
+					# invite): re-verify compatibility now that we're in and the data is present.
+					var reason := compat_mismatch_reason(lobby_id)
+					if reason != "":
+						pending_system_messages.push_back("Cannot join lobby -- incompatible:\n" + reason)
+						Steam.leaveLobby(lobby_id)
+						var _e = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
+						return
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
 					game_lobby_id = lobby_id
 					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
@@ -424,6 +446,153 @@ func _on_lobby_message(lobby_id : int, user_id : int, buffer : String, _chat_typ
 		emit_signal("global_chat_received", Steam.getFriendPersonaName(user_id), buffer)
 	elif lobby_id == game_lobby_id:
 		emit_signal("game_lobby_chat_received", Steam.getFriendPersonaName(user_id), buffer)
+
+
+# --- Version / DLC / mod compatibility gate --------------------------------------------------
+
+# This client's game version (e.g. "1.1.15.4").
+func _compat_game_version() -> String:
+	return str(ProgressData.VERSION)
+
+
+# Sorted comma-joined ACTIVE dlc ids (owned AND not deactivated) -- the content the game is
+# actually running. A peer missing or deactivating any of these would desync.
+func _compat_dlc_string() -> String:
+	var ids := []
+	for dlc_id in ProgressData.get_active_dlc_ids():
+		ids.push_back(str(dlc_id))
+	ids.sort()
+	return PoolStringArray(ids).join(",")
+
+
+# Sorted comma-joined "mod_id:version" for every loaded mod.
+func _compat_mods_string() -> String:
+	var entries := []
+	var all_mods : Dictionary = ModLoaderMod.get_mod_data_all()
+	for mod_id in all_mods:
+		var md = all_mods[mod_id]
+		var ver := "?"
+		if md != null and md.manifest != null:
+			ver = str(md.manifest.version_number)
+		entries.push_back("%s:%s" % [str(mod_id), ver])
+	entries.sort()
+	return PoolStringArray(entries).join(",")
+
+
+func _stamp_compat_lobby_data(lobby_id : int) -> void:
+	var _e = Steam.setLobbyData(lobby_id, COMPAT_KEY_GAME_VERSION, _compat_game_version())
+	_e = Steam.setLobbyData(lobby_id, COMPAT_KEY_DLC, _compat_dlc_string())
+	_e = Steam.setLobbyData(lobby_id, COMPAT_KEY_MODS, _compat_mods_string())
+
+
+# Read a game lobby's compat keys into {key:value}. getAllLobbyData forces a metadata read, so
+# this works both pre-join (lobby came from a search) and post-join.
+func _lobby_compat_kv(lobby_id : int) -> Dictionary:
+	var data : Dictionary = Steam.getAllLobbyData(lobby_id)
+	var kv := {}
+	for idx in data:
+		kv[data[idx]["key"]] = str(data[idx]["value"])
+	return kv
+
+
+# "" if this client is compatible with the host of `lobby_id`, else a multi-line description of
+# every mismatch (game version, DLC, mods). An unstamped lobby (older host) is also incompatible.
+func compat_mismatch_reason(lobby_id : int) -> String:
+	var kv := _lobby_compat_kv(lobby_id)
+	var host_version : String = kv.get(COMPAT_KEY_GAME_VERSION, "")
+	var host_dlc : String = kv.get(COMPAT_KEY_DLC, "")
+	var host_mods : String = kv.get(COMPAT_KEY_MODS, "")
+
+	if host_version == "" and host_dlc == "" and host_mods == "":
+		return "The host is running an older version of Brotatogether without compatibility checking. Both players must update to the same version."
+
+	var problems := []
+	if host_version != _compat_game_version():
+		problems.push_back("Game version differs -- host: %s, you: %s" % [host_version, _compat_game_version()])
+
+	var dlc_diff := _diff_id_lists(host_dlc, _compat_dlc_string())
+	if dlc_diff != "":
+		problems.push_back("DLC differs -- " + dlc_diff)
+
+	var mods_diff := _diff_mods(host_mods, _compat_mods_string())
+	if mods_diff != "":
+		problems.push_back("Mods differ -- " + mods_diff)
+
+	return PoolStringArray(problems).join("\n")
+
+
+# Diff two comma-joined id lists into "host has [X] you lack; you have [Y] host lacks".
+func _diff_id_lists(host_csv : String, mine_csv : String) -> String:
+	var host_set := {}
+	for i in host_csv.split(",", false):
+		host_set[i] = true
+	var mine_set := {}
+	for i in mine_csv.split(",", false):
+		mine_set[i] = true
+	var host_only := []
+	for i in host_set:
+		if not mine_set.has(i):
+			host_only.push_back(i)
+	var mine_only := []
+	for i in mine_set:
+		if not host_set.has(i):
+			mine_only.push_back(i)
+	return _format_diff(host_only, mine_only, [])
+
+
+func _parse_mods(csv : String) -> Dictionary:
+	var d := {}
+	for entry in csv.split(",", false):
+		var idx = entry.find(":")
+		if idx == -1:
+			d[entry] = ""
+		else:
+			d[entry.substr(0, idx)] = entry.substr(idx + 1)
+	return d
+
+
+# Diff two "id:version" mod lists: present-on-one-side plus same-id/different-version.
+func _diff_mods(host_csv : String, mine_csv : String) -> String:
+	var host := _parse_mods(host_csv)
+	var mine := _parse_mods(mine_csv)
+	var host_only := []
+	var mine_only := []
+	var ver_diff := []
+	for id in host:
+		if not mine.has(id):
+			host_only.push_back(id)
+		elif mine[id] != host[id]:
+			ver_diff.push_back("%s (host %s, you %s)" % [id, host[id], mine[id]])
+	for id in mine:
+		if not host.has(id):
+			mine_only.push_back(id)
+	return _format_diff(host_only, mine_only, ver_diff)
+
+
+func _format_diff(host_only : Array, mine_only : Array, ver_diff : Array) -> String:
+	if host_only.empty() and mine_only.empty() and ver_diff.empty():
+		return ""
+	var parts := []
+	if not host_only.empty():
+		host_only.sort()
+		parts.push_back("host has [%s] you lack" % PoolStringArray(host_only).join(", "))
+	if not mine_only.empty():
+		mine_only.sort()
+		parts.push_back("you have [%s] host lacks" % PoolStringArray(mine_only).join(", "))
+	if not ver_diff.empty():
+		ver_diff.sort()
+		parts.push_back("version mismatch: %s" % PoolStringArray(ver_diff).join(", "))
+	return PoolStringArray(parts).join("; ")
+
+
+# Join entry point used by the lobby list. Verifies compatibility BEFORE joining, so an
+# incompatible client never enters the host's lobby (no join/leave churn, instant feedback).
+func attempt_join_game_lobby(lobby_id : int) -> void:
+	var reason := compat_mismatch_reason(lobby_id)
+	if reason != "":
+		emit_signal("join_blocked", reason)
+		return
+	Steam.joinLobby(lobby_id)
 
 
 func create_new_game_lobby() -> void:
