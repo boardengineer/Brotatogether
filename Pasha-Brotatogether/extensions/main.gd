@@ -897,6 +897,19 @@ func _on_WaveTimer_timeout() -> void:
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_WaveTimer_timeout()
+			# Base wave-end just applied per-player harvest gold and folded leftover materials into
+			# bonus_gold (manage_harvesting / clean_up_room) -- both host-authoritative and never
+			# recomputed on the client. Gold rides the UNRELIABLE snapshot, so at the wave boundary
+			# (few sends before the shop scene loads) a dropped packet can leave the client showing
+			# stale pre-harvest gold until the shop's gold sync arrives (the 38/59-vs-30/30 symptom).
+			# Push one authoritative snapshot now so the post-harvest totals land promptly.
+			# UNVALIDATED (2026-09-04): confirm on two machines before shipping.
+			_send_game_state()
+			if ENABLE_DEBUG:
+				var host_gold := []
+				for pi in RunData.get_player_count():
+					host_gold.push_back(RunData.players_data[pi].gold)
+				print("BTGOLD host wave=%d post-harvest gold=%s bonus=%d" % [RunData.current_wave, str(host_gold), RunData.bonus_gold])
 			return
 		else:
 			_ui_dim_screen.dim()
@@ -915,6 +928,12 @@ func _on_WaveTimer_timeout() -> void:
 				if is_instance_valid(player):
 					player._can_move = false
 					player.set_physics_process(false)
+
+			if ENABLE_DEBUG:
+				var cli_gold := []
+				for pi in RunData.get_player_count():
+					cli_gold.push_back(RunData.players_data[pi].gold)
+				print("BTGOLD client wave=%d at-wave-end gold=%s bonus=%d seq=%d" % [RunData.current_wave, str(cli_gold), RunData.bonus_gold, _last_state_seq])
 	else:
 		._on_WaveTimer_timeout()
 
