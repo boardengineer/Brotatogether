@@ -47,10 +47,13 @@ at the same wave. PASS = client per-player gold matches the host's post-harvest 
 the wave-cleared screen shows (and certainly before the shop). If it still diverges (e.g. that one
 snapshot was dropped), escalate to the robust fix below.
 
-**Robust fallback if needed (NOT implemented):** send post-harvest per-player gold + `bonus_gold`
-as a **reliable** one-shot wave-end event (new key on the existing MAIN_STATE_EVENTS channel), so it
-can't be lost. More code (serialize + client apply), but loss-proof. Only do this if the two-machine
-test shows the unreliable snapshot fix is insufficient.
+**Important nuance from the audit (section 4):** gold already HAS a reliable backstop — the shop's
+`GOLD` sync (`coop_shop.gd:373`) — so for gold the wave-end push above just makes the correction
+prompt; even if that snapshot drops, the shop fixes gold. **XP and level did NOT have any reliable
+backstop** (they ride the unreliable snapshot only), which is the more severe half of this bug — so I
+also added `current_xp`/`next_level_xp`/`current_level` to the reliable shop packet (`coop_shop.gd`,
+commit 356d39a). Together: the wave-end push = prompt best-effort, the shop packet = guaranteed
+correction. Validate both on two machines.
 
 ## 2. Safe fixes (parse-checked solo)
 
@@ -84,8 +87,62 @@ the same mechanism — worth confirming in the same two-machine test.
   client can never block the host. Validate by hosting, joining with a client, killing the client
   mid-run, and confirming the host still advances through the chooser and next wave.
 
+## 4. Netcode divergence audit (other latent host/client drift)
+
+A read-only audit for other bugs of the same class as the gold divergence. Key architectural fact:
+the only **reliable** correction paths for run state are (1) the reliable events channel (deaths,
+spawns, FX) and (2) the **shop state packet** (`coop_shop.gd`), which re-syncs `EFFECTS, ACTIVE_SETS,
+LOCKED_ITEMS, WEAPONS, ITEMS, GOLD, SHOP_ITEMS, REROLL_*`. Everything else (xp, level, HP,
+bonus_gold) rides ONLY the unreliable snapshot.
+
+**F1 / F2 — HIGH — wave-end XP & level have no reliable backstop. ADDRESSED (candidate, UNVALIDATED).**
+Same root as gold (client skips base wave-end), but worse: gold/effects/items are corrected by the
+shop packet, while `current_xp`/`next_level_xp`/`current_level` are not — a dropped wave-end snapshot
+leaves the client's xp bar / level stale through the whole shop until the next wave's first snapshot.
+Fixed this branch: (a) the wave-end authoritative snapshot push (`main.gd`, commit 4cdc8e9) makes it
+prompt best-effort, and (b) xp/level added to the **reliable** shop packet (`coop_shop.gd`, commit
+356d39a) so it can't be lost. Needs two-machine validation.
+
+**F2 tail — bonus_gold & player HP at wave end** — also unreliable-only, but **self-healing**:
+bonus_gold is re-sent every snapshot and HP is re-sent next wave, so a single drop is transient. Left
+as-is (low urgency); could fold into the same reliable summary if desired.
+
+**F3 — MED — client never runs `RunData.on_wave_end()` / `LinkedStats.reset()`** (`main.gd:941`, no
+client else-branch calling base `._on_EndWaveTimer_timeout()`). `wave_in_progress` never resets to
+false on the client, and linked-stat contributions can carry across waves in the client's local stat
+cache until the shop `EFFECTS` sync overwrites them. Correctness cleanup; minor observable impact
+today because HP/stats are snapshot/shop driven. **Not changed** — wants a small client-side
+`on_wave_end()`/`LinkedStats.reset()` call, needs validation.
+
+**F4 — LOW — challenge/account-unlock completion is host-only** (`main.gd:1223+`, `run_data.gd:870`).
+Client never simulates, so coop play won't fire client-side account unlocks. Account progression, not
+run state — flagged, not urgent. **Not changed.**
+
+**F5 — CLEAN (client double-application)** — none found. Client-spawned gold/consumables don't
+connect `picked_up`, client players don't self-simulate damage/kills (`unit.gd:33-42`,
+`_current_cooldown=9999`), and xp is written from the snapshot rather than via `add_xp`, so level-ups
+never double-fire. One LOW cosmetic caveat: client consumables aren't collision-disabled outside
+`is_solo_test`, so a client could self-hide a consumable the host still shows (re-synced next
+snapshot).
+
+**F6 — LOW — player-index mapping is consistent.** Host builds `PLAYERS` in `_players` order, client
+applies by the same index everywhere. The one assumption to keep in mind: weapons are applied
+positionally by `weapon_index` into `current_weapons`, so they rely on the shop `WEAPONS` sync keeping
+weapon ordering identical. No index-swap divergence found.
+
+**Recommended fix order:** F1/F2 xp/level (done, validate) → F2 bonus_gold/HP (optional) → F3
+on_wave_end/LinkedStats → F4/F5/F6 (low).
+
 ---
 
 ## Next steps when you're back
-- Two-machine validate the gold candidate fix (section 1) before shipping.
-- Decide on the deferred items above.
+- **Before any two-machine test:** both machines must be on the SAME manifest version, or the new
+  compat gate (1.4.x) will (correctly) block the join. This branch's `main.gd`/`steam_connection.gd`
+  changes don't bump the version, so both machines just need to mirror this branch's files. Note the
+  earlier note that B's manifest was left at 1.4.0 vs A's committed 1.4.1 — align them first.
+- Two-machine validate the gold candidate fix (section 1) with `ENABLE_DEBUG = true` on both, before
+  shipping. Also confirm wave-end XP converges (same fix path).
+- Review section 4 (divergence audit) and decide which to fix next.
+- Decide on the deferred items (section 3).
+- This is all on branch `overnight-2026-09-04` (off 1.4.1 @ 3220f02). Cherry-pick / merge what you
+  want; the gold fix commit is tagged `[UNVALIDATED]` on purpose.
