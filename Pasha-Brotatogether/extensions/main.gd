@@ -41,6 +41,15 @@ var client_pets = {}
 # Used to dedupe spawns
 var client_pending_ids = {}
 
+# Enemies ride the unreliable snapshot as fixed-order int ROWS (see _append_enemy_row /
+# _apply_enemy_rows): [network_id, x, y, move_x*100, move_y*100, mod_a, mod_r, mod_g, mod_b].
+# The per-enemy string statics (scene filename + stats resource_path) are ~9x the row's bytes,
+# never change, and so are hoisted out of the 60 Hz snapshot into a one-shot RELIABLE spawn
+# event (BATCHED_ENEMY_SPAWNS) keyed by network_id.
+const ENEMY_ROW_STRIDE := 9
+var _enemy_statics_sent := {}   # host: network_ids whose spawn statics have been sent this wave
+var client_enemy_statics := {}  # client: network_id -> [filename, resource_path] from spawn events
+
 var _spawning_ghosts: bool = false
 const GHOST_DELAY_MSEC: int = 100
 var _ghost_queue: Array = []
@@ -200,17 +209,20 @@ func _send_game_state() -> void:
 		players.push_back(_dictionary_for_player(player, player_index))
 	state_dict["PLAYERS"] = players
 
-	var enemies = []
+	# Enemies + bosses go out as flat int rows; first sight of an id also emits its statics
+	# into enemy_spawns, which is attached to the reliable events packet below.
+	var enemy_spawns := {}
+	var enemy_rows := PoolIntArray()
 	for enemy in _entity_spawner.enemies:
 		if is_instance_valid(enemy):
-			enemies.push_back(_dictionary_for_enemy(enemy))
-	state_dict["ENEMIES"] = enemies
+			enemy_rows.append_array(_enemy_row(enemy, enemy_spawns))
+	state_dict["ENEMIES"] = enemy_rows
 
-	var bosses = []
+	var boss_rows := PoolIntArray()
 	for boss in _entity_spawner.bosses:
 		if is_instance_valid(boss):
-			bosses.push_back(_dictionary_for_enemy(boss))
-	state_dict["BOSSES"] = bosses
+			boss_rows.append_array(_enemy_row(boss, enemy_spawns))
+	state_dict["BOSSES"] = boss_rows
 
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
@@ -242,6 +254,9 @@ func _send_game_state() -> void:
 	brotatogether_options.batched_sounds.clear()
 	events_dict["BATCHED_EXPLOSIONS"] = brotatogether_options.batched_explosions.duplicate()
 	brotatogether_options.batched_explosions.clear()
+	# Per-enemy statics (filename + resource_path) for ids first seen this tick. Reliable so the
+	# client can decode the enemy's int rows once it knows how to instance it. Empty most ticks.
+	events_dict["BATCHED_ENEMY_SPAWNS"] = enemy_spawns
 
 	_state_seq += 1
 	state_dict["SEQ"] = _state_seq
@@ -298,15 +313,11 @@ func _state_update(state_dict : Dictionary) -> void:
 	var _player_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
-	var enemies_array = state_dict["ENEMIES"]
-	for enemy in enemies_array:
-		_update_enemy(enemy)
+	_apply_enemy_rows(state_dict["ENEMIES"])
 	var enemies_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
-	var bosses_array = state_dict["BOSSES"]
-	for boss in bosses_array:
-		_update_enemy(boss)
+	_apply_enemy_rows(state_dict["BOSSES"])
 	var bosses_update_time = Time.get_ticks_usec() - before
 
 	# Enemy deaths + flashes + explosions moved to _state_events (reliable channel).
@@ -369,7 +380,7 @@ func _state_update(state_dict : Dictionary) -> void:
 				enemy_hit_effects_update_time + enemy_hit_particles_update_time + floating_text_update_time,
 				sound_update_time + sound_2d_update_time,
 				enemy_deaths_update_time,
-				state_dict["PLAYERS"].size(), state_dict["ENEMIES"].size(), state_dict["BOSSES"].size(),
+				state_dict["PLAYERS"].size(), int(state_dict["ENEMIES"].size() / ENEMY_ROW_STRIDE), int(state_dict["BOSSES"].size() / ENEMY_ROW_STRIDE),
 				state_dict["PLAYER_PROJECTILES"].size() + state_dict["ENEMY_PROJECTILES"].size(),
 				state_dict["ITEMS"].size(), state_dict["CONSUMABLES"].size(),
 				state_dict["NEUTRALS"].size(), state_dict["STRUCTURES"].size(),
@@ -380,8 +391,15 @@ func _state_events(events_dict : Dictionary) -> void:
 	# Reliable one-shot deltas split out of the positional snapshot. Deaths are recorded in
 	# client_dead_ids so a late/reordered unreliable roster snapshot can't respawn a killed
 	# enemy (_update_enemy consults it). Effects/sounds are cosmetic and simply applied.
+	# Record enemy statics before positional rows for these ids can spawn them (this reliable
+	# packet may arrive a tick before/after the unreliable snapshot; _apply_enemy_rows defers
+	# any row whose statics aren't here yet).
+	for spawn_id in events_dict.get("BATCHED_ENEMY_SPAWNS", {}):
+		client_enemy_statics[spawn_id] = events_dict["BATCHED_ENEMY_SPAWNS"][spawn_id]
+
 	for enemy_id in events_dict["BATCHED_ENEMY_DEATHS"]:
 		client_dead_ids[enemy_id] = true
+		client_enemy_statics.erase(enemy_id)
 		if client_enemies.has(enemy_id):
 			if not client_enemies[enemy_id].dead:
 				client_enemies[enemy_id].die()
@@ -501,23 +519,77 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 			things_to_process.upgrades.add_element(ItemService.get_icon(Keys.icon_upgrade_to_process_hash), 1)
 
 
-func _dictionary_for_enemy(enemy) -> Dictionary:
-	var enemy_dict = {}
+# Quantize a movement/facing component to an int (x100). Preserves sign for any non-zero
+# input so the client's facing never collapses to zero from rounding.
+static func _quantize_dir(v : float) -> int:
+	if v > 0.0:
+		return int(max(1, round(v * 100.0)))
+	elif v < 0.0:
+		return int(min(-1, round(v * 100.0)))
+	return 0
 
-	enemy_dict["NETWORK_ID"] = enemy.network_id
-	enemy_dict["RESOURCE_PATH"] = enemy.stats.resource_path
-	enemy_dict["FILENAME"] = enemy.filename
-	enemy_dict["X_POS"] = enemy.position.x
-	enemy_dict["Y_POS"] = enemy.position.y
-	enemy_dict["MOVE_X"] = enemy._current_movement.x
-	enemy_dict["MOVE_Y"] = enemy._current_movement.y
 
-	enemy_dict["MODULATE_A"] = enemy.sprite.self_modulate.a8
-	enemy_dict["MODULATE_R"] = enemy.sprite.self_modulate.r8
-	enemy_dict["MODULATE_G"] = enemy.sprite.self_modulate.g8
-	enemy_dict["MODULATE_B"] = enemy.sprite.self_modulate.b8
+# Build one enemy's 9-int row. On first sight of an id this tick, records its statics (scene
+# filename + stats resource_path) into `spawns` so they ride the reliable spawn event exactly
+# once instead of on every snapshot. Positions are quantized to whole pixels and movement to a
+# signed x100 int -- ints gzip far better than float bit patterns and sub-pixel precision is
+# imperceptible at 60 Hz (_quantize_dir never rounds a nonzero to 0, so the client's facing
+# survives). Field order MUST match _apply_enemy_rows' reader. Returns the row (PoolIntArray is
+# passed/returned BY VALUE in Godot 3.x, so the caller appends it -- a mutate-through-param
+# helper would silently write to a throwaway copy).
+func _enemy_row(enemy, spawns : Dictionary) -> PoolIntArray:
+	var enemy_id = enemy.network_id
+	if not _enemy_statics_sent.has(enemy_id):
+		_enemy_statics_sent[enemy_id] = true
+		spawns[enemy_id] = [enemy.filename, enemy.stats.resource_path]
 
-	return enemy_dict
+	var modulate = enemy.sprite.self_modulate
+	var row := PoolIntArray()
+	row.push_back(enemy_id)
+	row.push_back(int(round(enemy.position.x)))
+	row.push_back(int(round(enemy.position.y)))
+	row.push_back(_quantize_dir(enemy._current_movement.x))
+	row.push_back(_quantize_dir(enemy._current_movement.y))
+	row.push_back(modulate.a8)
+	row.push_back(modulate.r8)
+	row.push_back(modulate.g8)
+	row.push_back(modulate.b8)
+	return row
+
+
+# Decode a flat enemy/boss int-row buffer (see _append_enemy_row) and feed each enemy to the
+# existing dict-based _update_enemy. Statics for a not-yet-seen id arrive on the reliable spawn
+# event; if a positional row for a brand-new id beats its spawn event (unreliable can outrun
+# reliable), we skip it this tick -- the enemy simply appears one snapshot later once its
+# statics are known. Already-known and already-dead ids never need statics.
+func _apply_enemy_rows(rows) -> void:
+	if rows == null:
+		return
+	var enemy_count = int(rows.size() / ENEMY_ROW_STRIDE)
+	for k in enemy_count:
+		var base = k * ENEMY_ROW_STRIDE
+		var enemy_id = rows[base]
+		if client_dead_ids.has(enemy_id):
+			continue
+		var is_known = client_enemies.has(enemy_id)
+		if not is_known and not client_enemy_statics.has(enemy_id):
+			continue
+		var enemy_dict = {
+			"NETWORK_ID": enemy_id,
+			"X_POS": rows[base + 1],
+			"Y_POS": rows[base + 2],
+			"MOVE_X": rows[base + 3],
+			"MOVE_Y": rows[base + 4],
+			"MODULATE_A": rows[base + 5],
+			"MODULATE_R": rows[base + 6],
+			"MODULATE_G": rows[base + 7],
+			"MODULATE_B": rows[base + 8],
+		}
+		if not is_known:
+			var statics = client_enemy_statics[enemy_id]
+			enemy_dict["FILENAME"] = statics[0]
+			enemy_dict["RESOURCE_PATH"] = statics[1]
+		_update_enemy(enemy_dict)
 
 
 func _update_enemy(enemy_dict : Dictionary) -> void:
@@ -603,14 +675,17 @@ func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> voi
 	_update_ghost_players(state_dict["PLAYERS"])
 	var _player_update_time = Time.get_ticks_usec() - before
 
+	# Solo ghost replay gets state + events merged into one dict, so the spawn statics for this
+	# tick are right here -- fold them in before decoding the rows that reference them.
+	for spawn_id in state_dict.get("BATCHED_ENEMY_SPAWNS", {}):
+		client_enemy_statics[spawn_id] = state_dict["BATCHED_ENEMY_SPAWNS"][spawn_id]
+
 	before = Time.get_ticks_usec()
-	for enemy_dict in state_dict["ENEMIES"]:
-		_update_enemy(enemy_dict)
+	_apply_enemy_rows(state_dict["ENEMIES"])
 	var enemies_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
-	for boss_dict in state_dict["BOSSES"]:
-		_update_enemy(boss_dict)
+	_apply_enemy_rows(state_dict["BOSSES"])
 	var bosses_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
@@ -672,7 +747,7 @@ func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> voi
 				proj_update_time, births_update_time,
 				neutrals_update_time, structures_update_time, pets_update_time,
 				enemy_deaths_update_time, wave_time_left,
-				state_dict["PLAYERS"].size(), state_dict["ENEMIES"].size(), state_dict["BOSSES"].size(),
+				state_dict["PLAYERS"].size(), int(state_dict["ENEMIES"].size() / ENEMY_ROW_STRIDE), int(state_dict["BOSSES"].size() / ENEMY_ROW_STRIDE),
 				state_dict["PLAYER_PROJECTILES"].size() + state_dict["ENEMY_PROJECTILES"].size(),
 				state_dict["ITEMS"].size(), state_dict["CONSUMABLES"].size(),
 				state_dict["NEUTRALS"].size(), state_dict["STRUCTURES"].size(),
