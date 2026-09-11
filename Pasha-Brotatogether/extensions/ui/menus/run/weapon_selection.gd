@@ -17,6 +17,7 @@ func _ready():
 	steam_connection.connect("player_selected_weapon", self, "_player_selected_weapon")
 	steam_connection.connect("weapon_lobby_update", self, "_lobby_weapons_updated")
 	steam_connection.connect("weapon_selection_completed", self, "_weapon_selection_completed")
+	steam_connection.connect("player_left_run", self, "_on_player_left_run")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
@@ -170,3 +171,9 @@ func _weapon_selection_completed(selected_weapons : Array) -> void:
 			RunData.players_data[player_index].weapons.push_back(selections_by_string_key[selected_weapons[player_index][weapon_index]])
 	
 	_change_scene(MenuData.difficulty_selection_scene)
+
+
+# A member left during weapon selection: confirm its slot so the stage cannot stall on it.
+func _on_player_left_run(player_index : int) -> void:
+	if is_multiplayer_lobby and steam_connection.is_host() and player_index < RunData.get_player_count():
+		_set_selected_element(player_index)

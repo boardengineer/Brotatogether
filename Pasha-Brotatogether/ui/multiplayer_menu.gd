@@ -119,5 +119,10 @@ func _on_refresh_lobbies_button_pressed():
 func _game_lobby_found(lobby_id, lobby_name) -> void:
 	var new_lobby_entry = LobbyEntry.instance()
 	new_lobby_entry.lobby_id = lobby_id
-	new_lobby_entry.lobby_name = lobby_name
+	var info = steam_connection.lobby_slot_info.get(lobby_id, null)
+	if info == null:
+		new_lobby_entry.lobby_name = lobby_name
+	else:
+		var full = info["occupied"] >= info["capacity"]
+		new_lobby_entry.lobby_name = "%s  (%d/%d)%s" % [lobby_name, info["occupied"], info["capacity"], "  FULL" if full else ""]
 	lobbies_list.add_child(new_lobby_entry)

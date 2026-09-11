@@ -1,2 +1,5 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Auto-detect text files; store AND check out text with LF endings on every
+# platform (Windows core.autocrlf would otherwise check some files out as CRLF,
+# so a source<->install sync or a second machine ends up with mixed endings and
+# non-byte-identical mod trees). eol=lf keeps every clone's working tree LF.
+* text=auto eol=lf

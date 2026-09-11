@@ -102,9 +102,26 @@ enum MessageType {
 	# deltas that must arrive. Lets the high-rate positional MAIN_STATE snapshot go
 	# UNRELIABLE (newest-wins) without head-of-line blocking. host -> client
 	MESSAGE_TYPE_MAIN_STATE_EVENTS,
+
+	# Client -> host (reliable): re-request enemy spawn statics for ids the client keeps
+	# receiving positional rows for but cannot instance (the BTMISS backstop; see
+	# extensions/main.gd _missing_statics / _on_enemy_statics_requested).
+	MESSAGE_TYPE_ENEMY_STATICS_REQUEST,
+
+	# Host -> clients (reliable): the run is over (every player died, or the last wave
+	# was cleared). Sent from Main.clean_up_room the moment the host decides and BEFORE
+	# the host leaves the lobby, so clients reach the end-run screen instead of being
+	# dumped on the multiplayer menu with "Host left the lobby".
+	MESSAGE_TYPE_RUN_ENDED,
+	# Host -> one client: leave this lobby (kick / refused join). {REASON}
+	MESSAGE_TYPE_KICKED,
 }
 
 var global_chat_lobby_id : int = -1
+
+# Client: set by _receive_run_ended so the host's expected lobby-leave right after it is
+# not mistaken for a mid-run disconnect (see _on_lobby_chat_update). Reset on every join.
+var run_ended_by_host : bool = false
 var steam_id : int
 
 var game_lobby_id : int = -1
@@ -114,6 +131,26 @@ var lobby_member_names : Array = []
 # When true, a game lobby we create is tagged friends_only so the lobby list only shows it to the
 # host's Steam friends (see _on_lobby_match_list). Carries the create-time toggle to _on_lobby_created.
 var host_friends_only : bool = false
+# --- Lobby roster (host-authoritative) --------------------------------------------------
+# Slot order = player index; slot 0 is always the host. The host publishes the roster in the
+# Steam lobby data key "bt_slots" (comma-separated steam ids) and every client rebuilds
+# lobby_members / lobby_member_names from it on lobby_data_update, so all machines agree on
+# indexes even when Steam's own member enumeration order differs. During character selection
+# a leaver's slot is compacted away; once the run is set up (lobby CLOSED) indexes must stay
+# stable, so the slot stays and the index is listed in "bt_left" instead.
+const MAX_SLOTS := 4
+const ROSTER_KEY := "bt_slots"
+const LEFT_KEY := "bt_left"
+const LOCKED_KEY := "bt_locked"
+const OPEN_KEY := "bt_open"          # open (unlocked, unoccupied) slot count, for the browser
+const LEAVE_STATES := 2 | 4 | 8 | 16  # CHAT_MEMBER_STATE_CHANGE LEFT | DISCONNECTED | KICKED | BANNED
+var locked_slots : Array = [false, false, false, false]   # host: closed slots (index 0 never)
+var left_players : Dictionary = {}    # player_index -> true for members who left mid-run
+var _kicked_ids : Dictionary = {}     # host: steam ids ejected from this lobby (re-ejected on rejoin)
+var lobby_slot_info : Dictionary = {} # browser: lobby_id -> {"occupied": n, "capacity": n} from the last search
+var debug_force_stranger : bool = false   # --bt-force-stranger (host): treat every joiner as a non-friend
+var _pending_friend_lobbies : Dictionary = {}   # lobby ids we asked Steam to fetch data for (friend scan)
+var _search_seen : Dictionary = {}              # lobby ids already emitted for the current search
 
 # Messages to be displayed in the global lobby chat next time its entered
 var pending_system_messages : Array = []
@@ -148,6 +185,82 @@ var last_packet_bytes : int = 0          # compressed size of the last packet se
 var unreliable_fallbacks : int = 0       # how many snapshots had to fall back to reliable
 var _send_fail_logged := {}              # channel -> true once a failed send was logged
 
+# --- BTLAT: client-side MAIN_STATE latency profiling (--bt-latprof) -----------------------
+# Quantifies the two receive-side latencies:
+#   L1 steady-state: per-snapshot decode (gunzip+bytes2var) and apply (_state_update) cost.
+#   L2 backlog:      when a frame drains >1 queued snapshot (after a client stall), the
+#                    recovery frame pays decode+apply for every queued packet even though
+#                    only the newest matters -- logged per event with the wasted applies.
+# Inter-arrival gap is client-clock; "jitter" subtracts the host's send spacing (SENT_AT_MS
+# delta), which is clock-offset-free because both terms are deltas on their own clocks.
+# Zero overhead unless --bt-latprof is on the command line. Output: BTLAT lines on stdout.
+var _latprof_enabled : bool = false
+var _lat_decode_samples := []            # us per MAIN_STATE packet, current window
+var _lat_apply_samples := []             # us per MAIN_STATE packet (incl. seq-skipped ~0s)
+var _lat_gap_samples := []               # ms between read passes that carried MAIN_STATE
+var _lat_jitter_samples := []            # ms: arrival gap minus host send gap
+var _lat_applied : int = 0               # packets fully applied this window
+var _lat_packets : int = 0               # MAIN_STATE packets seen this window
+var _lat_max_drain : int = 0             # most MAIN_STATE packets in one read pass
+var _lat_backlog_events : int = 0        # read passes with >1 MAIN_STATE packet
+var _lat_wasted_applies : int = 0        # superseded-but-applied packets (backlog n-1 each)
+var _lat_prev_arrival_ms : int = -1      # client clock, last pass that carried MAIN_STATE
+var _lat_prev_sent_ms : int = -1         # host SENT_AT_MS of newest packet in that pass
+var _lat_max_seen_seq : int = -1         # mirrors the apply guard: counts truly-applied packets
+var _lat_flush_ms : int = 0              # client clock of last summary print
+# v2 (late-wave density): compressed snapshot bytes, reliable-fallback detection (a packet
+# over UNRELIABLE_MAX_BYTES can only have been sent RELIABLE -- same threshold the host
+# uses), gap split by delivery mode, and enemies+bosses per snapshot (row count / 9).
+var _lat_bytes_samples := []             # compressed MAIN_STATE packet bytes, current window
+var _lat_rel_count : int = 0             # packets that rode the RELIABLE fallback this window
+var _lat_gap_rel := []                   # arrival gaps (ms) where the newest packet was reliable
+var _lat_gap_unrel := []                 # arrival gaps (ms) where it was unreliable
+var _lat_max_enemies : int = 0           # max enemies+bosses in one snapshot this window
+const LAT_FLUSH_INTERVAL_MS : int = 5000
+
+
+static func _lat_pct(sorted_arr : Array, p : float) -> int:
+	if sorted_arr.empty():
+		return 0
+	var idx = int(clamp(ceil(p * sorted_arr.size()) - 1, 0, sorted_arr.size() - 1))
+	return int(sorted_arr[idx])
+
+
+func _lat_flush_summary(now_ms : int) -> void:
+	_lat_decode_samples.sort()
+	_lat_apply_samples.sort()
+	_lat_gap_samples.sort()
+	_lat_jitter_samples.sort()
+	_lat_bytes_samples.sort()
+	_lat_gap_rel.sort()
+	_lat_gap_unrel.sort()
+	print("BTLAT sum win_ms=%d n=%d applied=%d p50_dec_us=%d p95_dec_us=%d max_dec_us=%d p50_app_us=%d p95_app_us=%d max_app_us=%d maxdrain=%d backlogs=%d wasted=%d p50_gap_ms=%d p95_gap_ms=%d max_gap_ms=%d p95_jit_ms=%d enemies_max=%d rel_n=%d p50_bytes=%d p95_bytes=%d max_bytes=%d p95_gap_rel_ms=%d p95_gap_unrel_ms=%d" % [
+		now_ms - _lat_flush_ms, _lat_packets, _lat_applied,
+		_lat_pct(_lat_decode_samples, 0.5), _lat_pct(_lat_decode_samples, 0.95), _lat_pct(_lat_decode_samples, 1.0),
+		_lat_pct(_lat_apply_samples, 0.5), _lat_pct(_lat_apply_samples, 0.95), _lat_pct(_lat_apply_samples, 1.0),
+		_lat_max_drain, _lat_backlog_events, _lat_wasted_applies,
+		_lat_pct(_lat_gap_samples, 0.5), _lat_pct(_lat_gap_samples, 0.95), _lat_pct(_lat_gap_samples, 1.0),
+		_lat_pct(_lat_jitter_samples, 0.95),
+		_lat_max_enemies, _lat_rel_count,
+		_lat_pct(_lat_bytes_samples, 0.5), _lat_pct(_lat_bytes_samples, 0.95), _lat_pct(_lat_bytes_samples, 1.0),
+		_lat_pct(_lat_gap_rel, 0.95), _lat_pct(_lat_gap_unrel, 0.95)])
+	_lat_decode_samples.clear()
+	_lat_apply_samples.clear()
+	_lat_gap_samples.clear()
+	_lat_jitter_samples.clear()
+	_lat_bytes_samples.clear()
+	_lat_gap_rel.clear()
+	_lat_gap_unrel.clear()
+	_lat_applied = 0
+	_lat_packets = 0
+	_lat_max_drain = 0
+	_lat_backlog_events = 0
+	_lat_wasted_applies = 0
+	_lat_rel_count = 0
+	_lat_max_enemies = 0
+	_lat_flush_ms = now_ms
+# --- end BTLAT ---------------------------------------------------------------------------
+
 # Emitted when a game-lobby join is refused for a version/DLC/mod mismatch. `reason` is a
 # human-readable, multi-line description of what differs; the multiplayer menu shows it.
 signal join_blocked (reason)
@@ -163,6 +276,12 @@ signal game_lobby_found (lobby_id, lobby_name)
 
 # A player has entered or left the lobby
 signal lobby_players_updated()
+# Slots compacted away during character selection (indices as they were before removal).
+signal lobby_roster_changed(removed_indices)
+# A member left after the run was set up; its slot stays, flagged in left_players.
+signal player_left_run(player_index)
+# Roster / lock state changed (labels, slot controls, browser counts).
+signal lobby_slots_updated()
 
 # A player changed the focus in the character selection screen.  Connect to update the ui
 signal player_focused_character(player_index, character)
@@ -231,6 +350,13 @@ signal receive_leave_shop()
 
 signal state_update(state_dict)
 
+# Host side: a client asked for enemy spawn statics it never received (BTMISS backstop).
+signal enemy_statics_requested(ids)
+
+# Client-side: the host declared the run over (won=true: last wave cleared; false: every
+# player died). delay = the host's own end-wave timer, so both screens flip together.
+signal host_run_ended(won, delay)
+
 signal state_events(events_dict)
 
 signal client_position(client_position_dict, player_index)
@@ -248,6 +374,9 @@ signal client_main_scene_discard_button_pressed(player_index)
 signal host_entered_shop()
 
 func _ready():
+	_latprof_enabled = "--bt-latprof" in OS.get_cmdline_args()
+	if _latprof_enabled:
+		print("BTLAT armed (client-side MAIN_STATE latency profiling)")
 	if not Steam.loggedOn():
 		return
 
@@ -260,6 +389,8 @@ func _ready():
 	_err = Steam.connect("lobby_chat_update", self, "_on_lobby_chat_update")
 	_err = Steam.connect("p2p_session_request", self, "_on_p2p_session_request")
 	_err = Steam.connect("p2p_session_connect_fail", self, "_on_p2p_session_connect_fail")
+	_err = Steam.connect("lobby_data_update", self, "_on_lobby_data_update")
+	_err = Steam.connect("join_requested", self, "_on_join_requested")
 
 	global_chat_check_timer = Timer.new()
 	_err = global_chat_check_timer.connect("timeout", self, "_request_global_chat_search")
@@ -301,6 +432,8 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 		var game_lobby_name : String
 		var lobby_friends_only : bool = false
 		var lobby_owner_id : String = ""
+		var slots_csv : String = ""
+		var open_str : String = ""
 
 		for kvpair_index in lobby_data:
 			var key = lobby_data[kvpair_index]["key"]
@@ -322,11 +455,22 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 				lobby_friends_only = (value == "1")
 			elif key == "owner_id":
 				lobby_owner_id = value
+			elif key == ROSTER_KEY:
+				slots_csv = value
+			elif key == OPEN_KEY:
+				open_str = value
 
 		if is_game_lobby:
 			# A friends_only lobby is only listed for the host's friends (and the host).
 			if lobby_friends_only and not _is_self_or_friend(lobby_owner_id):
 				continue
+			if _search_seen.has(lobby_id):
+				continue   # already listed via the friend scan
+			_search_seen[lobby_id] = true
+			# Slot counts for the browser: seated players / (seated + open, i.e. unlocked empty).
+			var occupied : int = slots_csv.split(",").size() if slots_csv != "" else Steam.getNumLobbyMembers(lobby_id)
+			var open_n : int = int(open_str) if open_str != "" else int(max(0, MAX_SLOTS - occupied))
+			lobby_slot_info[lobby_id] = {"occupied": occupied, "capacity": occupied + open_n}
 			emit_signal("game_lobby_found", lobby_id, game_lobby_name)
 
 	if found_global_chat_lobby:
@@ -339,6 +483,12 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 
 
 func leave_game_lobby() -> void:
+	_pending_state_events.clear()   # never leak buffered events into a future run
+	Utils.remote_player_stats.clear()   # host-authoritative stat overrides die with the run
+	left_players.clear()
+	_kicked_ids.clear()
+	for i in MAX_SLOTS:
+		locked_slots[i] = false
 	if game_lobby_id > 0:
 		lobby_members.clear()
 		lobby_member_names.clear()
@@ -366,6 +516,13 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 			# it to the host's friends (owner_id lets a searcher check the friend relationship).
 			_err = Steam.setLobbyData(created_lobby_id, "friends_only", "1" if host_friends_only else "0")
 			_err = Steam.setLobbyData(created_lobby_id, "owner_id", str(Steam.getSteamID()))
+			# Fresh roster: just me in slot 0. Published before anyone can join.
+			lobby_members = [steam_id]
+			lobby_member_names = [Steam.getFriendPersonaName(steam_id)]
+			left_players.clear()
+			_kicked_ids.clear()
+			_publish_roster()
+			var _j = Steam.setLobbyJoinable(created_lobby_id, true)
 			# Stamp our version/DLC/mods so joining clients can refuse an incompatible game.
 			_stamp_compat_lobby_data(created_lobby_id)
 
@@ -377,10 +534,14 @@ func _request_global_chat_search() -> void:
 
 
 func request_lobby_search() -> void:
+	_search_seen.clear()
 	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	Steam.addRequestLobbyListStringFilter("lobby_type", GAME_LOBBY_TYPE, Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.addRequestLobbyListStringFilter("lobby_status", "OPEN", Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.requestLobbyList()
+	# Friends-only lobbies never come back from requestLobbyList: find them through friends'
+	# rich presence (getFriendGamePlayed carries the lobby id) and fetch their data asynchronously.
+	_scan_friend_lobbies()
 
 
 func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response: int) -> void:
@@ -405,12 +566,32 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 						return
 					$"/root/BrotogetherOptions".joining_multiplayer_lobby = true
 					game_lobby_id = lobby_id
+					run_ended_by_host = false
 					game_lobby_owner_id = Steam.getLobbyOwner(lobby_id)
 
-					for member_index in Steam.getNumLobbyMembers(lobby_id):
-						var member_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
-						lobby_members.push_back(member_id)
-						lobby_member_names.push_back(Steam.getFriendPersonaName(member_id))
+					# Joining a game that already started (invite / stale browser entry): bounce.
+					if game_lobby_owner_id != steam_id and Steam.getLobbyData(lobby_id, "lobby_status") != "OPEN":
+						pending_system_messages.push_back("Cannot join lobby -- the game is already in progress")
+						Steam.leaveLobby(lobby_id)
+						game_lobby_id = -1
+						$"/root/BrotogetherOptions".joining_multiplayer_lobby = false
+						var _e2 = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
+						return
+					# Roster comes from the host's published slot order, not Steam's enumeration.
+					if not _apply_roster_string(Steam.getLobbyData(lobby_id, ROSTER_KEY)):
+						lobby_members.clear()
+						lobby_member_names.clear()
+						for member_index in Steam.getNumLobbyMembers(lobby_id):
+							var member_id = Steam.getLobbyMemberByIndex(lobby_id, member_index)
+							lobby_members.push_back(member_id)
+							lobby_member_names.push_back(Steam.getFriendPersonaName(member_id))
+					_apply_left_string(Steam.getLobbyData(lobby_id, LEFT_KEY))
+					_apply_locked_string(Steam.getLobbyData(lobby_id, LOCKED_KEY))
+					# The host appends us to the roster when it sees our ENTERED; until that
+					# publish lands, take the slot it will give us (end of the list).
+					if not lobby_members.has(steam_id):
+						lobby_members.push_back(steam_id)
+						lobby_member_names.push_back(Steam.getFriendPersonaName(steam_id))
 
 					print("Changing to Character Selection Screen...")
 					var _error = get_tree().change_scene(MenuData.character_selection_scene)
@@ -426,34 +607,306 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 	# If a player has joined the lobby
 	if chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_ENTERED:
 		if lobby_id == game_lobby_id and game_lobby_id != -1:
-			if not lobby_members.has(change_id):
-				lobby_members.push_back(change_id)
-				lobby_member_names.push_back(changer_name)
-				emit_signal("lobby_players_updated")
 			print("%s has joined the lobby." % changer_name)
+			# Only the host seats (or refuses) a newcomer; clients learn the new roster from
+			# the host's lobby data instead of guessing the order.
+			if is_host():
+				_host_admit(change_id, changer_name)
 
-	# Else if a player has left the lobby
-	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_LEFT:
+	# Left, disconnected (timeout), kicked and banned all vacate the member.
+	elif (chat_state & LEAVE_STATES) != 0:
 		# Only treat an owner-left as "host left" for OUR game lobby. Without the lobby_id guard a
 		# LEFT in the global chat lobby (or a lobby we bailed out of, e.g. an incompatible join)
 		# whose leaver id matched game_lobby_owner_id would spuriously kick us back to the menu.
 		if lobby_id == game_lobby_id and game_lobby_id != -1 and change_id == game_lobby_owner_id:
-			pending_system_messages.push_back("Host left the lobby")
-			leave_game_lobby()
-			var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
-		print("%s has left the lobby." % changer_name)
+			if run_ended_by_host:
+				# Expected: the host leaves right after send_run_ended and Main is already
+				# on its way to the end-run screen. Just drop the lobby, no menu bounce.
+				leave_game_lobby()
+			else:
+				pending_system_messages.push_back("Host left the lobby")
+				leave_game_lobby()
+				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
+		elif lobby_id == game_lobby_id and game_lobby_id != -1 and is_host():
+			_host_member_left(change_id, changer_name)
+		print("%s has left the lobby (state %d)." % [changer_name, chat_state])
 
-	# Else if a player has been kicked
-	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_KICKED:
-		print("%s has been kicked from the lobby." % changer_name)
-
-	# Else if a player has been banned
-	elif chat_state == Steam.CHAT_MEMBER_STATE_CHANGE_BANNED:
-		print("%s has been banned from the lobby." % changer_name)
-
-	# Else there was some unknown change
 	else:
-		print("%s did... something." % changer_name)
+		print("%s did... something (state %d)." % [changer_name, chat_state])
+
+
+# --- Roster helpers ----------------------------------------------------------------------
+
+func _roster_open_slot_count() -> int:
+	var open := 0
+	for i in MAX_SLOTS:
+		if i >= lobby_members.size() and not locked_slots[i]:
+			open += 1
+	return open
+
+
+# Steam refuses joins beyond the member limit: occupied + open (unlocked, empty) slots.
+func _member_limit() -> int:
+	return int(max(1, lobby_members.size() + _roster_open_slot_count()))
+
+
+# Host: push roster / left / locked / open-count into the lobby data and size the member limit.
+func _publish_roster() -> void:
+	if not is_host() or game_lobby_id <= 0:
+		return
+	var ids := []
+	for id in lobby_members:
+		ids.push_back(str(id))
+	var left := []
+	for idx in left_players.keys():
+		left.push_back(str(idx))
+	var locked := ""
+	for i in MAX_SLOTS:
+		locked += "1" if locked_slots[i] else "0"
+	var _e = Steam.setLobbyData(game_lobby_id, ROSTER_KEY, PoolStringArray(ids).join(","))
+	_e = Steam.setLobbyData(game_lobby_id, LEFT_KEY, PoolStringArray(left).join(","))
+	_e = Steam.setLobbyData(game_lobby_id, LOCKED_KEY, locked)
+	_e = Steam.setLobbyData(game_lobby_id, OPEN_KEY, str(_roster_open_slot_count()))
+	_e = Steam.setLobbyMemberLimit(game_lobby_id, _member_limit())
+	emit_signal("lobby_slots_updated")
+
+
+# Rebuild lobby_members / lobby_member_names from "id,id,...". False when the key is absent.
+func _apply_roster_string(s) -> bool:
+	if s == null or str(s) == "":
+		return false
+	var ids := []
+	for part in str(s).split(","):
+		var id := int(part)
+		if id != 0:
+			ids.push_back(id)
+	if ids.empty():
+		return false
+	lobby_members.clear()
+	lobby_member_names.clear()
+	for id in ids:
+		lobby_members.push_back(id)
+		lobby_member_names.push_back(Steam.getFriendPersonaName(id))
+	return true
+
+
+func _apply_left_string(s) -> void:
+	left_players.clear()
+	if s == null or str(s) == "":
+		return
+	for part in str(s).split(","):
+		if part != "":
+			left_players[int(part)] = true
+
+
+func _apply_locked_string(s) -> void:
+	var txt := str(s) if s != null else ""
+	for i in MAX_SLOTS:
+		locked_slots[i] = i < txt.length() and txt[i] == "1"
+
+
+func _lobby_is_open() -> bool:
+	return game_lobby_id > 0 and Steam.getLobbyData(game_lobby_id, "lobby_status") == "OPEN"
+
+
+func _is_steam_lobby_member(member_id : int) -> bool:
+	if game_lobby_id <= 0:
+		return false
+	for i in Steam.getNumLobbyMembers(game_lobby_id):
+		if Steam.getLobbyMemberByIndex(game_lobby_id, i) == member_id:
+			return true
+	return false
+
+
+# Locks are positional while slots are empty (the host clicks a specific slot), but seating is
+# always compact (player index = roster order), so after any seat change the open-seat COUNT is
+# what survives: the first `open_count` empty slots are open, the rest locked.
+func _normalize_locks(open_count : int) -> void:
+	var size := lobby_members.size()
+	for i in MAX_SLOTS:
+		if i < size:
+			locked_slots[i] = false
+		else:
+			locked_slots[i] = (i - size) >= open_count
+
+
+# Host: seat or refuse a member Steam just let in.
+func _host_admit(member_id : int, member_name : String) -> void:
+	if member_id == steam_id or lobby_members.has(member_id):
+		return
+	var reason := ""
+	if _kicked_ids.has(member_id):
+		reason = "You were removed from this lobby"
+	elif not _lobby_is_open():
+		reason = "The game is already in progress"
+	elif host_friends_only and not _is_friend(member_id):
+		reason = "This lobby is friends only"
+	elif _roster_open_slot_count() <= 0:
+		reason = "The lobby is full"
+	if reason != "":
+		print("BTLOBBY refusing %s: %s" % [member_name, reason])
+		_kick(member_id, reason)
+		return
+	var open_before := _roster_open_slot_count()
+	lobby_members.push_back(member_id)
+	lobby_member_names.push_back(member_name)
+	_normalize_locks(open_before - 1)   # the newcomer took one open seat
+	print("BTLOBBY seated %s in slot %d" % [member_name, lobby_members.size() - 1])
+	_publish_roster()
+	emit_signal("lobby_players_updated")
+
+
+# Host: a member is gone. During character selection the slot is compacted away; once the run
+# is set up (lobby CLOSED) indexes must stay stable, so the slot stays and is flagged.
+func _host_member_left(member_id : int, member_name : String) -> void:
+	var idx := get_lobby_index_for_player(member_id)
+	if idx <= 0:
+		return
+	if _lobby_is_open():
+		var open_before := _roster_open_slot_count()
+		lobby_members.remove(idx)
+		lobby_member_names.remove(idx)
+		_normalize_locks(open_before + 1)   # the vacated seat is open again
+		_publish_roster()
+		print("BTLOBBY %s left slot %d (compacted)" % [member_name, idx])
+		emit_signal("lobby_roster_changed", [idx])
+	else:
+		left_players[idx] = true
+		_publish_roster()
+		print("BTLOBBY %s left slot %d mid-run" % [member_name, idx])
+		emit_signal("player_left_run", idx)
+
+
+# Host: eject a member. Steam lobbies have no kick, so the client is told to leave and its id
+# is refused for the rest of this lobby's life.
+func _kick(member_id : int, reason : String) -> void:
+	_kicked_ids[member_id] = true
+	send_p2p_packet({"REASON": reason}, MessageType.MESSAGE_TYPE_KICKED, member_id)
+	var idx := get_lobby_index_for_player(member_id)
+	if idx > 0:
+		var open_before := _roster_open_slot_count()
+		lobby_members.remove(idx)
+		lobby_member_names.remove(idx)
+		_normalize_locks(open_before + 1)
+		_publish_roster()
+		emit_signal("lobby_roster_changed", [idx])
+
+
+# UI entry point (host): kick the player in a slot.
+func kick_player(player_index : int) -> void:
+	if not is_host() or player_index <= 0 or player_index >= lobby_members.size():
+		return
+	_kick(lobby_members[player_index], "You were removed from the lobby by the host")
+
+
+# UI entry point (host): close / open an empty slot. Occupied slots cannot be locked.
+func set_slot_locked(slot : int, locked : bool) -> void:
+	if not is_host() or slot <= 0 or slot >= MAX_SLOTS or slot < lobby_members.size():
+		return
+	locked_slots[slot] = locked
+	_publish_roster()
+
+
+func _receive_kicked(data : Dictionary, sender_id : int) -> void:
+	if is_host() or sender_id != game_lobby_owner_id:
+		return
+	_kicked_out(str(data.get("REASON", "Removed from the lobby")))
+
+
+func _kicked_out(reason : String) -> void:
+	pending_system_messages.push_back(reason)
+	leave_game_lobby()
+	$"/root/BrotogetherOptions".joining_multiplayer_lobby = false
+	var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
+
+
+# Clients: the host changed lobby data -- re-derive roster / left / locked and react.
+func _on_lobby_data_update(_success : int, lobby_id : int, member_id : int) -> void:
+	# Friend scan: the data we asked for arrived; list the lobby if it is one of ours and open.
+	if _pending_friend_lobbies.has(lobby_id) and member_id == lobby_id:
+		_pending_friend_lobbies.erase(lobby_id)
+		_consider_friend_lobby(lobby_id)
+		return
+	if lobby_id != game_lobby_id or game_lobby_id <= 0 or member_id != lobby_id or is_host():
+		return
+	var before := lobby_members.duplicate()
+	var before_left := left_players.duplicate()
+	if not _apply_roster_string(Steam.getLobbyData(lobby_id, ROSTER_KEY)):
+		return
+	_apply_left_string(Steam.getLobbyData(lobby_id, LEFT_KEY))
+	_apply_locked_string(Steam.getLobbyData(lobby_id, LOCKED_KEY))
+	emit_signal("lobby_slots_updated")
+	if not lobby_members.has(steam_id):
+		_kicked_out("Removed from the lobby")
+		return
+	var removed := []
+	for i in before.size():
+		if not lobby_members.has(before[i]):
+			removed.push_back(i)
+	if removed.size() > 0:
+		emit_signal("lobby_roster_changed", removed)
+	elif lobby_members.size() > before.size():
+		emit_signal("lobby_players_updated")
+	for idx in left_players.keys():
+		if not before_left.has(idx):
+			emit_signal("player_left_run", idx)
+
+
+# EFriendRelationship k_EFriendRelationshipFriend == 3. --bt-force-stranger makes everyone a
+# stranger so the host-side refusal can be exercised between two accounts that ARE friends.
+func _is_friend(member_id : int) -> bool:
+	if debug_force_stranger:
+		return false
+	return Steam.getFriendRelationship(member_id) == 3
+
+
+# Browser: ask Steam for the lobby data of every friend currently sitting in a lobby of this app.
+func _scan_friend_lobbies() -> void:
+	var my_app : int = Steam.getAppID()
+	for i in Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE):
+		var friend_id : int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
+		var played = Steam.getFriendGamePlayed(friend_id)
+		if typeof(played) != TYPE_DICTIONARY:
+			continue
+		var lobby_id : int = int(played.get("lobby", 0))
+		if lobby_id == 0 or int(played.get("id", 0)) != my_app or lobby_id == game_lobby_id:
+			continue
+		if _search_seen.has(lobby_id) or _pending_friend_lobbies.has(lobby_id):
+			continue
+		_pending_friend_lobbies[lobby_id] = true
+		var _r = Steam.requestLobbyData(lobby_id)
+
+
+# Browser: a friend's lobby data arrived -- list it like a public search hit if it qualifies.
+func _consider_friend_lobby(lobby_id : int) -> void:
+	if _search_seen.has(lobby_id):
+		return
+	if str(Steam.getLobbyData(lobby_id, "lobby_type")) != GAME_LOBBY_TYPE:
+		return
+	if str(Steam.getLobbyData(lobby_id, "lobby_status")) != "OPEN":
+		return
+	var slots_csv := str(Steam.getLobbyData(lobby_id, ROSTER_KEY))
+	var open_str := str(Steam.getLobbyData(lobby_id, OPEN_KEY))
+	var occupied : int = slots_csv.split(",").size() if slots_csv != "" else Steam.getNumLobbyMembers(lobby_id)
+	var open_n : int = int(open_str) if open_str != "" else int(max(0, MAX_SLOTS - occupied))
+	if open_n <= 0:
+		return
+	_search_seen[lobby_id] = true
+	lobby_slot_info[lobby_id] = {"occupied": occupied, "capacity": occupied + open_n}
+	emit_signal("game_lobby_found", lobby_id, str(Steam.getLobbyData(lobby_id, "lobby_name")))
+
+
+# UI entry point (host): Steam overlay invite dialog for the current game lobby.
+func invite_friends() -> void:
+	if game_lobby_id > 0:
+		Steam.activateGameOverlayInviteDialog(game_lobby_id)
+
+
+# Steam overlay "Join game" / accepted invite while we are not in a game lobby.
+func _on_join_requested(lobby_id : int, _friend_id : int) -> void:
+	if game_lobby_id > 0:
+		return
+	attempt_join_game_lobby(lobby_id)
 
 
 func _on_p2p_session_connect_fail(_steam_id: int, session_error: int) -> void:
@@ -617,7 +1070,10 @@ func attempt_join_game_lobby(lobby_id : int) -> void:
 
 func create_new_game_lobby(friends_only : bool = false) -> void:
 	host_friends_only = friends_only
-	Steam.createLobby(Steam.LOBBY_TYPE_PUBLIC, 4)
+	# Friends-only is enforced by Steam itself: a LOBBY_TYPE_FRIENDS_ONLY lobby refuses non-friends
+	# at joinLobby and never appears in requestLobbyList; friends find it through the host's rich
+	# presence (see _scan_friend_lobbies) or an invite. _host_admit double-checks on ENTERED.
+	Steam.createLobby(Steam.LOBBY_TYPE_FRIENDS_ONLY if friends_only else Steam.LOBBY_TYPE_PUBLIC, 4)
 
 
 # True if `owner_id_str` (a Steam id) is the local user or one of their Steam friends. Used to
@@ -662,8 +1118,10 @@ func send_p2p_packet(data : Dictionary, message_type : int, target_id = -1, p_se
 			print("BTNET unreliable->reliable fallback #%d channel=%d bytes=%d" % [unreliable_fallbacks, channel, last_packet_bytes])
 
 	if target_id == -1:
-		for lobby_member_id in lobby_members:
-			if lobby_member_id != steam_id:
+		for member_index in lobby_members.size():
+			var lobby_member_id = lobby_members[member_index]
+			# Departed members keep their slot (stable indexes) but get no more traffic.
+			if lobby_member_id != steam_id and not left_players.has(member_index):
 				var sent = Steam.sendP2PPacket(lobby_member_id, packet_data, send_type, channel)
 				_check_send(sent, channel, send_type, last_packet_bytes)
 	else:
@@ -685,6 +1143,13 @@ func _check_send(sent : bool, channel : int, send_type : int, bytes : int) -> vo
 
 
 func read_p2p_packet() -> void:
+	# BTLAT pass-local accounting: one "pass" = one full drain of all channels this frame.
+	var lat_n : int = 0             # MAIN_STATE packets handled this pass
+	var lat_pass_us : int = 0       # decode+apply us spent on them this pass
+	var lat_first_seq : int = -1
+	var lat_last_seq : int = -1
+	var lat_newest_sent_ms : int = -1
+	var lat_pass_rel : bool = false # newest MAIN_STATE packet this pass rode the reliable fallback
 	for channel in MessageType.values():
 		var packet_size: int = Steam.getAvailableP2PPacketSize(channel)
 
@@ -696,7 +1161,17 @@ func read_p2p_packet() -> void:
 				continue
 
 			var sender_id : int = packet["remote_steam_id"]
+			# Only the host we joined or a seated roster member may drive our state.
+			if sender_id != game_lobby_owner_id and get_lobby_index_for_player(sender_id) == -1:
+				packet_size = Steam.getAvailableP2PPacketSize(channel)
+				continue
+			var lat_on : bool = _latprof_enabled and channel == MessageType.MESSAGE_TYPE_MAIN_STATE
+			var lat_t0 : int = Time.get_ticks_usec() if lat_on else 0
 			var data : Dictionary = bytes2var(packet["data"].decompress_dynamic(-1, File.COMPRESSION_GZIP))
+			if lat_on:
+				var lat_dec_us : int = Time.get_ticks_usec() - lat_t0
+				_lat_decode_samples.push_back(lat_dec_us)
+				lat_pass_us += lat_dec_us
 
 			if channel == MessageType.MESSAGE_TYPE_PING:
 				_respond_to_ping(data, sender_id)
@@ -757,7 +1232,48 @@ func read_p2p_packet() -> void:
 
 			# Main scene channels
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
-				_receive_game_state(data)
+				if _latprof_enabled:
+					# Compressed size + delivery mode: only an over-MTU packet can have been
+					# sent RELIABLE (host falls back above UNRELIABLE_MAX_BYTES), so the size
+					# the client read classifies the path exactly with no protocol change.
+					_lat_bytes_samples.push_back(packet_size)
+					lat_pass_rel = packet_size > UNRELIABLE_MAX_BYTES
+					if lat_pass_rel:
+						_lat_rel_count += 1
+					# Density: enemies + bosses ride as flat 9-int rows (ENEMY_ROW_STRIDE).
+					var lat_ec : int = 0
+					# Packed bytes since 2026-09-10 (main.gd ENEMY_ROW_BYTES=16); ints (9/row) before.
+					var lat_rows = data.get("ENEMIES", null)
+					if lat_rows != null:
+						lat_ec = int(lat_rows.size() / (16 if lat_rows is PoolByteArray else 9))
+					var lat_brows = data.get("BOSSES", null)
+					if lat_brows != null:
+						lat_ec += int(lat_brows.size() / (16 if lat_brows is PoolByteArray else 9))
+					if lat_ec > _lat_max_enemies:
+						_lat_max_enemies = lat_ec
+					var lat_seq : int = int(data.get("SEQ", 0))
+					var lat_app_t0 : int = Time.get_ticks_usec()
+					_receive_game_state(data)
+					var lat_app_us : int = Time.get_ticks_usec() - lat_app_t0
+					_lat_apply_samples.push_back(lat_app_us)
+					lat_pass_us += lat_app_us
+					lat_n += 1
+					_lat_packets += 1
+					if lat_seq > _lat_max_seen_seq:
+						_lat_max_seen_seq = lat_seq
+						_lat_applied += 1
+					elif lat_seq <= 2:
+						# fresh Main scene restarts SEQ at 1 each wave
+						_lat_max_seen_seq = lat_seq
+						_lat_applied += 1
+					if lat_first_seq < 0:
+						lat_first_seq = lat_seq
+					lat_last_seq = lat_seq
+					var lat_sent = data.get("SENT_AT_MS", -1)
+					if lat_sent != null and int(lat_sent) > 0:
+						lat_newest_sent_ms = int(lat_sent)
+				else:
+					_receive_game_state(data)
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS:
 				_receive_game_events(data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
@@ -776,8 +1292,41 @@ func read_p2p_packet() -> void:
 				_receive_main_scene_client_discard_button_pressed(sender_id)
 			elif channel == MessageType.MESSAGE_TYPE_HOST_ENTERED_SHOP:
 				_receive_host_entered_shop()
+			elif channel == MessageType.MESSAGE_TYPE_ENEMY_STATICS_REQUEST:
+				_receive_enemy_statics_request(data)
+			elif channel == MessageType.MESSAGE_TYPE_RUN_ENDED:
+				_receive_run_ended(data)
+			elif channel == MessageType.MESSAGE_TYPE_KICKED:
+				_receive_kicked(data, sender_id)
 
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
+
+	# BTLAT pass-end: gap/jitter between MAIN_STATE-carrying passes, backlog events, summary.
+	if _latprof_enabled and lat_n > 0:
+		var lat_now_ms : int = Time.get_ticks_msec()
+		if _lat_prev_arrival_ms >= 0:
+			var lat_gap_ms : int = lat_now_ms - _lat_prev_arrival_ms
+			_lat_gap_samples.push_back(lat_gap_ms)
+			if lat_pass_rel:
+				_lat_gap_rel.push_back(lat_gap_ms)
+			else:
+				_lat_gap_unrel.push_back(lat_gap_ms)
+			if lat_newest_sent_ms > 0 and _lat_prev_sent_ms > 0:
+				# both terms are same-clock deltas, so the host/client clock offset cancels
+				_lat_jitter_samples.push_back(lat_gap_ms - (lat_newest_sent_ms - _lat_prev_sent_ms))
+		_lat_prev_arrival_ms = lat_now_ms
+		if lat_newest_sent_ms > 0:
+			_lat_prev_sent_ms = lat_newest_sent_ms
+		if lat_n > _lat_max_drain:
+			_lat_max_drain = lat_n
+		if lat_n > 1:
+			_lat_backlog_events += 1
+			_lat_wasted_applies += lat_n - 1
+			print("BTLAT backlog n=%d pass_us=%d seq_first=%d seq_last=%d" % [lat_n, lat_pass_us, lat_first_seq, lat_last_seq])
+		if _lat_flush_ms == 0:
+			_lat_flush_ms = lat_now_ms
+		elif lat_now_ms - _lat_flush_ms >= LAT_FLUSH_INTERVAL_MS:
+			_lat_flush_summary(lat_now_ms)
 
 
 func _generate_ping_key() -> String:
@@ -819,7 +1368,9 @@ func _respond_to_ping(data : Dictionary, sender_id : int) -> void:
 		print("WARNING - Ping sent without key")
 		return
 
-	emit_signal("client_status_received", data, get_lobby_index_for_player(sender_id))
+	var ping_index := get_lobby_index_for_player(sender_id)
+	if ping_index >= 0:
+		emit_signal("client_status_received", data, ping_index)
 	send_p2p_packet({"PING_KEY": data["PING_KEY"]}, MessageType.MESSAGE_TYPE_PONG, sender_id)
 
 
@@ -882,7 +1433,11 @@ func _on_p2p_session_request(remote_id: int) -> void:
 	var this_requester: String = Steam.getFriendPersonaName(remote_id)
 	print("%s is requesting a P2P session" % this_requester)
 
-	# Accept the P2P session; can apply logic to deny this request if needed
+	# Accept only from the host we joined or someone Steam lists in our game lobby.
+	if remote_id != game_lobby_owner_id and get_lobby_index_for_player(remote_id) == -1 \
+			and not _is_steam_lobby_member(remote_id):
+		print("BTLOBBY ignoring P2P session request from non-member %s" % this_requester)
+		return
 	var _err = Steam.acceptP2PSessionWithUser(remote_id)
 
 	# Make the initial handshake
@@ -931,6 +1486,7 @@ func send_character_selection_completed(some_player_has_weapon_slots : bool, cur
 		return
 
 	var _err = Steam.setLobbyData(game_lobby_id, "lobby_status", "CLOSED")
+	_err = Steam.setLobbyJoinable(game_lobby_id, false)   # Steam-level: no one joins a running game
 	var data = {
 		"HAS_WEAPON_SLOTS" : some_player_has_weapon_slots,
 		"SELECTED_CHARACTERS": currently_focused_characters,
@@ -1335,6 +1891,12 @@ func send_round_start() -> void:
 
 
 func _receive_host_round_start() -> void:
+	# Anything still queued from the PREVIOUS wave's tail is stale once a new round
+	# begins -- only events arriving between now and the new Main's _ready matter.
+	_pending_state_events.clear()
+	# Shop-time stat overrides must never leak into combat: the client's own player
+	# would read frozen shop values (speed, HP...) in its local simulation.
+	Utils.remote_player_stats.clear()
 	emit_signal("host_starts_round")
 
 
@@ -1382,6 +1944,33 @@ func send_game_events(events_dict : Dictionary) -> void:
 		send_p2p_packet(events_dict, MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS)
 
 
+# BTMISS backstop: the client asks the host to resend spawn statics for ids it has rows
+# for but cannot instance. Reliable (default send type); host answers via send_game_events.
+func request_enemy_statics(ids : Array) -> void:
+	if is_host():
+		return
+	send_p2p_packet({"IDS": ids}, MessageType.MESSAGE_TYPE_ENEMY_STATICS_REQUEST, game_lobby_owner_id)
+
+
+func _receive_enemy_statics_request(data : Dictionary) -> void:
+	if not is_host():
+		return
+	emit_signal("enemy_statics_requested", data.get("IDS", []))
+
+
+# Run over (host -> clients, reliable). See MESSAGE_TYPE_RUN_ENDED.
+func send_run_ended(won : bool, delay : float) -> void:
+	if is_host():
+		send_p2p_packet({"WON": won, "DELAY": delay}, MessageType.MESSAGE_TYPE_RUN_ENDED)
+
+
+func _receive_run_ended(data : Dictionary) -> void:
+	if is_host():
+		return
+	run_ended_by_host = true
+	emit_signal("host_run_ended", data.get("WON", false), float(data.get("DELAY", 0.5)))
+
+
 func _receive_game_state(state_dict : Dictionary) -> void:
 	if is_host():
 		print("ERR - HOST SHOULD NOT BE GETTING STATE UPDATES")
@@ -1390,10 +1979,36 @@ func _receive_game_state(state_dict : Dictionary) -> void:
 	emit_signal("state_update", state_dict)
 
 
+# One-shot reliable deltas (enemy spawn statics, deaths, effects). These are sent EXACTLY
+# ONCE per fact (e.g. _enemy_statics_sent), but the client's Main scene takes ~1.1s to
+# instantiate at every wave start (measured: the 62-71 snapshot backlog) and only connects
+# "state_events" in its _ready. An emit with no listener silently discards the payload, so
+# every enemy first seen by the host during that window stayed INVISIBLE on the client all
+# wave (its rows are skipped for lack of statics), and deaths lost the same way could leave
+# ghosts. Buffer undeliverable events here; the client Main drains them, in order, right
+# after connecting (drain_pending_state_events).
+var _pending_state_events := []
+
 func _receive_game_events(events_dict : Dictionary) -> void:
 	if is_host():
 		return
+	if get_signal_connection_list("state_events").empty():
+		_pending_state_events.push_back(events_dict)
+		return
 	emit_signal("state_events", events_dict)
+
+
+# Called by the client Main scene right after it connects "state_events": replay every
+# events packet that arrived while no listener existed (wave-start scene load), oldest
+# first, so one-shot spawn statics and deaths are never lost.
+func drain_pending_state_events() -> void:
+	if _pending_state_events.empty():
+		return
+	print("BTNET replaying %d buffered state_events packet(s) queued during scene load" % _pending_state_events.size())
+	var queued = _pending_state_events
+	_pending_state_events = []
+	for events_dict in queued:
+		emit_signal("state_events", events_dict)
 
 
 func send_client_position(client_position_dict : Dictionary) -> void:

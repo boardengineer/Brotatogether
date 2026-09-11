@@ -1,8 +1,57 @@
 extends "res://ui/menus/shop/coop_shop.gd"
 
+# Every stat key the shop stat panels display (stats_container.tscn exports, lowercased
+# the way StatContainer hashes them). The HOST ships Utils.get_stat for each of these
+# per player in the shop packet so clients can show true remote-player stats out of
+# combat. String keys on the wire (self-documenting; gzip eats the repetition).
+const SYNCED_STAT_KEYS = [
+	"stat_max_hp", "stat_hp_regeneration", "stat_lifesteal", "stat_percent_damage",
+	"stat_melee_damage", "stat_ranged_damage", "stat_elemental_damage",
+	"stat_attack_speed", "stat_crit_chance", "stat_engineering", "stat_range",
+	"stat_armor", "stat_dodge", "stat_speed", "stat_luck", "stat_harvesting",
+	"consumable_heal", "burning_cooldown_reduction", "burning_spread", "bounce",
+	"piercing", "piercing_damage", "damage_against_bosses", "pct_enemy_speed",
+	"enemy_speed", "pct_number_of_enemies", "number_of_enemies", "enemy_damage",
+	"explosion_size", "explosion_damage", "chance_double_gold", "chance_heal_on_gold",
+	"heal_when_pickup_gold", "items_price", "item_box_gold", "free_rerolls",
+	"xp_gain", "pickup_range", "knockback", "trees",
+	"structure_attack_speed", "structure_range",
+]
+
 
 var steam_connection
 var brotatogether_options
+
+
+# The reroll button inits its tint from LOCAL gold before the host's post-harvest
+# echo lands on clients, so it opened dark even when affordable. Re-tinted one frame
+# after shop open (deferred from the ext _ready below) and on every shop packet.
+func _bt_refresh_affordability_all() -> void:
+	for pi in RunData.get_player_count():
+		var rb = _get_reroll_button(pi)
+		if rb != null and rb.has_method("set_color_from_currency"):
+			rb.set_color_from_currency(RunData.get_player_gold(pi))
+		var cont = _get_shop_items_container(pi)
+		if cont != null:
+			for shop_it in cont._shop_items:
+				if shop_it != null and is_instance_valid(shop_it) and shop_it.has_method("update_color"):
+					shop_it.update_color()
+
+
+# 9 / 0 scroll EVERY player's shop-panel carousel left / right (shop <-> stats <->
+# secondary stats), own panel included -- vanilla binds the carousel only to gamepad
+# triggers, so a keyboard player cannot flip ANY panel without this. Digits collide
+# with nothing (E=lock, R=ban, Q reserved). Purely local UI; remote values come from
+# the propagated STATS.
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo 			and (event.scancode == KEY_9 or event.scancode == KEY_0):
+		if brotatogether_options != null and brotatogether_options.in_multiplayer_game:
+			for pi in RunData.get_player_count():
+				var cont = _get_coop_player_container(pi)
+				if cont != null and is_instance_valid(cont.carousel):
+					var arrow = cont.carousel.arrow_left if event.scancode == KEY_9 else cont.carousel.arrow_right
+					if arrow != null:
+						arrow.emit_signal("pressed")
 
 var in_multiplayer_game = false
 
@@ -28,6 +77,8 @@ func _ready():
 
 	if in_multiplayer_game:
 		waiting_to_start_shop = true
+		# Initial affordability tint (reroll button opened dark from stale local gold).
+		call_deferred("_bt_refresh_affordability_all")
 
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("shop_lobby_update", self, "_update_shop")
@@ -43,6 +94,7 @@ func _ready():
 		steam_connection.connect("client_shop_requested", self, "send_shop_state")
 		steam_connection.connect("close_popup", self, "_remote_close_client_popup")
 		steam_connection.connect("receive_leave_shop", self, "_receive_leave_shop")
+		steam_connection.connect("player_left_run", self, "_on_player_left_run")
 
 		if steam_connection.is_host():
 			steam_connection.send_host_entered_shop()
@@ -54,7 +106,7 @@ func _process(_delta):
 			if steam_connection.is_host():
 				var all_players_entered = true
 				for player_index in RunData.get_player_count():
-					if not player_in_scene[player_index]:
+					if not player_in_scene[player_index] and not steam_connection.left_players.has(player_index):
 						all_players_entered = false
 						break
 				if all_players_entered:
@@ -148,7 +200,7 @@ func _on_go_button_pressed_brotatogether(player_index: int)->void :
 		checkmark.show()
 
 	for other_player_index in RunData.get_player_count():
-		if not _player_pressed_go_button[other_player_index]:
+		if not _player_pressed_go_button[other_player_index] and not steam_connection.left_players.has(other_player_index):
 			return
 
 	RunData.current_wave += 1
@@ -207,11 +259,18 @@ func _client_shop_combine_weapon(weapon_string : String, _is_upgrade: bool, play
 
 
 func _client_shop_lock_item(item_string : String, _wave_value: int, player_index: int) -> void:
-	_shop_item_for_string(item_string, player_index).change_lock_status(true)
+	# A lock can race a reroll/shop-state echo: the named item may no longer exist on
+	# this side (autoshop exposed it -- 36 Nil calls/run). Unresolvable = drop; the next
+	# shop-state sync carries the authoritative lock set anyway.
+	var locked_item = _shop_item_for_string(item_string, player_index)
+	if locked_item != null:
+		locked_item.change_lock_status(true)
 
 
 func _client_shop_unlock_item(item_string : String, player_index : int) -> void:
-	_shop_item_for_string(item_string, player_index).change_lock_status(false)
+	var unlocked_item = _shop_item_for_string(item_string, player_index)
+	if unlocked_item != null:
+		unlocked_item.change_lock_status(false)
 
 
 func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
@@ -272,6 +331,19 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		player_dict["CURRENT_XP"] = RunData.players_data[player_index].current_xp
 		player_dict["NEXT_LEVEL_XP"] = RunData.get_next_level_xp_needed(player_index)
 		player_dict["CURRENT_LEVEL"] = RunData.players_data[player_index].current_level
+		# Host-authoritative effective stats (base+temp+linked, i.e. what the host's own
+		# panels show) so clients can display true stats for remote players out of combat.
+		if steam_connection.is_host():
+			var stats_dict = {}
+			# A REMOTE player's effects dict can lack 3 DLC keys (chance_heal_on_gold,
+			# pct_number_of_enemies, pct_enemy_speed -- per-slot init asymmetry), and
+			# get_stat Nil-crashes on an absent key. Absent means default: send 0.
+			var player_effects = RunData.get_player_effects(player_index)
+			for stat_key in SYNCED_STAT_KEYS:
+				var stat_hash = Keys.generate_hash(stat_key)
+				stats_dict[stat_key] = Utils.get_stat(stat_hash, player_index) if player_effects.has(stat_hash) else 0.0
+			player_dict["STATS"] = stats_dict
+			print("BTSTATS sent p%d max_hp=%d armor=%d luck=%d" % [player_index, stats_dict["stat_max_hp"], stats_dict["stat_armor"], stats_dict["stat_luck"]])
 		player_dict["FOCUS"] = _focus_dictionary_for_player(player_index)
 
 		player_dict["REROLL_PRICE"] = _reroll_price[player_index]
@@ -379,6 +451,17 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
+		# Direct gold assignment skips gold_changed AND the local spend paths that
+		# normally re-tint affordability, so the reroll button stayed dark (and shop
+		# item prices mis-tinted) after the host echoed gold back. Refresh both.
+		var reroll_btn = _get_reroll_button(player_index)
+		if reroll_btn != null and reroll_btn.has_method("set_color_from_currency"):
+			reroll_btn.set_color_from_currency(RunData.players_data[player_index].gold)
+		var items_cont = _get_shop_items_container(player_index)
+		if items_cont != null:
+			for shop_it in items_cont._shop_items:
+				if shop_it != null and is_instance_valid(shop_it) and shop_it.has_method("update_color"):
+					shop_it.update_color()
 
 		# Reliable xp/level backstop (see send side). .has() guard keeps compatibility with a host
 		# that predates these fields; xp_added refreshes the client's xp bar / level display.
@@ -386,6 +469,19 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 			RunData.players_data[player_index].current_xp = player_dict["CURRENT_XP"]
 			RunData.players_data[player_index].current_level = player_dict.get("CURRENT_LEVEL", RunData.players_data[player_index].current_level)
 			RunData.emit_signal("xp_added", player_dict["CURRENT_XP"], player_dict.get("NEXT_LEVEL_XP", 0), player_index)
+
+		# Host-authoritative stats for ALL players (see send side): store on the Utils
+		# extension, whose get_stat serves them to every stats panel. This includes our
+		# OWN player: a client's local RunData never applies item effects (host does;
+		# only gold/xp echo back), so the local view goes stale after every buy. The
+		# overrides are cleared at round start so combat never reads frozen values.
+		if player_dict.has("STATS") and not steam_connection.is_host():
+			var remote_stats = {}
+			for stat_key in player_dict["STATS"]:
+				remote_stats[Keys.generate_hash(stat_key)] = player_dict["STATS"][stat_key]
+			Utils.remote_player_stats[player_index] = remote_stats
+			print("BTSTATS stored p%d n=%d max_hp=%d armor=%d luck=%d" % [player_index, remote_stats.size(), Utils.get_stat(Keys.generate_hash("stat_max_hp"), player_index), Utils.get_stat(Keys.generate_hash("stat_armor"), player_index), Utils.get_stat(Keys.generate_hash("stat_luck"), player_index)])
+			_update_stats(player_index)
 
 		waiting_to_start_shop = false
 
@@ -655,3 +751,15 @@ func _on_RerollButton_pressed(player_index: int)->void :
 		steam_connection.shop_reroll(player_index)
 	else:
 		._on_RerollButton_pressed( player_index)
+
+
+# A member left while in the shop: if everyone still here already pressed GO, the host moves on.
+func _on_player_left_run(_player_index : int) -> void:
+	if not in_multiplayer_game or not steam_connection.is_host() or get_tree().paused:
+		return
+	for i in RunData.get_player_count():
+		if not _player_pressed_go_button[i] and not steam_connection.left_players.has(i):
+			return
+	RunData.current_wave += 1
+	steam_connection.leave_shop()
+	var _error = get_tree().change_scene(MenuData.game_scene)

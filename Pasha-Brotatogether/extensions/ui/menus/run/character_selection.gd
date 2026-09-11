@@ -46,8 +46,11 @@ func _ready():
 	steam_connection.connect("request_character_lobby_update", self, "_character_lobby_update_requested")
 	steam_connection.connect("character_selection_complete", self, "_host_character_selection_complete")
 	
-	# TODO gracefully add new players
+	# A join still reloads the scene (the simplest way to grow the vanilla panel set); a leave
+	# is handled in place so the remaining players keep their picks.
 	steam_connection.connect("lobby_players_updated", self, "reload_scene")
+	steam_connection.connect("lobby_roster_changed", self, "_on_lobby_roster_changed")
+	steam_connection.connect("lobby_slots_updated", self, "_refresh_slot_controls")
 	
 	brotatogether_options = $"/root/BrotogetherOptions"
 	is_multiplayer_lobby = brotatogether_options.joining_multiplayer_lobby
@@ -95,6 +98,7 @@ func _ready():
 		
 		for index in steam_connection.lobby_member_names.size():
 			username_labels[index].text = steam_connection.lobby_member_names[index]
+		_build_slot_controls()
 		
 		global_chat_panel = ChatPanel.instance()
 		global_chat_panel.get_node("MarginContainer/VBoxContainer/HBoxContainer/ChatTitle").text = "Global Chat"
@@ -340,3 +344,170 @@ func _host_character_selection_complete(some_player_has_weapon_slots : bool, sel
 		_change_scene(MenuData.weapon_selection_scene)
 	else:
 		_change_scene(MenuData.difficulty_selection_scene)
+
+
+# --- Lobby slot controls ------------------------------------------------------------------
+# Per slot (index = player index): Kick under an occupied name (host), a "Waiting for a
+# player..." box on the vanilla CoopJoinPanel of an empty slot (+ Lock for the host), and the
+# vanilla LockedPanel re-labelled "Slot locked" for a closed slot (+ Unlock for the host). Lock
+# state lives in SteamConnection.locked_slots (host publishes it; Steam's member limit follows).
+var _slot_kick_buttons := []
+var _slot_lock_buttons := []
+var _slot_unlock_buttons := []
+var _slot_wait_boxes := []      # our CenterContainer inside each CoopJoinPanel
+var _slot_controls_built := false
+const EMPTY_SLOT_WIDTH := 160   # px; player panel 370 + run options 320 + gaps must fit 1920
+
+
+func _build_slot_controls() -> void:
+	if not is_multiplayer_lobby or _slot_controls_built:
+		return
+	_slot_controls_built = true
+	var host = steam_connection.is_host()
+	var join_panels = _get_coop_join_panels()
+	var locked_panels = _get_locked_panels()
+	for i in username_labels.size():
+		var kick : Button = null
+		if host:
+			kick = Button.new()
+			kick.text = "Kick"
+			kick.connect("pressed", self, "_on_kick_pressed", [i])
+			var holder = username_labels[i].get_parent()
+			holder.add_child(kick)
+			holder.move_child(kick, username_labels[i].get_index() + 1)
+		if host and i == 0:
+			var invite := Button.new()
+			invite.text = "Invite friends"
+			invite.connect("pressed", self, "_on_invite_pressed")
+			var holder0 = username_labels[0].get_parent()
+			holder0.add_child(invite)
+			holder0.move_child(invite, username_labels[0].get_index() + 1)
+		_slot_kick_buttons.push_back(kick)
+
+		var wait_box : CenterContainer = null
+		var lock : Button = null
+		if i < join_panels.size() and join_panels[i] != null:
+			var jp = join_panels[i]
+			# Vanilla parks all four CoopJoinPanels at the END of the row, so an open slot always
+			# rendered at the far right whichever slot was unlocked. Seat it right after its own
+			# LockedPanel so open / locked / occupied all draw in the slot's position.
+			if i < locked_panels.size() and locked_panels[i] != null and jp.get_parent() == locked_panels[i].get_parent():
+				jp.get_parent().move_child(jp, locked_panels[i].get_index() + 1)
+			# Vanilla sizes these for the local-coop join instructions (370 px); three of them next
+			# to a player panel and the run-options panel overflow 1920 px, so keep empty slots narrow.
+			jp.rect_min_size = Vector2(EMPTY_SLOT_WIDTH, 0)
+			wait_box = CenterContainer.new()
+			wait_box.size_flags_horizontal = SIZE_EXPAND_FILL
+			wait_box.size_flags_vertical = SIZE_EXPAND_FILL
+			var box = VBoxContainer.new()
+			box.alignment = BoxContainer.ALIGN_CENTER
+			var wait_label = Label.new()
+			wait_label.text = "Open slot"
+			wait_label.align = Label.ALIGN_CENTER
+			box.add_child(wait_label)
+			if host and i > 0:
+				lock = Button.new()
+				lock.text = "Lock"
+				lock.connect("pressed", self, "_on_lock_pressed", [i, true])
+				box.add_child(lock)
+			wait_box.add_child(box)
+			jp.add_child(wait_box)
+		_slot_wait_boxes.push_back(wait_box)
+		_slot_lock_buttons.push_back(lock)
+
+		var unlock : Button = null
+		if i < locked_panels.size() and locked_panels[i] != null:
+			var lp = locked_panels[i]
+			lp.rect_min_size = Vector2(EMPTY_SLOT_WIDTH, 0)
+			var desc = lp.get_node_or_null("MarginContainer/VBoxContainer/Description")
+			if desc != null:
+				desc.text = "Locked"
+			if host and i > 0:
+				unlock = Button.new()
+				unlock.text = "Unlock"
+				unlock.connect("pressed", self, "_on_lock_pressed", [i, false])
+				var vbox = lp.get_node_or_null("MarginContainer/VBoxContainer")
+				if vbox != null:
+					vbox.add_child(unlock)
+		_slot_unlock_buttons.push_back(unlock)
+	_refresh_slot_controls()
+
+
+func _refresh_slot_controls() -> void:
+	if not is_multiplayer_lobby or not _slot_controls_built:
+		return
+	var occupied = steam_connection.lobby_members.size()
+	var join_panels = _get_coop_join_panels()
+	var locked_panels = _get_locked_panels()
+	for i in username_labels.size():
+		username_labels[i].text = steam_connection.lobby_member_names[i] if i < steam_connection.lobby_member_names.size() else ""
+		var is_occupied = i < occupied
+		var is_locked = (not is_occupied) and i < steam_connection.locked_slots.size() and steam_connection.locked_slots[i]
+		if _slot_kick_buttons[i] != null:
+			_slot_kick_buttons[i].visible = is_occupied and i > 0
+		if i < join_panels.size() and join_panels[i] != null:
+			var jp = join_panels[i]
+			jp.visible = not is_occupied and not is_locked
+			# Only our waiting box shows; vanilla's "press to join" content is for local co-op.
+			for child in jp.get_children():
+				child.visible = child == _slot_wait_boxes[i]
+		if i < locked_panels.size() and locked_panels[i] != null:
+			locked_panels[i].visible = is_locked
+		if _slot_lock_buttons[i] != null:
+			_slot_lock_buttons[i].visible = not is_occupied and not is_locked
+		if _slot_unlock_buttons[i] != null:
+			_slot_unlock_buttons[i].visible = is_locked
+
+
+func _on_lock_pressed(slot : int, locked : bool) -> void:
+	steam_connection.set_slot_locked(slot, locked)
+
+
+# Vanilla re-shows join panels / hides locked panels whenever the player count changes;
+# re-apply the lobby's slot state on top.
+func _update_character_selection_player_count_ui() -> void:
+	._update_character_selection_player_count_ui()
+	_refresh_slot_controls()
+
+
+func _on_kick_pressed(slot : int) -> void:
+	steam_connection.kick_player(slot)
+
+
+# A member left during character selection: drop its slot in place. Slots above it shift down,
+# so the per-slot selection arrays shift with them; the host then resyncs everyone.
+func _on_lobby_roster_changed(removed_indices : Array) -> void:
+	if not is_multiplayer_lobby:
+		return
+	var idxs = removed_indices.duplicate()
+	idxs.sort()
+	idxs.invert()
+	for idx in idxs:
+		if idx <= 0 or idx >= RunData.get_player_count():
+			continue
+		# Raw device from connected_players: get_remapped_player_device is overridden by the
+		# AutoBattler to hand bot slots a debug device, which is not what _remove_player keys on.
+		var device = CoopService.connected_players[idx][0] if idx < CoopService.connected_players.size() else -1
+		if idx < _player_characters.size():
+			_player_characters.remove(idx)
+			_player_characters.push_back(null)
+		if idx < _has_player_selected.size():
+			_has_player_selected.remove(idx)
+			_has_player_selected.push_back(false)
+		if device != -1:
+			CoopService._remove_player(device)   # vanilla shrinks RunData + the panels via connected_players_updated
+	var was_selected := []
+	for i in RunData.get_player_count():
+		was_selected.push_back(i < _has_player_selected.size() and _has_player_selected[i])
+	for i in RunData.get_player_count():
+		var character = _player_characters[i] if i < _player_characters.size() else null
+		_player_focused_character(i, character_item_to_string(character))   # clears + refocuses the slot
+		if was_selected[i]:
+			._set_selected_element(i)
+	_refresh_slot_controls()
+	if steam_connection.is_host():
+		_character_lobby_update_requested()
+
+
+func _on_invite_pressed() -> void:
+	steam_connection.invite_friends()

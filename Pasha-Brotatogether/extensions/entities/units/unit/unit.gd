@@ -111,14 +111,17 @@ func update_client_player(player_dict : Dictionary, player_index : int) -> void:
 
 
 
-	var weapons_array = player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS]
-	for weapon_index in weapons_array.size():
-		var weapon_dict = weapons_array[weapon_index]
+	# Weapon rows: [sprite_rot*1000, rot*1000, sprite_x*100, sprite_y*100, is_shooting] per
+	# weapon (see main.gd WEAPON_ROW_STRIDE); ints gzip far smaller than per-weapon dicts.
+	var weapon_rows = player_dict[EntityState.ENTITY_STATE_PLAYER_WEAPONS]
+	var weapon_count = int(min(int(weapon_rows.size() / 5), self.current_weapons.size()))
+	for weapon_index in weapon_count:
+		var base = weapon_index * 5
 		var weapon = self.current_weapons[weapon_index]
 
-		weapon.sprite.position.x = weapon_dict[WeaponState.WEAPON_STATE_X_POS]
-		weapon.sprite.position.y = weapon_dict[WeaponState.WEAPON_STATE_Y_POS]
-		weapon.sprite.rotation = weapon_dict[WeaponState.WEAPON_STATE_SPRITE_ROTATION]
-		weapon.rotation = weapon_dict[WeaponState.WEAPON_STATE_ROTATION]
-		weapon._is_shooting = weapon_dict[WeaponState.WEAPON_STATE_IS_SHOOTING]
+		weapon.sprite.position.x = weapon_rows[base + 2] / 100.0
+		weapon.sprite.position.y = weapon_rows[base + 3] / 100.0
+		weapon.sprite.rotation = weapon_rows[base] / 1000.0
+		weapon.rotation = weapon_rows[base + 1] / 1000.0
+		weapon._is_shooting = weapon_rows[base + 4] != 0
 		weapon._current_cooldown = 9999
