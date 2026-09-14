@@ -195,10 +195,7 @@ func _shop(scene, me: int, event) -> void:
 	var panel_owner = _panel_owner(containers, pos)
 	if debug_log and event is InputEventMouseButton and event.pressed:
 		var car = mine.carousel
-		print("BTMOUSE shop press pos=%s owner=%d me=%d popup_open=%s go_pressed=%s car_active=%s idx=%d arrowR=%s visR=%s aR=%.2f arrowL=%s visL=%s aL=%.2f" % [
-			str(pos), panel_owner, me, str(popup_open), str(scene._player_pressed_go_button[me]), str(car.active), car.index,
-			str(car.arrow_right.get_global_rect()), str(car.arrow_right.is_visible_in_tree()), car.arrow_right.modulate.a,
-			str(car.arrow_left.get_global_rect()), str(car.arrow_left.is_visible_in_tree()), car.arrow_left.modulate.a])
+		print("BTMOUSE shop press pos=%s owner=%d me=%d popup_open=%s go_pressed=%s car_active=%s idx=%d arrowR=%s visR=%s aR=%.2f" % [str(pos), panel_owner, me, str(popup_open), str(scene._player_pressed_go_button[me]), str(car.active), car.index, str(car.arrow_right.get_global_rect()), str(car.arrow_right.is_visible_in_tree()), car.arrow_right.modulate.a])
 	if panel_owner < 0:
 		return
 	_consume()
