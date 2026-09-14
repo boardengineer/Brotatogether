@@ -18,6 +18,13 @@ const MP_MENU_SCENE = "res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_me
 const STABILIZE_FRAMES = 120   # ~2s at 60fps: let a screen's focus/lobby sync settle
 
 var _mode := ""
+var _armed := false        # any --bt-* flag present; otherwise the harness is fully inert
+var _rc_lock := []          # --bt-lock=2,3: host locks these slots once the lobby exists
+var _rc_lock_done := false
+var _rc_kick_slot := -1     # --bt-kick=<slot>:<secs>: host kicks that slot <secs> after it is seated
+var _rc_kick_delay := 0.0
+var _rc_kick_since := -1.0
+var _rc_kick_done := false
 var _join_name := ""
 var _autoplay := false
 var _acted := false
@@ -74,6 +81,8 @@ var _mortal := false     # --bt-mortal: players can actually die (no DebugServic
 
 func _ready() -> void:
 	for a in OS.get_cmdline_args():
+		if a.begins_with("--bt-"):
+			_armed = true
 		if a == "--bt-host":
 			_mode = "host"
 		elif a == "--bt-join":
@@ -91,6 +100,14 @@ func _ready() -> void:
 			_friends_only = true
 		elif a == "--bt-force-stranger":
 			_force_stranger = true
+		elif a.begins_with("--bt-lock="):
+			for part in a.substr(10).split(","):
+				if part != "":
+					_rc_lock.push_back(int(part))
+		elif a.begins_with("--bt-kick="):
+			var kv = a.substr(10).split(":")
+			_rc_kick_slot = int(kv[0])
+			_rc_kick_delay = float(kv[1]) if kv.size() > 1 else 10.0
 		elif a.begins_with("--bt-hitch="):
 			var spec = a.substr(11).split(":")
 			_hitch_ms = int(spec[0])
@@ -135,15 +152,21 @@ func _ready() -> void:
 		# deaths (bot runs where the AI actually dodges, death/revive propagation tests).
 		DebugService.invulnerable = true
 		print("BTHARNESS autoplay: DebugService.invulnerable = true (soak survivability)")
+	if not _armed:
+		return   # no --bt-* flag: stay silent and idle (release builds ship this file)
 	print("BTHARNESS armed mode=%s join_name=%s autoplay=%s local_idx=%d" % [_mode, _join_name, str(_autoplay), _local_idx])
 	# Keep ticking while the tree is paused so the heartbeat can report a pause/freeze.
 	pause_mode = Node.PAUSE_MODE_PROCESS
 
 
 func _process(_delta: float) -> void:
+	if not _armed:
+		return
 	_hb_tick()
 	_hitch_tick()
 	var sc = get_node_or_null("/root/SteamConnection")
+	if sc != null and _mode == "host":
+		_rc_tick(sc, _delta)
 	if sc == null or not Steam.loggedOn():
 		return
 	if not _traced:
@@ -600,3 +623,27 @@ func _hb_tick() -> void:
 		if "_bt_player_flash_ok" in scene:
 			fx += "/%d" % scene._bt_player_flash_ok
 	print("BTHARNESS hb %s scene=%s paused=%s wave=%d wave_time=%s chooser=%s lobby=%d seq=%s net=%s cli=%s pl=%s hp=%s fps=%d fx=%s dil=%s" % [_wall_clock(), sname, str(tree.paused), RunData.current_wave, wave_time, chooser, lobby, seq, net, cli, pl, hp, fps, fx, dil])
+
+
+# --- Release-candidate lobby automation (host) -------------------------------------------
+# --bt-lock=2,3 locks those slots as soon as the lobby exists; --bt-kick=<slot>:<secs> kicks
+# whoever sits in <slot> once it has been occupied for <secs>. Both fire once per launch.
+func _rc_tick(sc, delta: float) -> void:
+	if sc.game_lobby_id <= 0 or not sc.is_host():
+		return
+	if not _rc_lock_done and not _rc_lock.empty():
+		_rc_lock_done = true
+		for slot in _rc_lock:
+			sc.set_slot_locked(slot, true)
+		print("BTHARNESS rc: locked slots %s (open=%d)" % [str(_rc_lock), sc._roster_open_slot_count()])
+	if _rc_kick_slot > 0 and not _rc_kick_done:
+		if sc.lobby_members.size() > _rc_kick_slot:
+			if _rc_kick_since < 0.0:
+				_rc_kick_since = 0.0
+			_rc_kick_since += delta
+			if _rc_kick_since >= _rc_kick_delay:
+				_rc_kick_done = true
+				print("BTHARNESS rc: kicking slot %d (%s)" % [_rc_kick_slot, sc.lobby_member_names[_rc_kick_slot]])
+				sc.kick_player(_rc_kick_slot)
+		else:
+			_rc_kick_since = -1.0

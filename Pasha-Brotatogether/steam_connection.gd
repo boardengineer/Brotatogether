@@ -1070,10 +1070,13 @@ func attempt_join_game_lobby(lobby_id : int) -> void:
 
 func create_new_game_lobby(friends_only : bool = false) -> void:
 	host_friends_only = friends_only
-	# Friends-only is enforced by Steam itself: a LOBBY_TYPE_FRIENDS_ONLY lobby refuses non-friends
-	# at joinLobby and never appears in requestLobbyList; friends find it through the host's rich
-	# presence (see _scan_friend_lobbies) or an invite. _host_admit double-checks on ENTERED.
-	Steam.createLobby(Steam.LOBBY_TYPE_FRIENDS_ONLY if friends_only else Steam.LOBBY_TYPE_PUBLIC, 4)
+	# Friends-only is enforced by the MOD, not by the Steam lobby type: the lobby stays PUBLIC so
+	# the in-game browser can list it, the browser hides it from non-friends (friends_only lobby
+	# data + owner_id), and _host_admit refuses any non-friend who joins anyway. A Steam
+	# LOBBY_TYPE_FRIENDS_ONLY lobby would only be discoverable through friend presence
+	# (getFriendGamePlayed), which proved unreliable in testing (2026-09-11); invites and the
+	# overlay "join game" path (join_requested) work with a public lobby too.
+	Steam.createLobby(Steam.LOBBY_TYPE_PUBLIC, 4)
 
 
 # True if `owner_id_str` (a Steam id) is the local user or one of their Steam friends. Used to

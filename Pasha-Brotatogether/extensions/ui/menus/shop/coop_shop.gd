@@ -1,4 +1,5 @@
 extends "res://ui/menus/shop/coop_shop.gd"
+const BT_VERBOSE := false   # per-shop BTSTATS stat dumps (two-machine debugging only)
 
 # Every stat key the shop stat panels display (stats_container.tscn exports, lowercased
 # the way StatContainer hashes them). The HOST ships Utils.get_stat for each of these
@@ -343,7 +344,8 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 				var stat_hash = Keys.generate_hash(stat_key)
 				stats_dict[stat_key] = Utils.get_stat(stat_hash, player_index) if player_effects.has(stat_hash) else 0.0
 			player_dict["STATS"] = stats_dict
-			print("BTSTATS sent p%d max_hp=%d armor=%d luck=%d" % [player_index, stats_dict["stat_max_hp"], stats_dict["stat_armor"], stats_dict["stat_luck"]])
+			if BT_VERBOSE:
+				print("BTSTATS sent p%d max_hp=%d armor=%d luck=%d" % [player_index, stats_dict["stat_max_hp"], stats_dict["stat_armor"], stats_dict["stat_luck"]])
 		player_dict["FOCUS"] = _focus_dictionary_for_player(player_index)
 
 		player_dict["REROLL_PRICE"] = _reroll_price[player_index]
@@ -480,7 +482,8 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 			for stat_key in player_dict["STATS"]:
 				remote_stats[Keys.generate_hash(stat_key)] = player_dict["STATS"][stat_key]
 			Utils.remote_player_stats[player_index] = remote_stats
-			print("BTSTATS stored p%d n=%d max_hp=%d armor=%d luck=%d" % [player_index, remote_stats.size(), Utils.get_stat(Keys.generate_hash("stat_max_hp"), player_index), Utils.get_stat(Keys.generate_hash("stat_armor"), player_index), Utils.get_stat(Keys.generate_hash("stat_luck"), player_index)])
+			if BT_VERBOSE:
+				print("BTSTATS stored p%d n=%d max_hp=%d armor=%d luck=%d" % [player_index, remote_stats.size(), Utils.get_stat(Keys.generate_hash("stat_max_hp"), player_index), Utils.get_stat(Keys.generate_hash("stat_armor"), player_index), Utils.get_stat(Keys.generate_hash("stat_luck"), player_index)])
 			_update_stats(player_index)
 
 		waiting_to_start_shop = false
