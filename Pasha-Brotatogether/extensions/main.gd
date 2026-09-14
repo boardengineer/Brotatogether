@@ -551,7 +551,7 @@ func _state_events(events_dict : Dictionary) -> void:
 		if player_index < _players.size():
 			var dead_player = _players[player_index]
 			if is_instance_valid(dead_player) and not dead_player.dead:
-				dead_player.die()
+				dead_player.die(Entity.DieArgs.new())
 
 	for flashing_unit_id in events_dict["BATCHED_UNIT_FLASHES"]:
 		var flashing_unit
@@ -2081,6 +2081,9 @@ func add_node_to_pool(node: Node, id) -> void:
 
 # A member left mid-run. The host treats it as a death (the authoritative path: propagates via
 # BATCHED_PLAYER_DEATHS and drives the all-dead run-end check); its slot is never re-awaited.
+# Every forced player death passes FRESH DieArgs: a bare die() falls back to the shared
+# Utils.default_die_args, whose `from` can still point at a freed killer, and vanilla
+# _on_player_died's `_args.from is BulletHell` then raises and skips the rest of the handler.
 func _on_player_left_run(player_index : int) -> void:
 	if not in_multiplayer_game:
 		return
@@ -2089,7 +2092,7 @@ func _on_player_left_run(player_index : int) -> void:
 	if steam_connection.is_host() and player_index < _players.size():
 		var p = _players[player_index]
 		if is_instance_valid(p) and not p.dead:
-			p.die()
+			p.die(Entity.DieArgs.new())
 
 
 # Host: the wave-end chooser waits for EVERY slot to finish its upgrades / item boxes, so a slot
@@ -2103,7 +2106,7 @@ func _resolve_left_players_chooser() -> void:
 		if idx >= 0 and idx < _players.size():
 			var p = _players[idx]
 			if is_instance_valid(p) and not p.dead:
-				p.die()
+				p.die(Entity.DieArgs.new())
 	if not is_instance_valid(_coop_upgrades_ui) or not _coop_upgrades_ui.visible:
 		return
 	for idx in steam_connection.left_players.keys():

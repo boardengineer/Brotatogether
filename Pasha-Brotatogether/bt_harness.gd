@@ -466,7 +466,7 @@ func _die_tick(sc, scene) -> void:
 	for idx in _die_at[wave]:
 		if idx < scene._players.size() and is_instance_valid(scene._players[idx]) and not scene._players[idx].dead:
 			print("BTHARNESS die-at: killing player %d at wave %d (%s)" % [idx, wave, _wall_clock()])
-			scene._players[idx].die()
+			scene._players[idx].die(Entity.DieArgs.new())
 	_die_at.erase(wave)
 
 
