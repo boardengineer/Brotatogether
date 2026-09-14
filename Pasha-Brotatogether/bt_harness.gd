@@ -29,6 +29,11 @@ var _key_press_frame := 0
 var _pop_before := false
 var _pop_after_0 := false
 var _pop_after_refocus := false
+var _mouse_test := false     # --bt-mouse-test: click / hover own and other panels in each co-op shop
+var _mouse_scene := 0
+var _mouse_frames := 0
+var _mouse_done := {}
+var _mouse_log := {}
 var _armed := false        # any --bt-* flag present; otherwise the harness is fully inert
 var _rc_lock := []          # --bt-lock=2,3: host locks these slots once the lobby exists
 var _rc_lock_done := false
@@ -113,6 +118,8 @@ func _ready() -> void:
 			_force_stranger = true
 		elif a == "--bt-key-test":
 			_key_test = true
+		elif a == "--bt-mouse-test":
+			_mouse_test = true
 		elif a.begins_with("--bt-lock="):
 			for part in a.substr(10).split(","):
 				if part != "":
@@ -182,6 +189,8 @@ func _process(_delta: float) -> void:
 		_rc_tick(sc, _delta)
 	if _key_test:
 		_key_test_tick()
+	if _mouse_test:
+		_mouse_test_tick()
 	if sc == null or not Steam.loggedOn():
 		return
 	if not _traced:
@@ -770,3 +779,109 @@ func _key_test_diag(scene) -> void:
 func _input(event: InputEvent) -> void:
 	if _key_test and event is InputEventKey and event.pressed and (event.scancode == KEY_9 or event.scancode == KEY_0):
 		print("BTKEY harness saw scancode=%d" % event.scancode)
+
+
+# --bt-mouse-test: in each co-op shop, send synthetic mouse events straight into the viewport
+# (canvas coordinates, same _input order as real input) and log the results: my right arrow,
+# the other player's right arrow (must be ignored), my left arrow, hovering my first shop item
+# (my popup should show) and hovering the other player's first shop item (their popup must not
+# change).
+func _mouse_test_tick() -> void:
+	var scene = get_tree().current_scene
+	if scene == null or scene.name != "CoopShop" or RunData.get_player_count() < 2:
+		return
+	var sid = scene.get_instance_id()
+	if sid != _mouse_scene:
+		_mouse_scene = sid
+		_mouse_frames = 0
+		_mouse_log = {}
+		return
+	if _mouse_done.has(sid):
+		return
+	_mouse_frames += 1
+	var sc = get_node_or_null("/root/SteamConnection")
+	var me = sc.get_my_index() if sc != null else 0
+	var other = (me + 1) % RunData.get_player_count()
+	var mine = scene._get_coop_player_container(me)
+	var theirs = scene._get_coop_player_container(other)
+	match _mouse_frames:
+		20:
+			_mouse_log["handler"] = scene.has_node("BtMouseInput")
+			if scene.has_node("BtMouseInput"):
+				scene.get_node("BtMouseInput").debug_log = true
+				var last = scene.get_child(scene.get_child_count() - 1)
+				print("BTMOUSEDIAG last_child=%s vp_has_input=%s vp_size=%s canvas_xform=%s" % [last.name, str(get_viewport().has_method("input")), str(get_viewport().size), str(get_viewport().canvas_transform)])
+			for pi in RunData.get_player_count():
+				var c = scene._get_coop_player_container(pi)
+				print("BTMOUSEDIAG p%d container=%s arrowR=%s" % [pi, str(c.get_global_rect()), str(c.carousel.arrow_right.get_global_rect())])
+			_mouse_log["cursor_visible"] = Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE
+			_mouse_log["pages_start"] = _carousel_pages(scene)
+			_mouse_click(mine.carousel.arrow_right)
+		26:
+			_mouse_log["after_my_right"] = _carousel_pages(scene)
+			_mouse_click(theirs.carousel.arrow_right)
+		32:
+			_mouse_log["after_other_right"] = _carousel_pages(scene)
+			_mouse_click(mine.carousel.arrow_left)
+		38:
+			_mouse_log["after_my_left"] = _carousel_pages(scene)
+			_mouse_log["other_popup_before"] = theirs.item_popup.visible
+			var my_items = scene._get_shop_items_container(me)._shop_items
+			if my_items.size() > 0 and is_instance_valid(my_items[0]):
+				set_meta("bt_mouse_hover", my_items[0]._button)
+				_mouse_move(my_items[0])
+		46:
+			_mouse_log["my_popup_after_hover"] = mine.item_popup.visible
+			_mouse_log["my_focus_on_hovered_item"] = has_meta("bt_mouse_hover") and Utils.get_focus_emulator(me).focused_control == get_meta("bt_mouse_hover")
+			set_meta("bt_mouse_other_focus", Utils.get_focus_emulator(other).focused_control)
+			var their_items = scene._get_shop_items_container(other)._shop_items
+			if their_items.size() > 0 and is_instance_valid(their_items[0]):
+				_mouse_move(their_items[0])
+		54:
+			_mouse_log["other_popup_after_hover"] = theirs.item_popup.visible
+			_mouse_log["other_focus_unchanged_after_hover"] = Utils.get_focus_emulator(other).focused_control == get_meta("bt_mouse_other_focus")
+			_mouse_log["go_pressed_at_reroll"] = [scene._player_pressed_go_button[me], scene._player_pressed_go_button[other]]
+			_mouse_log["gold_before_reroll"] = [RunData.get_player_gold(me), RunData.get_player_gold(other)]
+			_mouse_click(scene._get_reroll_button(other))
+		62:
+			_mouse_log["gold_after_other_reroll"] = [RunData.get_player_gold(me), RunData.get_player_gold(other)]
+			_mouse_click(scene._get_reroll_button(me))
+		74:
+			_mouse_log["gold_after_my_reroll"] = [RunData.get_player_gold(me), RunData.get_player_gold(other)]
+			_mouse_done[sid] = true
+			print("BTMOUSETEST wave=%d me=%d other=%d %s" % [RunData.current_wave, me, other, str(_mouse_log)])
+
+
+func _mouse_center(control) -> Vector2:
+	return control.get_global_rect().position + control.get_global_rect().size * 0.5
+
+
+# Synthetic mouse events go through Input.parse_input_event (the real OS-event path, delivered
+# next frame). Viewport.input() on the root is NOT usable here: the root viewport reads the
+# SceneTree-wide "input handled" flag, which only a real input event resets, so once any event
+# has been consumed (the FocusEmulators consume most) every later root.input() call skips all
+# _input handlers. parse_input_event expects window coordinates, so map the canvas position
+# through the root's final (stretch) transform.
+func _mouse_send(ev) -> void:
+	var canvas_pos: Vector2 = ev.position
+	ev.position = get_viewport().get_final_transform().xform(canvas_pos)
+	ev.global_position = ev.position
+	Input.parse_input_event(ev)
+
+
+func _mouse_move(control) -> void:
+	var ev = InputEventMouseMotion.new()
+	ev.position = _mouse_center(control)
+	ev.global_position = ev.position
+	_mouse_send(ev)
+
+
+func _mouse_click(control) -> void:
+	_mouse_move(control)
+	for is_pressed in [true, false]:
+		var ev = InputEventMouseButton.new()
+		ev.button_index = BUTTON_LEFT
+		ev.pressed = is_pressed
+		ev.position = _mouse_center(control)
+		ev.global_position = ev.position
+		_mouse_send(ev)

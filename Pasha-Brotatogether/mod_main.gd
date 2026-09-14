@@ -3,6 +3,7 @@ extends Node
 const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/steam_connection.gd")
 const BrotogetherOptions = preload("res://mods-unpacked/Pasha-Brotatogether/brotatogether_options.gd")
 const BTHarness = preload("res://mods-unpacked/Pasha-Brotatogether/bt_harness.gd")
+const MpMouse = preload("res://mods-unpacked/Pasha-Brotatogether/ui/mouse/mp_mouse.gd")
 
 const MOD_DIR = "Pasha-Brotatogether/"
 
@@ -66,3 +67,8 @@ func _ready():
 	var bt_harness = BTHarness.new()
 	bt_harness.set_name("BTHarness")
 	$"/root".call_deferred("add_child",bt_harness)
+
+	# Mouse control for the local player in multiplayer menus (ui/mouse/mp_mouse.gd).
+	var mp_mouse = MpMouse.new()
+	mp_mouse.set_name("BtMpMouse")
+	$"/root".call_deferred("add_child", mp_mouse)
