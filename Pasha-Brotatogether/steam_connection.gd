@@ -147,6 +147,7 @@ const LEAVE_STATES := 2 | 4 | 8 | 16  # CHAT_MEMBER_STATE_CHANGE LEFT | DISCONNE
 var locked_slots : Array = [false, false, false, false]   # host: closed slots (index 0 never)
 var left_players : Dictionary = {}    # player_index -> true for members who left mid-run
 var _kicked_ids : Dictionary = {}     # host: steam ids ejected from this lobby (re-ejected on rejoin)
+var _roster_seated : bool = false     # client: a HOST-published roster has included us at least once
 var lobby_slot_info : Dictionary = {} # browser: lobby_id -> {"occupied": n, "capacity": n} from the last search
 var debug_force_stranger : bool = false   # --bt-force-stranger (host): treat every joiner as a non-friend
 var _pending_friend_lobbies : Dictionary = {}   # lobby ids we asked Steam to fetch data for (friend scan)
@@ -487,6 +488,7 @@ func leave_game_lobby() -> void:
 	Utils.remote_player_stats.clear()   # host-authoritative stat overrides die with the run
 	left_players.clear()
 	_kicked_ids.clear()
+	_roster_seated = false
 	for i in MAX_SLOTS:
 		locked_slots[i] = false
 	if game_lobby_id > 0:
@@ -851,8 +853,17 @@ func _on_lobby_data_update(_success : int, lobby_id : int, member_id : int) -> v
 	_apply_locked_string(Steam.getLobbyData(lobby_id, LOCKED_KEY))
 	emit_signal("lobby_slots_updated")
 	if not lobby_members.has(steam_id):
-		_kicked_out("Removed from the lobby")
+		# Steam replays the lobby's CURRENT data to a joiner before the host has admitted and
+		# republished it, so the first update can lack us. Only a roster that once held us and
+		# now does not means we were removed; until then keep the provisional seat and wait
+		# for the host's publish (or its KICKED packet).
+		if _roster_seated:
+			_kicked_out("Removed from the lobby")
+			return
+		lobby_members.push_back(steam_id)
+		lobby_member_names.push_back(Steam.getFriendPersonaName(steam_id))
 		return
+	_roster_seated = true
 	var removed := []
 	for i in before.size():
 		if not lobby_members.has(before[i]):
