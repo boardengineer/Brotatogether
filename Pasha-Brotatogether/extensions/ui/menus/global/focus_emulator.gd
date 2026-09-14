@@ -25,15 +25,8 @@ func _handle_input(event:InputEvent) -> bool:
 	if not steam_connection:
 		steam_connection = $"/root/SteamConnection"
 	
-	if get_tree().current_scene.name == "CoopShop" and brotatogether_options.in_multiplayer_game:
-		if event is InputEventKey:
-			if event.pressed:
-				var carousel = get_tree().current_scene._get_coop_player_container(steam_connection.get_my_index()).carousel
-				if event.scancode == KEY_R: 
-					carousel._on_ArrowRight_pressed()
-				if event.scancode == KEY_L: 
-					carousel._on_ArrowLeft_pressed()
-	
+	# Carousel paging keys live in ui/shop/carousel_keys.gd (9 / 0). The old R / L here
+	# collided with the ban key and fired once per player's emulator, skipping pages.
 	if global_focused_control != null and global_focused_control is LineEdit:
 		return false
 	return ._handle_input(event)

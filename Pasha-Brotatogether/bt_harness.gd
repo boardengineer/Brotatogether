@@ -18,6 +18,14 @@ const MP_MENU_SCENE = "res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_me
 const STABILIZE_FRAMES = 120   # ~2s at 60fps: let a screen's focus/lobby sync settle
 
 var _mode := ""
+var _key_test := false     # --bt-key-test: press 0 then 9 in each co-op shop and log carousel pages
+var _key_test_scene := 0
+var _key_test_frames := 0
+var _key_test_done := {}
+var _key_before := []
+var _key_after_0 := []
+var _key_state := 0
+var _key_press_frame := 0
 var _armed := false        # any --bt-* flag present; otherwise the harness is fully inert
 var _rc_lock := []          # --bt-lock=2,3: host locks these slots once the lobby exists
 var _rc_lock_done := false
@@ -100,6 +108,8 @@ func _ready() -> void:
 			_friends_only = true
 		elif a == "--bt-force-stranger":
 			_force_stranger = true
+		elif a == "--bt-key-test":
+			_key_test = true
 		elif a.begins_with("--bt-lock="):
 			for part in a.substr(10).split(","):
 				if part != "":
@@ -167,6 +177,8 @@ func _process(_delta: float) -> void:
 	var sc = get_node_or_null("/root/SteamConnection")
 	if sc != null and _mode == "host":
 		_rc_tick(sc, _delta)
+	if _key_test:
+		_key_test_tick()
 	if sc == null or not Steam.loggedOn():
 		return
 	if not _traced:
@@ -647,3 +659,91 @@ func _rc_tick(sc, delta: float) -> void:
 				sc.kick_player(_rc_kick_slot)
 		else:
 			_rc_kick_since = -1.0
+
+
+# --bt-key-test: in each co-op shop, inject real key presses (0, then 9) through
+# Input.parse_input_event -- the full viewport input path, FocusEmulators included -- and log
+# every player's carousel page before and after, plus how many arrows carry a key hint.
+# Desktop Godot 3.5+ buffers injected events until the next frame, so reads are frames apart.
+func _key_test_tick() -> void:
+	var scene = get_tree().current_scene
+	if scene == null or scene.name != "CoopShop":
+		return
+	var sid = scene.get_instance_id()
+	if sid != _key_test_scene:
+		_key_test_scene = sid
+		_key_test_frames = 0
+		_key_state = 0
+		return
+	if _key_test_done.has(sid):
+		return
+	_key_test_frames += 1
+	var pages = _carousel_pages(scene)
+	if _key_state == 0 and _key_test_frames == 30:
+		_key_before = pages
+		_key_test_diag(scene)
+		print("BTKEYTEST press 0 frame=%d pages=%s" % [Engine.get_idle_frames(), str(pages)])
+		_press_key(KEY_0)
+		_key_press_frame = _key_test_frames
+		_key_state = 1
+	elif _key_state == 1 and (pages != _key_before or _key_test_frames - _key_press_frame >= 90):
+		_key_after_0 = pages
+		print("BTKEYTEST after 0: pages=%s waited=%d frames; press 9 frame=%d" % [str(pages), _key_test_frames - _key_press_frame, Engine.get_idle_frames()])
+		_press_key(KEY_9)
+		_key_press_frame = _key_test_frames
+		_key_state = 2
+	elif _key_state == 2 and (pages != _key_after_0 or _key_test_frames - _key_press_frame >= 90):
+		_key_test_done[sid] = true
+		var keys = scene.get_node_or_null("BtCarouselKeys")
+		var hints = 0
+		if keys != null:
+			for car in keys.carousels():
+				for arrow in [car.arrow_left, car.arrow_right]:
+					if arrow.has_node("BtKeyHint"):
+						hints += 1
+		print("BTKEYTEST wave=%d before=%s after_0=%s after_9=%s waited_9=%d key_node=%s hints=%d" % [
+			RunData.current_wave, str(_key_before), str(_key_after_0), str(pages), _key_test_frames - _key_press_frame, str(keys != null), hints])
+
+func _carousel_pages(scene) -> Array:
+	var out = []
+	if not scene.has_method("_get_coop_player_container"):
+		return out
+	for pi in RunData.get_player_count():
+		var cont = scene._get_coop_player_container(pi)
+		if cont != null and is_instance_valid(cont) and ("carousel" in cont) and is_instance_valid(cont.carousel):
+			out.push_back(cont.carousel.index)
+		else:
+			out.push_back(-1)
+	return out
+
+
+func _press_key(scancode: int) -> void:
+	for is_pressed in [true, false]:
+		var ev = InputEventKey.new()
+		ev.scancode = scancode
+		ev.pressed = is_pressed
+		Input.parse_input_event(ev)
+
+
+# Key-test diagnostics: carousel state, and the nodes that receive _input FIRST (Godot 3
+# dispatches the viewport input group in reverse tree order).
+func _key_test_diag(scene) -> void:
+	var keys = scene.get_node_or_null("BtCarouselKeys")
+	if keys != null:
+		keys.debug_log = true
+		var cars = keys.carousels()
+		var states = []
+		for car in cars:
+			states.push_back("active=%s trig=%s dis=%s/%s" % [str(car.active), str(car.are_trigger_buttons_active()), str(car.arrow_left.disabled), str(car.arrow_right.disabled)])
+		print("BTKEYDIAG carousels=%d %s" % [cars.size(), str(states)])
+	var group = "_vp_input" + str(get_viewport().get_instance_id())
+	var nodes = get_tree().get_nodes_in_group(group)
+	var first = []
+	for i in range(nodes.size() - 1, max(-1, nodes.size() - 9), -1):
+		first.push_back(str(nodes[i].get_path()).replace("/root/CoopShop", "~"))
+	print("BTKEYDIAG input_group=%s size=%d first_in_line=%s" % [group, nodes.size(), str(first)])
+
+
+func _input(event: InputEvent) -> void:
+	if _key_test and event is InputEventKey and event.pressed and (event.scancode == KEY_9 or event.scancode == KEY_0):
+		print("BTKEY harness saw scancode=%d" % event.scancode)

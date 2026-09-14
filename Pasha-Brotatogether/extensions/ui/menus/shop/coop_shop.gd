@@ -1,5 +1,6 @@
 extends "res://ui/menus/shop/coop_shop.gd"
 const BT_VERBOSE := false   # per-shop BTSTATS stat dumps (two-machine debugging only)
+const CarouselKeys = preload("res://mods-unpacked/Pasha-Brotatogether/ui/shop/carousel_keys.gd")
 
 # Every stat key the shop stat panels display (stats_container.tscn exports, lowercased
 # the way StatContainer hashes them). The HOST ships Utils.get_stat for each of these
@@ -39,20 +40,6 @@ func _bt_refresh_affordability_all() -> void:
 					shop_it.update_color()
 
 
-# 9 / 0 scroll EVERY player's shop-panel carousel left / right (shop <-> stats <->
-# secondary stats), own panel included -- vanilla binds the carousel only to gamepad
-# triggers, so a keyboard player cannot flip ANY panel without this. Digits collide
-# with nothing (E=lock, R=ban, Q reserved). Purely local UI; remote values come from
-# the propagated STATS.
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo 			and (event.scancode == KEY_9 or event.scancode == KEY_0):
-		if brotatogether_options != null and brotatogether_options.in_multiplayer_game:
-			for pi in RunData.get_player_count():
-				var cont = _get_coop_player_container(pi)
-				if cont != null and is_instance_valid(cont.carousel):
-					var arrow = cont.carousel.arrow_left if event.scancode == KEY_9 else cont.carousel.arrow_right
-					if arrow != null:
-						arrow.emit_signal("pressed")
 
 var in_multiplayer_game = false
 
@@ -80,6 +67,14 @@ func _ready():
 		waiting_to_start_shop = true
 		# Initial affordability tint (reroll button opened dark from stale local gold).
 		call_deferred("_bt_refresh_affordability_all")
+		# 9 / 0 page every player's carousel, and the arrows show those keys. This has to be a
+		# last-added child: the FocusEmulators under this scene swallow the keys before this
+		# script's own _input would ever see them (see ui/shop/carousel_keys.gd).
+		var carousel_keys = CarouselKeys.new()
+		carousel_keys.name = "BtCarouselKeys"
+		carousel_keys.shop = self
+		add_child(carousel_keys)
+		carousel_keys.call_deferred("label_arrows")
 
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("shop_lobby_update", self, "_update_shop")
