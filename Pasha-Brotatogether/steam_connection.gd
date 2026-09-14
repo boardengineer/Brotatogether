@@ -148,6 +148,7 @@ var locked_slots : Array = [false, false, false, false]   # host: closed slots (
 var left_players : Dictionary = {}    # player_index -> true for members who left mid-run
 var _kicked_ids : Dictionary = {}     # host: steam ids ejected from this lobby (re-ejected on rejoin)
 var _roster_seated : bool = false     # client: a HOST-published roster has included us at least once
+var _kick_resent_ms : Dictionary = {}  # host: steam id -> last time KICKED was re-sent to a refused id
 var lobby_slot_info : Dictionary = {} # browser: lobby_id -> {"occupied": n, "capacity": n} from the last search
 var debug_force_stranger : bool = false   # --bt-force-stranger (host): treat every joiner as a non-friend
 var _pending_friend_lobbies : Dictionary = {}   # lobby ids we asked Steam to fetch data for (friend scan)
@@ -488,6 +489,7 @@ func leave_game_lobby() -> void:
 	Utils.remote_player_stats.clear()   # host-authoritative stat overrides die with the run
 	left_players.clear()
 	_kicked_ids.clear()
+	_kick_resent_ms.clear()
 	_roster_seated = false
 	for i in MAX_SLOTS:
 		locked_slots[i] = false
@@ -1191,6 +1193,14 @@ func read_p2p_packet() -> void:
 			var sender_id : int = packet["remote_steam_id"]
 			# Only the host we joined or a seated roster member may drive our state.
 			if sender_id != game_lobby_owner_id and get_lobby_index_for_player(sender_id) == -1:
+				# A refused/kicked client keeps pinging us: the KICKED we sent at its ENTERED can
+				# be lost (sent before it accepted our P2P session), so answer its pings with the
+				# kick again until it leaves (rate-limited).
+				if is_host() and _kicked_ids.has(sender_id):
+					var now_ms = Time.get_ticks_msec()
+					if now_ms - int(_kick_resent_ms.get(sender_id, -100000)) >= 2000:
+						_kick_resent_ms[sender_id] = now_ms
+						send_p2p_packet({"REASON": "You were removed from this lobby"}, MessageType.MESSAGE_TYPE_KICKED, sender_id)
 				packet_size = Steam.getAvailableP2PPacketSize(channel)
 				continue
 			var lat_on : bool = _latprof_enabled and channel == MessageType.MESSAGE_TYPE_MAIN_STATE
