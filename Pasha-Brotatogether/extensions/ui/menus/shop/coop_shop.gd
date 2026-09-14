@@ -67,14 +67,13 @@ func _ready():
 		waiting_to_start_shop = true
 		# Initial affordability tint (reroll button opened dark from stale local gold).
 		call_deferred("_bt_refresh_affordability_all")
-		# 9 / 0 page every player's carousel, and the arrows show those keys. This has to be a
+		# 9 / 0 page every player's carousel. This has to be a
 		# last-added child: the FocusEmulators under this scene swallow the keys before this
 		# script's own _input would ever see them (see ui/shop/carousel_keys.gd).
 		var carousel_keys = CarouselKeys.new()
 		carousel_keys.name = "BtCarouselKeys"
 		carousel_keys.shop = self
 		add_child(carousel_keys)
-		carousel_keys.call_deferred("label_arrows")
 
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("shop_lobby_update", self, "_update_shop")
