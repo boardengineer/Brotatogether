@@ -732,7 +732,15 @@ func _normalize_locks(open_count : int) -> void:
 
 # Host: seat or refuse a member Steam just let in.
 func _host_admit(member_id : int, member_name : String) -> void:
-	if member_id == steam_id or lobby_members.has(member_id):
+	if member_id == steam_id:
+		return
+	if lobby_members.has(member_id):
+		# Same account re-entering while its old (hard-killed) session is still on the roster:
+		# keep the slot, republish so the new session gets its roster, and let the selection
+		# screen rebuild. The old session's late LEFT is ignored in _host_member_left.
+		print("BTLOBBY re-seated %s in slot %d" % [member_name, get_lobby_index_for_player(member_id)])
+		_publish_roster()
+		emit_signal("lobby_players_updated")
 		return
 	var reason := ""
 	if _kicked_ids.has(member_id):
@@ -761,6 +769,12 @@ func _host_admit(member_id : int, member_name : String) -> void:
 func _host_member_left(member_id : int, member_name : String) -> void:
 	var idx := get_lobby_index_for_player(member_id)
 	if idx <= 0:
+		return
+	# A hard-killed client that rejoined before Steam noticed produces ENTERED (new session)
+	# followed by a late LEFT (old session). Steam still lists the account as a member then,
+	# so that LEFT is stale: acting on it wiped the fresh seat (RC1 a3, 2026-09-13).
+	if _is_steam_lobby_member(member_id):
+		print("BTLOBBY ignoring stale LEFT for %s (still a lobby member)" % member_name)
 		return
 	if _lobby_is_open():
 		var open_before := _roster_open_slot_count()
