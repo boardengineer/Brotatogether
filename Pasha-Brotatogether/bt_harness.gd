@@ -26,6 +26,9 @@ var _key_before := []
 var _key_after_0 := []
 var _key_state := 0
 var _key_press_frame := 0
+var _pop_before := false
+var _pop_after_0 := false
+var _pop_after_refocus := false
 var _armed := false        # any --bt-* flag present; otherwise the harness is fully inert
 var _rc_lock := []          # --bt-lock=2,3: host locks these slots once the lobby exists
 var _rc_lock_done := false
@@ -679,30 +682,50 @@ func _key_test_tick() -> void:
 		return
 	_key_test_frames += 1
 	var pages = _carousel_pages(scene)
-	if _key_state == 0 and _key_test_frames == 30:
+	if _key_state == 0 and _key_test_frames == 20:
+		_key_focus_shop_item(scene, 0)
+	elif _key_state == 0 and _key_test_frames == 30:
 		_key_before = pages
+		_pop_before = _popup_visible(scene, 0)
 		_key_test_diag(scene)
-		print("BTKEYTEST press 0 frame=%d pages=%s" % [Engine.get_idle_frames(), str(pages)])
+		print("BTKEYTEST press 0 frame=%d pages=%s popup0=%s" % [Engine.get_idle_frames(), str(pages), str(_pop_before)])
 		_press_key(KEY_0)
 		_key_press_frame = _key_test_frames
 		_key_state = 1
 	elif _key_state == 1 and (pages != _key_before or _key_test_frames - _key_press_frame >= 90):
 		_key_after_0 = pages
-		print("BTKEYTEST after 0: pages=%s waited=%d frames; press 9 frame=%d" % [str(pages), _key_test_frames - _key_press_frame, Engine.get_idle_frames()])
+		_pop_after_0 = _popup_visible(scene, 0)
+		_key_focus_shop_item(scene, 1)   # a mirrored-style focus change while off the shop page
+		_key_press_frame = _key_test_frames
+		_key_state = 3
+	elif _key_state == 3 and _key_test_frames - _key_press_frame >= 5:
+		_pop_after_refocus = _popup_visible(scene, 0)
 		_press_key(KEY_9)
 		_key_press_frame = _key_test_frames
 		_key_state = 2
 	elif _key_state == 2 and (pages != _key_after_0 or _key_test_frames - _key_press_frame >= 90):
 		_key_test_done[sid] = true
-		var keys = scene.get_node_or_null("BtCarouselKeys")
-		var hints = 0
-		if keys != null:
-			for car in keys.carousels():
-				for arrow in [car.arrow_left, car.arrow_right]:
-					if arrow.has_node("BtKeyHint"):
-						hints += 1
-		print("BTKEYTEST wave=%d before=%s after_0=%s after_9=%s waited_9=%d key_node=%s hints=%d" % [
-			RunData.current_wave, str(_key_before), str(_key_after_0), str(pages), _key_test_frames - _key_press_frame, str(keys != null), hints])
+		print("BTKEYTEST wave=%d before=%s after_0=%s after_9=%s popup0: before=%s after_0=%s after_refocus=%s" % [
+			RunData.current_wave, str(_key_before), str(_key_after_0), str(pages), str(_pop_before), str(_pop_after_0), str(_pop_after_refocus)])
+
+
+# Focus shop item <slot> for player 0 the way mirrored remote focus does (straight onto the
+# FocusEmulator), which makes the popup manager display that item's popup.
+func _key_focus_shop_item(scene, slot: int) -> void:
+	if not scene.has_method("_get_shop_items_container"):
+		return
+	var items = scene._get_shop_items_container(0)._shop_items
+	if items.size() <= slot or not is_instance_valid(items[slot]):
+		print("BTKEYTEST no shop item %d to focus" % slot)
+		return
+	Utils.get_focus_emulator(0).focused_control = items[slot]._button
+
+
+func _popup_visible(scene, pi: int) -> bool:
+	if not scene.has_method("_get_coop_player_container"):
+		return false
+	var pc = scene._get_coop_player_container(pi)
+	return pc != null and is_instance_valid(pc) and pc.item_popup.visible
 
 func _carousel_pages(scene) -> Array:
 	var out = []

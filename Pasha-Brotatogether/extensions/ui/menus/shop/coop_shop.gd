@@ -110,6 +110,7 @@ func _process(_delta):
 					# Initial shop state, all players can break focus
 					send_shop_state([0,1,2,3])
 		_check_for_focus_change()
+		_bt_hide_offpage_popups()
 
 
 func _client_status_received(client_data : Dictionary, player_index : int) -> void:
@@ -143,6 +144,7 @@ func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
 		if waiting_to_start_shop and not is_me:
 			return
 		._on_shop_item_focused(shop_item, player_index)
+		_bt_hide_offpage_popup(player_index)   # the popup manager just displayed it
 		if is_self_call:
 			is_self_call = false
 		elif is_me or steam_connection.is_host():
@@ -760,3 +762,31 @@ func _on_player_left_run(_player_index : int) -> void:
 	RunData.current_wave += 1
 	steam_connection.leave_shop()
 	var _error = get_tree().change_scene(MenuData.game_scene)
+
+
+# An item popup is not part of the carousel pages, so paging a panel to a stats page left that
+# player's popup floating over the stats -- and in multiplayer every other player's focus is
+# mirrored onto their shop items, so their popups kept showing too. Hide the item popup of any
+# panel that is not on its shop page (checked every frame, and right after a shop item gains
+# focus so a mirrored focus change never flashes one up).
+func _bt_hide_offpage_popups() -> void:
+	for pi in RunData.get_player_count():
+		_bt_hide_offpage_popup(pi)
+
+
+func _bt_hide_offpage_popup(player_index: int) -> void:
+	var cont = _get_coop_player_container(player_index)
+	if cont == null or not is_instance_valid(cont) or not is_instance_valid(cont.carousel):
+		return
+	if cont.carousel.index == 0:
+		return
+	var popup = cont.item_popup
+	if popup == null or not is_instance_valid(popup) or not popup.visible:
+		return
+	if popup._focused:
+		# A popup with buttons (combine / discard) is mid-interaction: hide it visually only, so
+		# its owner's focus state stays intact and their cancel still closes it normally.
+		popup.visible = false
+		cont._popup_dim_screen.visible = false
+	else:
+		popup.hide()
