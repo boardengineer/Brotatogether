@@ -34,6 +34,8 @@ var _mouse_scene := 0
 var _mouse_frames := 0
 var _mouse_done := {}
 var _mouse_log := {}
+var _icon_test := false      # --bt-icon-test: count empty key-hint icons per co-op shop / level-up
+var _icon_done := {}
 var _armed := false        # any --bt-* flag present; otherwise the harness is fully inert
 var _rc_lock := []          # --bt-lock=2,3: host locks these slots once the lobby exists
 var _rc_lock_done := false
@@ -120,6 +122,8 @@ func _ready() -> void:
 			_key_test = true
 		elif a == "--bt-mouse-test":
 			_mouse_test = true
+		elif a == "--bt-icon-test":
+			_icon_test = true
 		elif a.begins_with("--bt-lock="):
 			for part in a.substr(10).split(","):
 				if part != "":
@@ -191,6 +195,8 @@ func _process(_delta: float) -> void:
 		_key_test_tick()
 	if _mouse_test:
 		_mouse_test_tick()
+	if _icon_test:
+		_icon_test_tick()
 	if sc == null or not Steam.loggedOn():
 		return
 	if not _traced:
@@ -885,3 +891,56 @@ func _mouse_click(control) -> void:
 		ev.position = _mouse_center(control)
 		ev.global_position = ev.position
 		_mouse_send(ev)
+
+
+# --bt-icon-test: once per co-op shop (after 30 frames) and once per level-up chooser, count the
+# key-hint icons (InputIcon, CoopShopHint) that are visible but have no texture, per player panel.
+func _icon_test_tick() -> void:
+	var scene = get_tree().current_scene
+	if scene == null or RunData.get_player_count() < 1:
+		return
+	var containers = []
+	var where = ""
+	if scene.name == "CoopShop":
+		where = "shop"
+		for pi in RunData.get_player_count():
+			containers.push_back(scene._get_coop_player_container(pi))
+	elif scene.name == "Main" and ("_coop_upgrades_ui" in scene) and is_instance_valid(scene._coop_upgrades_ui) and scene._coop_upgrades_ui.visible:
+		where = "levelup"
+		for pi in RunData.get_player_count():
+			containers.push_back(scene._coop_upgrades_ui._get_player_container(pi))
+	else:
+		return
+	var key = "%s:%d:%d" % [where, scene.get_instance_id(), RunData.current_wave]
+	if _icon_done.has(key):
+		return
+	var frames = _icon_done.get(key + ":f", 0) + 1
+	_icon_done[key + ":f"] = frames
+	if frames < 30:
+		return
+	_icon_done[key] = true
+	var parts = []
+	for pi in containers.size():
+		var counts = {"icons": 0, "empty": 0, "empty_names": []}
+		_icon_count(containers[pi], counts)
+		parts.push_back("p%d icons=%d empty=%d %s" % [pi, counts["icons"], counts["empty"], str(counts["empty_names"])])
+		print("BTICONTEST %s wave=%d players=%d %s" % [where, RunData.current_wave, RunData.get_player_count(), parts[pi]])
+	var ct = CoopService.connected_players
+	print("BTICONTEST %s wave=%d connected_players=%s select=%s ban=%s info=%s" % [where, RunData.current_wave, str(ct), str(CoopService.get_player_key_texture("ui_select", 0)), str(CoopService.get_player_key_texture("ui_coop_ban", 0)), str(CoopService.get_player_key_texture("ui_info", 0))])
+
+
+func _icon_count(node, counts: Dictionary) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var rect = null
+	if node is InputIcon:
+		rect = node
+	elif node is CoopShopHint:
+		rect = node._key_icon
+	if rect != null and rect.is_visible_in_tree():
+		counts["icons"] += 1
+		if rect.texture == null:
+			counts["empty"] += 1
+			counts["empty_names"].push_back(str(node.name))
+	for child in node.get_children():
+		_icon_count(child, counts)
