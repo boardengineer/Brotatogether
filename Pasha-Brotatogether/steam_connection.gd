@@ -149,6 +149,13 @@ var left_players : Dictionary = {}    # player_index -> true for members who lef
 var _kicked_ids : Dictionary = {}     # host: steam ids ejected from this lobby (re-ejected on rejoin)
 var _roster_seated : bool = false     # client: a HOST-published roster has included us at least once
 var _kick_resent_ms : Dictionary = {}  # host: steam id -> last time KICKED was re-sent to a refused id
+# Invite join (accepted Steam invite, overlay "Join game", or a launch with +connect_lobby <id>).
+# A lobby we never listed has no cached data, and missing data reads as an incompatible host, so the
+# lobby data is requested first and the compatibility check runs when it arrives (or times out).
+var _invite_lobby_id : int = 0
+var _invite_requested_ms : int = 0
+var _launch_invite_lobby_id : int = 0   # +connect_lobby <id> from the launch command line
+const INVITE_DATA_TIMEOUT_MS := 8000
 var lobby_slot_info : Dictionary = {} # browser: lobby_id -> {"occupied": n, "capacity": n} from the last search
 var debug_force_stranger : bool = false   # --bt-force-stranger (host): treat every joiner as a non-friend
 var _pending_friend_lobbies : Dictionary = {}   # lobby ids we asked Steam to fetch data for (friend scan)
@@ -393,6 +400,9 @@ func _ready():
 	_err = Steam.connect("p2p_session_connect_fail", self, "_on_p2p_session_connect_fail")
 	_err = Steam.connect("lobby_data_update", self, "_on_lobby_data_update")
 	_err = Steam.connect("join_requested", self, "_on_join_requested")
+	_launch_invite_lobby_id = _parse_connect_lobby_arg(OS.get_cmdline_args())
+	if _launch_invite_lobby_id > 0:
+		print("BTINVITE launch argument +connect_lobby %d" % _launch_invite_lobby_id)
 
 	global_chat_check_timer = Timer.new()
 	_err = global_chat_check_timer.connect("timeout", self, "_request_global_chat_search")
@@ -410,6 +420,9 @@ func _ready():
 
 func _physics_process(_delta : float) -> void:
 	Steam.run_callbacks()
+	if _invite_lobby_id > 0 and OS.get_ticks_msec() - _invite_requested_ms > INVITE_DATA_TIMEOUT_MS:
+		print("BTINVITE lobby data for %d timed out" % _invite_lobby_id)
+		_finish_invite_join(_invite_lobby_id)
 
 	if game_lobby_id > 0:
 		read_p2p_packet()
@@ -511,6 +524,7 @@ func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GLOBAL_CHAT_TYPE)
 		else:
 			print("Lobby created for game: ", created_lobby_id)
+			print("BTINVITE hosting lobby=%d owner=%d" % [created_lobby_id, Steam.getSteamID()])
 			game_lobby_id = created_lobby_id
 			game_lobby_owner_id = Steam.getLobbyOwner(game_lobby_id) # This should be me but query to make sure
 			var _err = Steam.setLobbyData(created_lobby_id, "lobby_type", GAME_LOBBY_TYPE)
@@ -597,6 +611,8 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 						lobby_members.push_back(steam_id)
 						lobby_member_names.push_back(Steam.getFriendPersonaName(steam_id))
 
+					# Invites join from any screen, skipping the multiplayer menu that normally clears these.
+					CoopService.clear_coop_players()
 					print("Changing to Character Selection Screen...")
 					var _error = get_tree().change_scene(MenuData.character_selection_scene)
 					print("change scene error : ", _error)
@@ -840,6 +856,10 @@ func _kicked_out(reason : String) -> void:
 
 # Clients: the host changed lobby data -- re-derive roster / left / locked and react.
 func _on_lobby_data_update(_success : int, lobby_id : int, member_id : int) -> void:
+	if _invite_lobby_id > 0 and lobby_id == _invite_lobby_id and member_id == lobby_id:
+		print("BTINVITE lobby data for %d arrived (success=%d)" % [lobby_id, _success])
+		_finish_invite_join(lobby_id)
+		return
 	# Friend scan: the data we asked for arrived; list the lobby if it is one of ours and open.
 	if _pending_friend_lobbies.has(lobby_id) and member_id == lobby_id:
 		_pending_friend_lobbies.erase(lobby_id)
@@ -929,11 +949,83 @@ func invite_friends() -> void:
 		Steam.activateGameOverlayInviteDialog(game_lobby_id)
 
 
-# Steam overlay "Join game" / accepted invite while we are not in a game lobby.
+# Steam overlay "Join game" / accepted invite while the game is already running.
 func _on_join_requested(lobby_id : int, _friend_id : int) -> void:
+	print("BTINVITE join_requested lobby=%d (current game lobby %d)" % [lobby_id, game_lobby_id])
 	if game_lobby_id > 0:
 		return
-	attempt_join_game_lobby(lobby_id)
+	join_invited_lobby(lobby_id)
+
+
+# Main menu, first time it is shown: join the lobby Steam launched the game for, if any.
+func consume_launch_invite() -> void:
+	if _launch_invite_lobby_id <= 0:
+		return
+	var lobby_id := _launch_invite_lobby_id
+	_launch_invite_lobby_id = 0
+	if game_lobby_id > 0:
+		return
+	join_invited_lobby(lobby_id)
+
+
+# Steam appends "+connect_lobby <64-bit lobby id>" when it starts the game from an invite or
+# from a friend's "Join game".
+static func _parse_connect_lobby_arg(args : Array) -> int:
+	for i in args.size():
+		var arg := str(args[i])
+		if arg == "+connect_lobby" and i + 1 < args.size():
+			return str(args[i + 1]).to_int()
+		if arg.begins_with("+connect_lobby="):
+			return arg.substr(len("+connect_lobby=")).to_int()
+	return 0
+
+
+# Invite join, step 1: fetch the lobby's data, then finish in _finish_invite_join.
+func join_invited_lobby(lobby_id : int) -> void:
+	if lobby_id <= 0:
+		return
+	_invite_lobby_id = lobby_id
+	_invite_requested_ms = OS.get_ticks_msec()
+	print("BTINVITE requesting lobby data for %d" % lobby_id)
+	if not Steam.requestLobbyData(lobby_id):
+		_finish_invite_join(lobby_id)
+
+
+# Invite join, step 2: the lobby data is here (or never came). Join, or say why not.
+func _finish_invite_join(lobby_id : int) -> void:
+	if lobby_id <= 0 or _invite_lobby_id != lobby_id:
+		return
+	_invite_lobby_id = 0
+	if game_lobby_id > 0:
+		return
+	var reason := ""
+	if str(Steam.getLobbyData(lobby_id, "lobby_type")) != GAME_LOBBY_TYPE:
+		reason = "The game you were invited to could not be found. It may have closed."
+	elif str(Steam.getLobbyData(lobby_id, "lobby_status")) != "OPEN":
+		reason = "The game is already in progress"
+	else:
+		reason = compat_mismatch_reason(lobby_id)
+	if reason != "":
+		print("BTINVITE blocked lobby=%d: %s" % [lobby_id, reason.replace("\n", " | ")])
+		_show_invite_blocked(reason)
+		return
+	print("BTINVITE joining lobby=%d" % lobby_id)
+	Steam.joinLobby(lobby_id)
+
+
+# A refused invite must be visible wherever the player is. The multiplayer menu shows it in chat;
+# from the title screen we go there. During a run the run is left alone and the reason waits for
+# the next multiplayer menu visit.
+func _show_invite_blocked(reason : String) -> void:
+	var scene = get_tree().current_scene
+	var scene_name : String = scene.name if scene != null else ""
+	if scene_name == "MultiplayerMenu":
+		emit_signal("join_blocked", reason)
+	else:
+		pending_system_messages.push_back("Cannot join that game:\n" + reason)
+		if scene_name == "TitleScreen":
+			var _e = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
+	print("BTINVITE blocked message shown via %s" % ("chat" if scene_name == "MultiplayerMenu" else ("multiplayer menu" if scene_name == "TitleScreen" else "queued")))
 
 
 func _on_p2p_session_connect_fail(_steam_id: int, session_error: int) -> void:

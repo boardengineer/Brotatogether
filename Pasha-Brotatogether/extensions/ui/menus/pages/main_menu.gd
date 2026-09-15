@@ -26,6 +26,12 @@ func _ready():
 	
 	$"/root/BrotogetherOptions".joining_multiplayer_lobby = false
 	$"/root/BrotogetherOptions".is_solo_test = false
+
+	# Started by Steam from an invite or a friend's "Join game" (+connect_lobby <id>): go straight
+	# to that lobby. Consumed once; later visits to the main menu do nothing.
+	var steam_connection = get_node_or_null("/root/SteamConnection")
+	if steam_connection != null and steam_connection.has_method("consume_launch_invite"):
+		steam_connection.call_deferred("consume_launch_invite")
 	
 
 func init() -> void:
