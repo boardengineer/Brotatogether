@@ -168,7 +168,19 @@ func _weapon_selection_completed(selected_weapons : Array) -> void:
 	for player_index in RunData.get_player_count():
 		RunData.players_data[player_index].weapons.clear()
 		for weapon_index in selected_weapons[player_index].size():
-			RunData.players_data[player_index].weapons.push_back(selections_by_string_key[selected_weapons[player_index][weapon_index]])
+			# selections_by_string_key holds the ItemService.weapons resources themselves, so
+			# pushing them straight in made every player's starting weapon the SAME object as
+			# the item database's (and as the other players', for an identical pick). Anything
+			# that writes tracked_value / dmg_dealt_last_wave / is_cursed then edited the
+			# database for the rest of the session, and RunData.remove_weapon --- which matches
+			# by ItemService.is_same_weapon, i.e. by stats --- could not tell two of them apart.
+			# Every other path into players_data.weapons goes through RunData.add_weapon, which
+			# duplicates; match that.
+			var selected_weapon = selections_by_string_key.get(selected_weapons[player_index][weapon_index])
+			if selected_weapon == null:
+				print("WARNING - weapon selection named an unknown weapon ", selected_weapons[player_index][weapon_index], "; skipping")
+				continue
+			RunData.players_data[player_index].weapons.push_back(selected_weapon.duplicate())
 	
 	_change_scene(MenuData.difficulty_selection_scene)
 

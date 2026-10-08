@@ -13,6 +13,19 @@ func init_multiplayer() -> void:
 	steam_connection.leave_game_lobby()
 
 
+# Every way out of a run -- the end-of-run screen's New run / Restart / Exit buttons and the
+# in-game restart menu -- calls RunData.reset(), and vanilla clears is_coop_run and the player
+# count there. Nothing ever cleared brotatogether_options.in_multiplayer_game, so after a
+# network run every extension in this mod kept taking its multiplayer path in the next solo
+# run (which is how "new run" ended up on the co-op role-join screen).
+func reset(restart: bool = false) -> void :
+	if brotatogether_options != null and brotatogether_options.in_multiplayer_game:
+		brotatogether_options.in_multiplayer_game = false
+		if steam_connection != null:
+			steam_connection.leave_game_lobby()
+	.reset(restart)
+
+
 func lock_player_shop_item(item_data: ItemParentData, wave_value: int, player_index: int)->void :
 	if brotatogether_options.in_multiplayer_game:
 		if steam_connection.is_host():

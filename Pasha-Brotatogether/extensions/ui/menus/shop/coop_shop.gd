@@ -155,7 +155,17 @@ func _on_shop_item_focused(shop_item: ShopItem, player_index : int) -> void:
 		._on_shop_item_focused(shop_item, player_index)
 
 
+# Until the host's first shop packet lands, a client's panels are empty and _reroll_price is
+# still its default 0 -- which let anyone reroll for free during the 2-3 s window, and let
+# presses act on an inventory that is not there yet. The flag already existed; it was only
+# consulted to decide when to send.
+func _bt_client_shop_not_ready() -> bool:
+	return in_multiplayer_game and not steam_connection.is_host() and waiting_to_start_shop
+
+
 func _on_item_discard_button_pressed(weapon_data: WeaponData, player_index: int)->void :
+	if _bt_client_shop_not_ready():
+		return
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_item_discard_button_pressed(weapon_data, player_index)
@@ -166,7 +176,16 @@ func _on_item_discard_button_pressed(weapon_data: WeaponData, player_index: int)
 
 
 func _client_shop_discard_weapon(weapon_string : String, player_index : int) -> void:
-	_on_item_discard_button_pressed(_weapon_for_string(weapon_string, player_index), player_index)
+	# The named weapon can be gone on this side (a shop-state echo crossing the request, or a
+	# host/client inventory divergence). Vanilla _on_item_discard_button_pressed dereferences
+	# weapon_data immediately, so an unresolvable name must be dropped, not forwarded -- the
+	# lock/unlock handlers below already do this.
+	var weapon_to_discard = _weapon_for_string(weapon_string, player_index)
+	if weapon_to_discard == null:
+		print("WARNING - shop discard for unresolvable weapon ", weapon_string, " p", player_index, "; dropping")
+		steam_connection.request_close_client_shop_popup(player_index)
+		return
+	_on_item_discard_button_pressed(weapon_to_discard, player_index)
 	steam_connection.request_close_client_shop_popup(player_index)
 
 
@@ -175,6 +194,8 @@ func _remote_close_client_popup() -> void:
 
 
 func _on_GoButton_pressed(player_index: int) -> void:
+	if _bt_client_shop_not_ready():
+		return
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			_on_go_button_pressed_brotatogether(player_index)
@@ -227,6 +248,8 @@ func _client_shop_go_button_pressed(latest_go_state : bool, player_index : int) 
 
 
 func on_shop_item_bought(shop_item: ShopItem, player_index: int) -> void:
+	if _bt_client_shop_not_ready():
+		return
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			.on_shop_item_bought(shop_item, player_index)
@@ -241,6 +264,8 @@ func _client_shop_buy_item(item_string : String, player_index : int) -> void:
 
 
 func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int)->void :
+	if _bt_client_shop_not_ready():
+		return
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			pending_force_focus.push_back(player_index)
@@ -251,7 +276,15 @@ func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int)
 
 
 func _client_shop_combine_weapon(weapon_string : String, _is_upgrade: bool, player_index : int) -> void:
-	_on_item_combine_button_pressed(_weapon_for_string(weapon_string, player_index), player_index)
+	# Same as the discard path: vanilla _combine_weapon does remove_element(weapon_data) and
+	# weapon_data.upgrades_into with no null check, so a name this side cannot resolve has to
+	# be dropped here.
+	var weapon_to_combine = _weapon_for_string(weapon_string, player_index)
+	if weapon_to_combine == null:
+		print("WARNING - shop combine for unresolvable weapon ", weapon_string, " p", player_index, "; dropping")
+		steam_connection.request_close_client_shop_popup(player_index)
+		return
+	_on_item_combine_button_pressed(weapon_to_combine, player_index)
 	steam_connection.request_close_client_shop_popup(player_index)
 
 
@@ -405,21 +438,32 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
 			_shop_items[player_index].push_back(_shop_item_for_dictionary(shop_item_dict))
-		_get_shop_items_container(player_index).set_shop_items(_shop_items[player_index])
 
 		var player_gear_container = _get_gear_container(player_index)
 
 		RunData.players_data[player_index].weapons.clear()
 		for weapon in player_dict["WEAPONS"]:
-			RunData.players_data[player_index].weapons.push_back(_weapon_for_dictionary(weapon))
+			var rebuilt_weapon = _weapon_for_dictionary(weapon)
+			if rebuilt_weapon != null:
+				RunData.players_data[player_index].weapons.push_back(rebuilt_weapon)
 		player_gear_container.set_weapons_data(RunData.players_data[player_index].weapons)
 
 		RunData.players_data[player_index].items.clear()
 		for item in player_dict["ITEMS"]:
 			for _i in item["NUMBER"]:
-				RunData.players_data[player_index].items.push_back(_inventory_item_for_dictionary(item))
+				var rebuilt_item = _inventory_item_for_dictionary(item)
+				if rebuilt_item != null:
+					RunData.players_data[player_index].items.push_back(rebuilt_item)
 		player_gear_container.set_items_data(RunData.players_data[player_index].items)
 
+		# The shop's limit labels ("0/3"), Fairy's bracketed values and every other
+		# RunData.get_nb_item caller read RunData's per-run item caches, which vanilla only
+		# invalidates from add_item/remove_item. A client replaces the whole inventory above,
+		# so without this every count stays at whatever was cached when the client had nothing
+		# -- i.e. 0 for everything. Clear first, THEN build the shop items, whose labels are
+		# computed as they are created.
+		_bt_reset_item_caches(player_index)
+		_get_shop_items_container(player_index).set_shop_items(_shop_items[player_index])
 
 		if player_dict.has("FOCUS"):
 			_set_client_focus_for_player(player_dict["FOCUS"], player_index)
@@ -485,6 +529,18 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 		waiting_to_start_shop = false
 
 
+# RunData's per-player item caches have no public invalidation hook (vanilla goes through
+# _update_item_caches on every add/remove), and reset_run_caches() would clear all four slots,
+# so clear this player's three caches directly.
+func _bt_reset_item_caches(player_index : int) -> void:
+	if RunData.items_nb_cache.size() > player_index:
+		RunData.items_nb_cache[player_index].clear()
+	if RunData.different_items_nb_cache.size() > player_index:
+		RunData.different_items_nb_cache[player_index].clear()
+	if RunData.duplicate_items_cache.size() > player_index:
+		RunData.duplicate_items_cache[player_index] = null
+
+
 func _dictionary_for_inventory_item(inventory_element : InventoryElement) -> Dictionary:
 	var item_data : ItemData = inventory_element.item
 	var item_dict = {
@@ -538,7 +594,12 @@ func _focus_inventory_item_for_dictionary(item_dict : Dictionary, player_index :
 		if weapon_index < gear_container.weapons_container._elements.get_children().size():
 			return gear_container.weapons_container._elements.get_children()[weapon_index]
 	elif focus_type == "ITEM":
-		return gear_container.items_container._elements.get_children()[item_dict["INDEX"]]
+		# Bounds-checked like the WEAPON branch above: the two sides' item lists can differ in
+		# length (stacking, and an id this side cannot resolve), and an out-of-range index here
+		# is an unhandled array access, not a recoverable focus miss.
+		var item_index = item_dict["INDEX"]
+		if item_index < gear_container.items_container._elements.get_children().size():
+			return gear_container.items_container._elements.get_children()[item_index]
 	elif focus_type == "GO":
 		return _get_go_button(player_index)
 	elif focus_type == "REROLL":
@@ -630,6 +691,8 @@ func _weapon_for_dictionary(weapon_dict : Dictionary) -> WeaponData:
 
 
 func _string_for_weapon(weapon_data : WeaponData) -> String:
+	if weapon_data == null:
+		return ""
 	return weapon_data.my_id
 
 
@@ -744,6 +807,9 @@ func _client_shop_reroll(player_index : int) -> void:
 
 
 func _on_RerollButton_pressed(player_index: int)->void :
+	# This is the exploit: before the first shop packet _reroll_price is 0, so the reroll was free.
+	if _bt_client_shop_not_ready():
+		return
 	if in_multiplayer_game:
 		if steam_connection.is_host():
 			._on_RerollButton_pressed(player_index)
