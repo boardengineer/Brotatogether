@@ -48,6 +48,12 @@ var _join_name := ""
 # one, is_solo_test on). in_multiplayer_game is true and the co-op shop runs, so every
 # HOST-side path can be exercised on one machine with no second player.
 var _solo := false
+# --bt-fake-peer: with --bt-solo, seat a second, non-existent member so player_count is 2.
+# Everything that only runs at two players then executes -- the other panel's gear container,
+# the synced-stat loop, _focus_dictionary_for_player(1) -- and send_shop_state builds a real
+# two-player packet, whose compressed size is recorded before any send is attempted.
+var _fake_peer := false
+const FAKE_PEER_ID := 1
 # --bt-combine=<tier>[,alias][,curse][,hidden]: fabricate a combinable pair in the co-op
 # shop and press Combine in-process. See _combine_tick.
 var _combine_spec := ""
@@ -121,6 +127,8 @@ func _ready() -> void:
 		elif a == "--bt-solo":
 			_mode = "solo"
 			_solo = true
+		elif a == "--bt-fake-peer":
+			_fake_peer = true
 		elif a.begins_with("--bt-combine="):
 			_combine_spec = a.substr(len("--bt-combine="))
 		elif a == "--bt-autoplay":
@@ -264,6 +272,16 @@ func _drive(sc) -> void:
 		sc.game_lobby_owner_id = sc.steam_id
 		sc.lobby_members = [sc.steam_id]
 		sc.lobby_member_names = [Steam.getFriendPersonaName(sc.steam_id)]
+		if _fake_peer:
+			# A second seat nobody is sitting in. Its slot is flagged as left so the shop
+			# does not block forever waiting for it to report arriving, but player_count is
+			# still 2, so every per-player loop runs twice and the shop packet is the real
+			# two-player shape. The id is bogus; sends to it just fail and get logged.
+			sc.lobby_members.push_back(FAKE_PEER_ID)
+			sc.lobby_member_names.push_back("FakePeer")
+			if not sc.left_players.has(1):
+				sc.left_players.push_back(1)
+			print("BTHARNESS fake peer seated in slot 1 (flagged left so nothing waits on it)")
 		opts.is_solo_test = true
 		opts.joining_multiplayer_lobby = true
 		print("BTHARNESS solo test: fake lobby of one, entering character selection")
@@ -1132,6 +1150,12 @@ func _combine_run(scene) -> void:
 	var sc = get_node_or_null("/root/SteamConnection")
 	if sc != null:
 		sc.request_shop_update([0])
+		# var2bytes + GZIP is the only native crossing in the whole shop path, and
+		# last_packet_bytes is set there BEFORE any send is attempted -- so this is the real
+		# compressed packet size even when there is no peer to send it to. The per-player
+		# loop in send_shop_state means a two-player shop carries two full player dicts.
+		print("BTCOMBINE shop packet: players=%d compressed_bytes=%d" % [
+			RunData.get_player_count(), sc.last_packet_bytes])
 	print("BTCOMBINE SURVIVED the shop state send -- spec=%s COMPLETE" % _combine_spec)
 
 
