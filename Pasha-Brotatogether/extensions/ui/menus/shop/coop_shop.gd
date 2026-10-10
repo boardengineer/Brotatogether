@@ -678,9 +678,23 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 # the stats don't change"). It is not cosmetic: the two sides then disagree about the item's
 # real values.
 #
-# The factor cannot be re-derived, so the host sends it and the client reproduces the same
-# item with randomisation turned off. CURSE_FACTOR is read through .has(), so a host that
-# predates it still produces the old flag-only behaviour rather than an error.
+# The factor cannot be re-derived, so the host sends it and the client reproduces the item
+# with randomisation turned off -- which IS deterministic: _get_cursed_item_effect_modifier
+# (dlc_1_data.gd:356) zeroes both of its random sources under that flag, random_modifier and
+# wave_basis, leaving max(min_modifier, a fixed base). CURSE_FACTOR is read through .has(),
+# so a host that predates it still produces the old flag-only behaviour rather than an error.
+#
+# KNOWN RESIDUAL, flagged rather than hidden: the host rolls a factor PER EFFECT and we send
+# only the maximum across the item and its effects, so an item whose effects got different
+# factors is rebuilt with all of them at that maximum -- biased high. And if the host's
+# factor was below the deterministic base, the client lands on the base instead. Single-effect
+# and uniform-factor items reconstruct exactly. Closing the rest means sending the resulting
+# stats and effects outright, a much larger wire change than a display discrepancy justifies
+# while the host already ships authoritative per-player STATS.
+#
+# Note also that curse_item returns early on an already-cursed item (dlc_1_data.gd:50), so the
+# old flag-only corruption was STICKY: once the client had set is_cursed on a plain duplicate,
+# no later curse_item call could ever repair it. This path only ever receives a fresh copy.
 func _bt_apply_curse(item_data, item_dict : Dictionary):
 	if not item_dict.has("CURSED") or not item_dict["CURSED"]:
 		return item_data
