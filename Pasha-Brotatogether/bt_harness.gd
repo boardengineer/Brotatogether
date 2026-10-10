@@ -44,6 +44,16 @@ var _rc_kick_delay := 0.0
 var _rc_kick_since := -1.0
 var _rc_kick_done := false
 var _join_name := ""
+# --bt-solo: take the multiplayer menu's "solo test" path without a click (a fake lobby of
+# one, is_solo_test on). in_multiplayer_game is true and the co-op shop runs, so every
+# HOST-side path can be exercised on one machine with no second player.
+var _solo := false
+# --bt-combine=<tier>[,alias][,curse][,hidden]: fabricate a combinable pair in the co-op
+# shop and press Combine in-process. See _combine_tick.
+var _combine_spec := ""
+var _combine_scene := 0
+var _combine_frames := 0
+var _combine_done := {}
 var _autoplay := false
 var _acted := false
 var _joined := false
@@ -108,6 +118,11 @@ func _ready() -> void:
 		elif a.begins_with("--bt-join="):
 			_mode = "join"
 			_join_name = a.substr(10)
+		elif a == "--bt-solo":
+			_mode = "solo"
+			_solo = true
+		elif a.begins_with("--bt-combine="):
+			_combine_spec = a.substr(len("--bt-combine="))
 		elif a == "--bt-autoplay":
 			_autoplay = true
 		elif a == "--bt-chat-test":
@@ -167,7 +182,8 @@ func _ready() -> void:
 	if _mode == "":
 		set_process(false)
 		return
-	_local_idx = 0 if _mode == "host" else 1
+	# Solo test is a lobby of one, so this process is slot 0 just like a host.
+	_local_idx = 0 if (_mode == "host" or _mode == "solo") else 1
 	if _autoplay and not _mortal:
 		# Soak runs are unattended: nobody dodges, so players die by wave 1-3 and the host's
 		# run-lost path tears the lobby down (leave_game_lobby). Make players invulnerable
@@ -197,6 +213,8 @@ func _process(_delta: float) -> void:
 		_mouse_test_tick()
 	if _icon_test:
 		_icon_test_tick()
+	if _combine_spec != "":
+		_combine_tick()
 	if sc == null or not Steam.loggedOn():
 		return
 	if not _traced:
@@ -234,6 +252,24 @@ func _hitch_tick() -> void:
 
 
 func _drive(sc) -> void:
+	# Solo test goes straight to character selection -- the body of the multiplayer menu's
+	# own _on_solo_test_button_pressed, which needs nothing from that scene. Keeping the
+	# menu out of it avoids waiting on the global chat lobby for a run with no peers.
+	if _mode == "solo":
+		var opts = get_node_or_null("/root/BrotogetherOptions")
+		if opts == null:
+			print("BTHARNESS solo: no BrotogetherOptions, aborting")
+			return
+		sc.game_lobby_id = 1
+		sc.game_lobby_owner_id = sc.steam_id
+		sc.lobby_members = [sc.steam_id]
+		sc.lobby_member_names = [Steam.getFriendPersonaName(sc.steam_id)]
+		opts.is_solo_test = true
+		opts.joining_multiplayer_lobby = true
+		print("BTHARNESS solo test: fake lobby of one, entering character selection")
+		var _se = get_tree().change_scene(MenuData.character_selection_scene)
+		return
+
 	print("BTHARNESS entering multiplayer menu")
 	var _e = get_tree().change_scene(MP_MENU_SCENE)
 	yield(get_tree().create_timer(1.0), "timeout")
@@ -393,8 +429,10 @@ func _ap_select(sc, scene, kind) -> void:
 		# Do NOT advance until the client is present -- advancing calls
 		# send_character_selection_completed, which sets lobby_status=CLOSED and hides
 		# the lobby from the client's OPEN-only search before it can join.
+		# Solo test has no client to wait for and never will -- waiting out the full 240s
+		# just to advance anyway wastes four minutes per run.
 		var waited = 0
-		while RunData.get_player_count() < 2 and waited < 240:
+		while not _solo and RunData.get_player_count() < 2 and waited < 240:
 			if waited % 5 == 0:
 				print("BTHARNESS host waiting for client (player_count=%d)" % RunData.get_player_count())
 			yield(get_tree().create_timer(1.0), "timeout")
@@ -457,6 +495,11 @@ func _ap_shop(sc, scene) -> void:
 		# the player -- a 50/50 wedge per shop depending on ordering (seen live wave 3).
 		# The autoshop owns GO on bot runs; the harness stays out of it.
 		print("BTHARNESS autoplay shop: bots own GO, harness skipping")
+		return
+	# A combine test owns this shop: pressing GO here would leave for the next wave before
+	# _combine_tick has fabricated its pair. It presses GO itself once the test is recorded.
+	if _combine_spec != "" and not _combine_done.has(scene.get_instance_id()):
+		print("BTHARNESS autoplay shop: combine test owns GO, harness skipping")
 		return
 	if _local_idx < pc and scene.has_method("_on_GoButton_pressed"):
 		scene._on_GoButton_pressed(_local_idx)
@@ -944,3 +987,173 @@ func _icon_count(node, counts: Dictionary) -> void:
 			counts["empty_names"].push_back(str(node.name))
 	for child in node.get_children():
 		_icon_count(child, counts)
+
+
+# --bt-combine=<tier>[,alias][,curse][,hidden] -- reproduce the reported shop crash in ONE
+# process. The reporter narrowed it to common (tier 1) weapons, and never with a cursed copy
+# involved; since nothing in this mod branches on weapon quality, that points at WHICH TWO
+# OBJECTS are being merged rather than at the tier. Each modifier reconstructs one candidate:
+#
+#   <tier>  common | uncommon | rare -- retests "grey only" directly.
+#   alias   push the SAME ItemService resource twice instead of two RunData duplicates. This
+#           is the state a CLIENT is left in by _weapon_selection_completed
+#           (weapon_selection.gd:171), and the only way to produce it without a second
+#           machine. Mutually exclusive with curse, which replaces a copy.
+#   mixed   one aliased reference plus one add_weapon duplicate -- the reporter's actual
+#           case, a starting weapon combined with a shop-bought copy of itself. Takes
+#           precedence over alias when both are given.
+#   curse   curse one copy, giving the two different stats -- the case that never crashed for
+#           the reporter, and the case RunData.remove_weapon can tell apart, since
+#           ItemService.is_same_weapon compares stats and not my_id.
+#   hidden  force MOUSE_MODE_HIDDEN. Vanilla _combine_weapon re-focuses the new weapon only
+#           in that mode, so without it a freed inventory element can stay in the focus
+#           emulator for _focus_dictionary_for_player to read (candidate 3). 1.5.2 is the
+#           release that gave the shop a mouse, which is when this became reachable.
+#
+# Each step prints BEFORE it acts, so a hard process exit leaves the step it died on as the
+# last line of the log. That matters because a GDScript null dereference prints an error and
+# carries on -- whatever takes the process down will not announce itself.
+func _combine_tick() -> void:
+	var scene = get_tree().current_scene
+	if scene == null or scene.name != "CoopShop":
+		return
+	var sid = scene.get_instance_id()
+	if sid != _combine_scene:
+		_combine_scene = sid
+		_combine_frames = 0
+		return
+	if _combine_done.has(sid):
+		return
+	_combine_frames += 1
+	# Let the shop settle first: panels built, focus placed, first shop state sent.
+	if _combine_frames != 40:
+		return
+	_combine_done[sid] = true
+	_combine_run(scene)
+
+
+func _combine_run(scene) -> void:
+	var parts = _combine_spec.split(",", false)
+	var tier_name = str(parts[0]) if parts.size() > 0 else "common"
+	var tier_by_name = {"common": 0, "uncommon": 1, "rare": 2}
+	var tier = int(tier_by_name[tier_name]) if tier_by_name.has(tier_name) else 0
+	var want_alias = false
+	var want_mixed = false
+	var want_curse = false
+	var want_hidden = false
+	for i in range(1, parts.size()):
+		var p = str(parts[i])
+		if p == "alias":
+			want_alias = true
+		elif p == "mixed":
+			want_mixed = true
+		elif p == "curse":
+			want_curse = true
+		elif p == "hidden":
+			want_hidden = true
+
+	var base = _combine_pick_weapon(tier)
+	if base == null:
+		print("BTCOMBINE abort: no combinable weapon found at tier %d" % tier)
+		return
+	print("BTCOMBINE spec=%s tier=%s(%d) alias=%s curse=%s hidden=%s weapon=%s upgrades_into=%s" % [
+		_combine_spec, tier_name, tier, str(want_alias), str(want_curse), str(want_hidden),
+		str(base.my_id), str(base.upgrades_into.my_id)])
+
+	var weapons : Array = RunData.players_data[0].weapons
+	print("BTCOMBINE before: count=%d %s" % [weapons.size(), str(_combine_ids(weapons))])
+
+	if want_mixed:
+		# The reporter's actual crashing case: a STARTING weapon (which on a client is the
+		# ItemService resource itself, un-duplicated and with effects never applied) plus a
+		# shop-bought copy, which did go through add_weapon. The two differ in identity but
+		# not in stats, so is_same_weapon cannot tell them apart while object equality can.
+		weapons.push_back(base)
+		var d = RunData.add_weapon(base, 0)
+		print("BTCOMBINE gave 1 ALIASED ref (id=%d) + 1 duplicate (id=%d)" % [
+			base.get_instance_id(), d.get_instance_id()])
+	elif want_alias:
+		# Deliberately NOT add_weapon: the resource itself, twice, with no duplicate and no
+		# apply_item_effects -- byte for byte the client's post-selection state for a
+		# character whose two starting weapons are the same.
+		weapons.push_back(base)
+		weapons.push_back(base)
+		print("BTCOMBINE gave 2 ALIASED refs (same object, id=%d)" % base.get_instance_id())
+	else:
+		var a = RunData.add_weapon(base, 0)
+		var b = RunData.add_weapon(base, 0)
+		print("BTCOMBINE gave 2 duplicates (ids=%d,%d)" % [a.get_instance_id(), b.get_instance_id()])
+
+	if want_curse:
+		var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+		var last = weapons.size() - 1
+		if dlc != null and dlc.has_method("curse_item"):
+			weapons[last] = dlc.curse_item(weapons[last], 0, true, 0.0)
+			print("BTCOMBINE cursed the second copy via dlc.curse_item")
+		else:
+			weapons[last].is_cursed = true
+			print("BTCOMBINE no curse_item on the dlc; set is_cursed directly")
+
+	var gear = scene._get_gear_container(0)
+	gear.set_weapons_data(RunData.get_player_weapons(0))
+	var target = null
+	for el in gear.weapons_container._elements.get_children():
+		if el.item != null and str(el.item.my_id) == str(base.my_id) and not el.item.is_cursed:
+			target = el.item
+			break
+	if target == null:
+		# Every copy cursed (or none landed): combine whatever carries the right id.
+		for el in gear.weapons_container._elements.get_children():
+			if el.item != null and str(el.item.my_id) == str(base.my_id):
+				target = el.item
+				break
+	if target == null:
+		print("BTCOMBINE abort: the pair is not in the gear container after refresh")
+		return
+
+	var prev_mouse = Input.get_mouse_mode()
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if want_hidden else Input.MOUSE_MODE_VISIBLE)
+	var focused = Utils.get_focus_emulator(0).focused_control
+	print("BTCOMBINE armed: weapons=%s mouse_mode=%d focus_valid=%s target_instance=%d" % [
+		str(_combine_ids(RunData.get_player_weapons(0))), Input.get_mouse_mode(),
+		str(focused != null and is_instance_valid(focused)), target.get_instance_id()])
+
+	print("BTCOMBINE calling _on_item_combine_button_pressed NOW")
+	scene._on_item_combine_button_pressed(target, 0)
+	print("BTCOMBINE SURVIVED the combine call")
+	print("BTCOMBINE after: %s" % str(_combine_ids(RunData.get_player_weapons(0))))
+
+	Input.set_mouse_mode(prev_mouse)
+
+	# The host's own combine path ends in request_shop_update -> send_shop_state, which walks
+	# the gear the combine just rebuilt and reads the focus emulator. Force one more so a
+	# crash in the SEND rather than the combine is attributed correctly.
+	print("BTCOMBINE forcing a shop state send")
+	var sc = get_node_or_null("/root/SteamConnection")
+	if sc != null:
+		sc.request_shop_update([0])
+	print("BTCOMBINE SURVIVED the shop state send -- spec=%s COMPLETE" % _combine_spec)
+
+
+# First combinable weapon at `tier`, preferring a stable, well-known one so repeat runs and
+# the two machines talk about the same weapon.
+func _combine_pick_weapon(tier: int):
+	var fallback = null
+	for w in ItemService.weapons:
+		if w == null or w.tier != tier or w.upgrades_into == null:
+			continue
+		if "pistol" in str(w.my_id) or "knife" in str(w.my_id):
+			return w
+		if fallback == null:
+			fallback = w
+	return fallback
+
+
+func _combine_ids(weapons: Array) -> Array:
+	var out := []
+	for w in weapons:
+		if w == null:
+			out.push_back("<null>")
+		else:
+			out.push_back("%s%s" % [str(w.my_id), "(cursed)" if w.is_cursed else ""])
+	return out
