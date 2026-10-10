@@ -690,9 +690,11 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 # DO NOT delete the max-over-effects loop in _bt_curse_factor as dead code. It reads
 # effect.curse_factor, which curse_item never writes (dlc_1_data.gd:351 is the only
 # curse_factor write in that file), so it looks redundant -- but vanilla's own _combine_weapon
-# reads the same unset field the same way at ui/menus/shop/base_shop.gd:676-678 when it folds
-# two cursed weapons. The field exists on Effect and could be authored in a .tres, so both
-# loops are guarding the same case. Ours mirrors vanilla deliberately.
+# reads the same unset field the same way at ui/menus/shop/base_shop.gd:676-683 when it folds
+# two cursed weapons -- and does it TWICE there, once per weapon being folded (:678 for the
+# clicked one, :683 for the copy found to pair with it), so it is a consistent pattern rather
+# than one incidental line. The field exists on Effect and could be authored in a .tres, so all
+# three loops guard the same case. Ours mirrors vanilla deliberately.
 #
 # KNOWN RESIDUAL, flagged rather than hidden, and narrower than it first looks:
 #   - The curse PENALTY reconstructs exactly. dlc_1_data.gd:344 computes it as
