@@ -1068,6 +1068,7 @@ func _combine_run(scene) -> void:
 	var want_mixed = false
 	var want_curse = false
 	var want_hidden = false
+	var want_upgrade = false
 	for i in range(1, parts.size()):
 		var p = str(parts[i])
 		if p == "alias":
@@ -1078,6 +1079,8 @@ func _combine_run(scene) -> void:
 			want_curse = true
 		elif p == "hidden":
 			want_hidden = true
+		elif p == "upgrade":
+			want_upgrade = true
 
 	var base = _combine_pick_weapon(tier)
 	if base == null:
@@ -1145,10 +1148,21 @@ func _combine_run(scene) -> void:
 		str(_combine_ids(RunData.get_player_weapons(0))), Input.get_mouse_mode(),
 		str(focused != null and is_instance_valid(focused)), target.get_instance_id()])
 
-	_bt_trace("BTCOMBINE calling _on_item_combine_button_pressed NOW")
-	scene._on_item_combine_button_pressed(target, 0)
+	_bt_trace("BTCOMBINE identity before: %s" % _combine_identity(scene))
+
+	if want_upgrade:
+		# nb_to_remove == 1: one weapon in, the upgrade out, and NONE of the second-copy
+		# search and removal that a normal combine does afterwards. Without that cleanup any
+		# disagreement between the container (which matches by reference) and players_data
+		# (which matches by stats) is the end state and survives the rest of the run.
+		_bt_trace("BTCOMBINE calling _combine_weapon(.., is_upgrade=true) NOW")
+		scene._combine_weapon(target, 0, true)
+	else:
+		_bt_trace("BTCOMBINE calling _on_item_combine_button_pressed NOW")
+		scene._on_item_combine_button_pressed(target, 0)
 	_bt_trace("BTCOMBINE SURVIVED the combine call")
 	_bt_trace("BTCOMBINE after: %s" % str(_combine_ids(RunData.get_player_weapons(0))))
+	_bt_trace("BTCOMBINE identity after: %s" % _combine_identity(scene))
 
 	Input.set_mouse_mode(prev_mouse)
 
@@ -1180,6 +1194,29 @@ func _combine_pick_weapon(tier: int):
 		if fallback == null:
 			fallback = w
 	return fallback
+
+
+# The container matches weapons by REFERENCE (inventory.gd:158 under deep_comparison) while
+# RunData.remove_weapon matches by STATS (ItemService.is_same_weapon). Those are different
+# predicates, so the two sides can end up holding different objects while agreeing on the
+# count -- which a my_id listing cannot show. Print instance ids from both sides instead.
+func _combine_identity(scene) -> String:
+	var pd := []
+	for w in RunData.get_player_weapons(0):
+		if w == null:
+			pd.push_back("<null>")
+		else:
+			pd.push_back("%s#%d" % [str(w.my_id), w.get_instance_id()])
+	var ui := []
+	var gear = scene._get_gear_container(0)
+	for el in gear.weapons_container._elements.get_children():
+		if el.item == null:
+			ui.push_back("<null>")
+		elif el.is_queued_for_deletion():
+			ui.push_back("%s#%d(freeing)" % [str(el.item.my_id), el.item.get_instance_id()])
+		else:
+			ui.push_back("%s#%d" % [str(el.item.my_id), el.item.get_instance_id()])
+	return "players_data=%s container=%s" % [str(pd), str(ui)]
 
 
 func _combine_ids(weapons: Array) -> Array:
