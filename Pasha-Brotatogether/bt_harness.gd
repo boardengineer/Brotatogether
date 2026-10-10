@@ -285,7 +285,7 @@ func _drive(sc) -> void:
 			sc.lobby_member_names.push_back("FakePeer")
 			if not sc.left_players.has(1):
 				sc.left_players.push_back(1)
-			print("BTHARNESS fake peer seated in slot 1 (flagged left so nothing waits on it)")
+			_bt_trace("BTCOMBINE fake peer seated in slot 1 (flagged left so nothing waits on it)")
 		opts.is_solo_test = true
 		opts.joining_multiplayer_lobby = true
 		print("BTHARNESS solo test: fake lobby of one, entering character selection")
@@ -626,7 +626,12 @@ func _hb_tick() -> void:
 	if scene != null:
 		sname = scene.name
 	if sname != _last_scene_name:
-		print("BTHARNESS scene %s -> %s (%s)" % [_last_scene_name, sname, _wall_clock()])
+		# Durable when a combine test is armed: scene transitions are the breadcrumb trail
+		# that tells us how far a run got, and stdout loses its tail on an abrupt exit.
+		if _combine_spec != "":
+			_bt_trace("BTCOMBINE scene %s -> %s" % [_last_scene_name, sname])
+		else:
+			print("BTHARNESS scene %s -> %s (%s)" % [_last_scene_name, sname, _wall_clock()])
 		_last_scene_name = sname
 	var now = OS.get_ticks_msec()
 	if now - _hb_last_ms < HB_INTERVAL_MS:
