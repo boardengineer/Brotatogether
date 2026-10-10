@@ -192,6 +192,10 @@ func _ready() -> void:
 		return
 	# Solo test is a lobby of one, so this process is slot 0 just like a host.
 	_local_idx = 0 if (_mode == "host" or _mode == "solo") else 1
+	if _combine_spec != "":
+		_bt_trace_reset()
+		_bt_trace("BTCOMBINE armed spec=%s fake_peer=%s binary_is_debug=%s" % [
+			_combine_spec, str(_fake_peer), str(OS.is_debug_build())])
 	if _autoplay and not _mortal:
 		# Soak runs are unattended: nobody dodges, so players die by wave 1-3 and the host's
 		# run-lost path tears the lobby down (leave_game_lobby). Make players invulnerable
@@ -1072,14 +1076,14 @@ func _combine_run(scene) -> void:
 
 	var base = _combine_pick_weapon(tier)
 	if base == null:
-		print("BTCOMBINE abort: no combinable weapon found at tier %d" % tier)
+		_bt_trace("BTCOMBINE abort: no combinable weapon found at tier %d" % tier)
 		return
-	print("BTCOMBINE spec=%s tier=%s(%d) alias=%s curse=%s hidden=%s weapon=%s upgrades_into=%s" % [
+	_bt_trace("BTCOMBINE spec=%s tier=%s(%d) alias=%s curse=%s hidden=%s weapon=%s upgrades_into=%s" % [
 		_combine_spec, tier_name, tier, str(want_alias), str(want_curse), str(want_hidden),
 		str(base.my_id), str(base.upgrades_into.my_id)])
 
 	var weapons : Array = RunData.players_data[0].weapons
-	print("BTCOMBINE before: count=%d %s" % [weapons.size(), str(_combine_ids(weapons))])
+	_bt_trace("BTCOMBINE before: count=%d %s" % [weapons.size(), str(_combine_ids(weapons))])
 
 	if want_mixed:
 		# The reporter's actual crashing case: a STARTING weapon (which on a client is the
@@ -1088,7 +1092,7 @@ func _combine_run(scene) -> void:
 		# not in stats, so is_same_weapon cannot tell them apart while object equality can.
 		weapons.push_back(base)
 		var d = RunData.add_weapon(base, 0)
-		print("BTCOMBINE gave 1 ALIASED ref (id=%d) + 1 duplicate (id=%d)" % [
+		_bt_trace("BTCOMBINE gave 1 ALIASED ref (id=%d) + 1 duplicate (id=%d)" % [
 			base.get_instance_id(), d.get_instance_id()])
 	elif want_alias:
 		# Deliberately NOT add_weapon: the resource itself, twice, with no duplicate and no
@@ -1096,21 +1100,21 @@ func _combine_run(scene) -> void:
 		# character whose two starting weapons are the same.
 		weapons.push_back(base)
 		weapons.push_back(base)
-		print("BTCOMBINE gave 2 ALIASED refs (same object, id=%d)" % base.get_instance_id())
+		_bt_trace("BTCOMBINE gave 2 ALIASED refs (same object, id=%d)" % base.get_instance_id())
 	else:
 		var a = RunData.add_weapon(base, 0)
 		var b = RunData.add_weapon(base, 0)
-		print("BTCOMBINE gave 2 duplicates (ids=%d,%d)" % [a.get_instance_id(), b.get_instance_id()])
+		_bt_trace("BTCOMBINE gave 2 duplicates (ids=%d,%d)" % [a.get_instance_id(), b.get_instance_id()])
 
 	if want_curse:
 		var dlc = ProgressData.get_dlc_data("abyssal_terrors")
 		var last = weapons.size() - 1
 		if dlc != null and dlc.has_method("curse_item"):
 			weapons[last] = dlc.curse_item(weapons[last], 0, true, 0.0)
-			print("BTCOMBINE cursed the second copy via dlc.curse_item")
+			_bt_trace("BTCOMBINE cursed the second copy via dlc.curse_item")
 		else:
 			weapons[last].is_cursed = true
-			print("BTCOMBINE no curse_item on the dlc; set is_cursed directly")
+			_bt_trace("BTCOMBINE no curse_item on the dlc; set is_cursed directly")
 
 	var gear = scene._get_gear_container(0)
 	gear.set_weapons_data(RunData.get_player_weapons(0))
@@ -1126,27 +1130,27 @@ func _combine_run(scene) -> void:
 				target = el.item
 				break
 	if target == null:
-		print("BTCOMBINE abort: the pair is not in the gear container after refresh")
+		_bt_trace("BTCOMBINE abort: the pair is not in the gear container after refresh")
 		return
 
 	var prev_mouse = Input.get_mouse_mode()
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if want_hidden else Input.MOUSE_MODE_VISIBLE)
 	var focused = Utils.get_focus_emulator(0).focused_control
-	print("BTCOMBINE armed: weapons=%s mouse_mode=%d focus_valid=%s target_instance=%d" % [
+	_bt_trace("BTCOMBINE armed: weapons=%s mouse_mode=%d focus_valid=%s target_instance=%d" % [
 		str(_combine_ids(RunData.get_player_weapons(0))), Input.get_mouse_mode(),
 		str(focused != null and is_instance_valid(focused)), target.get_instance_id()])
 
-	print("BTCOMBINE calling _on_item_combine_button_pressed NOW")
+	_bt_trace("BTCOMBINE calling _on_item_combine_button_pressed NOW")
 	scene._on_item_combine_button_pressed(target, 0)
-	print("BTCOMBINE SURVIVED the combine call")
-	print("BTCOMBINE after: %s" % str(_combine_ids(RunData.get_player_weapons(0))))
+	_bt_trace("BTCOMBINE SURVIVED the combine call")
+	_bt_trace("BTCOMBINE after: %s" % str(_combine_ids(RunData.get_player_weapons(0))))
 
 	Input.set_mouse_mode(prev_mouse)
 
 	# The host's own combine path ends in request_shop_update -> send_shop_state, which walks
 	# the gear the combine just rebuilt and reads the focus emulator. Force one more so a
 	# crash in the SEND rather than the combine is attributed correctly.
-	print("BTCOMBINE forcing a shop state send")
+	_bt_trace("BTCOMBINE forcing a shop state send")
 	var sc = get_node_or_null("/root/SteamConnection")
 	if sc != null:
 		sc.request_shop_update([0])
@@ -1154,9 +1158,9 @@ func _combine_run(scene) -> void:
 		# last_packet_bytes is set there BEFORE any send is attempted -- so this is the real
 		# compressed packet size even when there is no peer to send it to. The per-player
 		# loop in send_shop_state means a two-player shop carries two full player dicts.
-		print("BTCOMBINE shop packet: players=%d compressed_bytes=%d" % [
+		_bt_trace("BTCOMBINE shop packet: players=%d compressed_bytes=%d" % [
 			RunData.get_player_count(), sc.last_packet_bytes])
-	print("BTCOMBINE SURVIVED the shop state send -- spec=%s COMPLETE" % _combine_spec)
+	_bt_trace("BTCOMBINE SURVIVED the shop state send -- spec=%s COMPLETE" % _combine_spec)
 
 
 # First combinable weapon at `tier`, preferring a stable, well-known one so repeat runs and
@@ -1181,3 +1185,27 @@ func _combine_ids(weapons: Array) -> Array:
 		else:
 			out.push_back("%s%s" % [str(w.my_id), "(cursed)" if w.is_cursed else ""])
 	return out
+
+const COMBINE_TRACE_PATH := "user://bt_combine_trace.log"
+
+# Append-and-close on EVERY line. A redirected stdout buffer loses its tail when the process
+# dies abruptly, which is precisely the case --bt-combine exists to catch: the first two
+# fake-peer runs looked like they died on the opening heartbeat when in fact the log simply
+# stopped there. Closing the file each call is slow and completely reliable, and this is a
+# test harness, so reliable wins.
+func _bt_trace(line: String) -> void:
+	print(line)
+	var f := File.new()
+	var mode = File.READ_WRITE if f.file_exists(COMBINE_TRACE_PATH) else File.WRITE
+	if f.open(COMBINE_TRACE_PATH, mode) != OK:
+		return
+	f.seek_end()
+	f.store_line("%s %s" % [_wall_clock(), line])
+	f.close()
+
+
+func _bt_trace_reset() -> void:
+	var f := File.new()
+	if f.open(COMBINE_TRACE_PATH, File.WRITE) == OK:
+		f.store_line("=== bt_combine trace opened ===")
+		f.close()
