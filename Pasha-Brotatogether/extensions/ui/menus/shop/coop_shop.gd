@@ -685,11 +685,14 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 # so a host that predates it still produces the old flag-only behaviour rather than an error.
 #
 # What CURSE_FACTOR carries is not a number we derive: vanilla stores the same one on the item
-# itself at dlc_1_data.gd:351, `new_item_data.curse_factor = max_effect_modifier`. The max
-# taken below over the item and its effects mirrors what vanilla's own _combine_weapon does
-# when it folds two cursed weapons, so it stays defensive in the same way (effects never get a
-# curse_factor from curse_item -- :351 is the only write in the file -- but the field exists and
-# could be authored in a .tres).
+# itself at dlc_1_data.gd:351, `new_item_data.curse_factor = max_effect_modifier`.
+#
+# DO NOT delete the max-over-effects loop in _bt_curse_factor as dead code. It reads
+# effect.curse_factor, which curse_item never writes (dlc_1_data.gd:351 is the only
+# curse_factor write in that file), so it looks redundant -- but vanilla's own _combine_weapon
+# reads the same unset field the same way at ui/menus/shop/base_shop.gd:676-678 when it folds
+# two cursed weapons. The field exists on Effect and could be authored in a .tres, so both
+# loops are guarding the same case. Ours mirrors vanilla deliberately.
 #
 # KNOWN RESIDUAL, flagged rather than hidden, and narrower than it first looks:
 #   - The curse PENALTY reconstructs exactly. dlc_1_data.gd:344 computes it as
