@@ -322,6 +322,7 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 			if abyssal_dlc:
 				if item[0].is_cursed:
 					item_dict["CURSED"] = true
+					item_dict["CURSE_FACTOR"] = _bt_curse_factor(item[0])
 
 			shop_items.push_back(item_dict)
 		player_dict["SHOP_ITEMS"] = shop_items
@@ -437,7 +438,11 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 			player_data.active_sets[active_set] = active_sets_dict[active_set]
 
 		for shop_item_dict in player_dict["SHOP_ITEMS"]:
-			_shop_items[player_index].push_back(_shop_item_for_dictionary(shop_item_dict))
+			# An unresolvable id yields [] now rather than [null, value]; pushing the hole
+			# would reach set_shop_item(null, ..) which derefs item_data on its first line.
+			var rebuilt_shop_item = _shop_item_for_dictionary(shop_item_dict)
+			if not rebuilt_shop_item.empty():
+				_shop_items[player_index].push_back(rebuilt_shop_item)
 
 		var player_gear_container = _get_gear_container(player_index)
 
@@ -552,6 +557,7 @@ func _dictionary_for_inventory_item(inventory_element : InventoryElement) -> Dic
 	if dlc:
 		if item_data.is_cursed:
 			item_dict["CURSED"] = true
+			item_dict["CURSE_FACTOR"] = _bt_curse_factor(item_data)
 
 	return item_dict
 
@@ -627,11 +633,15 @@ func _inventory_item_for_dictionary(item_dict : Dictionary) -> ItemData:
 		if character.my_id == query_id:
 			result = character.duplicate()
 
-	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
-	if dlc:
-		if item_dict.has("CURSED") and item_dict["CURSED"]:
-			result.is_cursed = true
+	if result == null:
+		# An id this side cannot resolve (a DLC the host has and we do not, a renamed item).
+		# Returning null here used to reach `result.is_cursed = true` below and abort this
+		# whole shop update mid-rebuild, leaving the panel half-populated -- which is a large
+		# part of what the players describe as "a ton of visual errors" on the client.
+		print("WARNING - shop update named an unknown item ", query_id, "; skipping it")
+		return null
 
+	result = _bt_apply_curse(result, item_dict)
 	return result
 
 
@@ -653,12 +663,48 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 		if weapon.my_id == query_id:
 			item_element = weapon.duplicate()
 
-	var abyssal_dlc = ProgressData.get_dlc_data("abyssal_terrors")
-	if abyssal_dlc:
-		if shop_item_dict.has("CURSED") and shop_item_dict["CURSED"]:
-			item_element.is_cursed = true
+	if item_element == null:
+		print("WARNING - shop update named an unknown shop item ", query_id, "; skipping it")
+		return []
 
+	item_element = _bt_apply_curse(item_element, shop_item_dict)
 	return [item_element, shop_item_dict["WAVE_VALUE"]]
+
+
+# A cursed item is not a normal item with a flag set: the DLC's curse_item() boosts its stats
+# by a randomised factor and returns a NEW resource. The wire used to carry only the boolean,
+# so the client set is_cursed on a plain duplicate and showed an item marked cursed whose
+# numbers were the uncursed ones -- exactly what the players reported ("shows as cursed but
+# the stats don't change"). It is not cosmetic: the two sides then disagree about the item's
+# real values.
+#
+# The factor cannot be re-derived, so the host sends it and the client reproduces the same
+# item with randomisation turned off. CURSE_FACTOR is read through .has(), so a host that
+# predates it still produces the old flag-only behaviour rather than an error.
+func _bt_apply_curse(item_data, item_dict : Dictionary):
+	if not item_dict.has("CURSED") or not item_dict["CURSED"]:
+		return item_data
+	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if dlc == null:
+		return item_data
+	if item_dict.has("CURSE_FACTOR") and dlc.has_method("curse_item"):
+		var cursed = dlc.curse_item(item_data, 0, true, float(item_dict["CURSE_FACTOR"]))
+		if cursed != null:
+			return cursed
+	item_data.is_cursed = true
+	return item_data
+
+
+# The curse factor the host rolled, so the client can rebuild the same cursed item rather
+# than a plain one wearing the cursed flag.
+func _bt_curse_factor(item_data) -> float:
+	var factor : float = 0.0
+	if item_data == null or not item_data.is_cursed:
+		return factor
+	factor = max(factor, item_data.curse_factor)
+	for effect in item_data.effects:
+		factor = max(factor, effect.curse_factor)
+	return factor
 
 
 func _dictionary_for_weapon(weapon_data : WeaponData) -> Dictionary:
@@ -670,6 +716,7 @@ func _dictionary_for_weapon(weapon_data : WeaponData) -> Dictionary:
 	if dlc:
 		if weapon_data.is_cursed:
 			weapon_dict["CURSED"] = true
+			weapon_dict["CURSE_FACTOR"] = _bt_curse_factor(weapon_data)
 
 	return weapon_dict
 
