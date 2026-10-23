@@ -60,6 +60,12 @@ var _combine_spec := ""
 var _combine_scene := 0
 var _combine_frames := 0
 var _combine_done := {}
+# --bt-curse-gift: HOST only. At every co-op shop, give each OTHER player one cursed common
+# weapon (while they have a free slot) and one cursed common item, cursed through the DLC's
+# own curse_item so the stats really change, then resend the shop state. Supplies the
+# client-side curse display check without waiting on shop luck.
+var _curse_gift := false
+var _curse_gift_done := {}
 var _autoplay := false
 var _acted := false
 var _joined := false
@@ -127,6 +133,8 @@ func _ready() -> void:
 		elif a == "--bt-solo":
 			_mode = "solo"
 			_solo = true
+		elif a == "--bt-curse-gift":
+			_curse_gift = true
 		elif a == "--bt-fake-peer":
 			_fake_peer = true
 		elif a.begins_with("--bt-combine="):
@@ -511,6 +519,8 @@ func _ap_difficulty(sc, scene) -> void:
 func _ap_shop(sc, scene) -> void:
 	var pc = RunData.get_player_count()
 	print("BTHARNESS autoplay shop: wave=%d is_host=%s local_idx=%d player_count=%d" % [RunData.current_wave, str(sc.is_host()), _local_idx, pc])
+	if _curse_gift and sc.is_host():
+		_curse_gift_tick(scene)
 	if _bots:
 		# GO is a TOGGLE: with --bt-bots the AutoBattler autoshop presses GO itself at
 		# the end of its buy/reroll flow, and a second press from the harness UN-readies
@@ -526,6 +536,47 @@ func _ap_shop(sc, scene) -> void:
 	if _local_idx < pc and scene.has_method("_on_GoButton_pressed"):
 		scene._on_GoButton_pressed(_local_idx)
 		print("BTHARNESS autoplay shop: GO pressed for player %d" % _local_idx)
+
+
+func _curse_gift_tick(scene) -> void:
+	var sid = scene.get_instance_id()
+	if _curse_gift_done.has(sid):
+		return
+	_curse_gift_done[sid] = true
+	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if dlc == null or not dlc.has_method("curse_item"):
+		print("BTHARNESS curse-gift: no abyssal_terrors curse_item, skipping")
+		return
+	var weapons = []
+	for w in ItemService.weapons:
+		if w.tier == 0:
+			weapons.push_back(w)
+	var items = []
+	for it in ItemService.items:
+		if it.tier == 0 and it.effects.size() > 0:
+			items.push_back(it)
+	var changed = []
+	for p in RunData.get_player_count():
+		if p == _local_idx:
+			continue
+		var gave = []
+		if weapons.size() > 0 and RunData.get_player_weapons(p).size() < 6:
+			var w = dlc.curse_item(Utils.get_rand_element(weapons), p)
+			RunData.add_weapon(w, p)
+			gave.push_back(w.my_id)
+		if items.size() > 0:
+			var it = dlc.curse_item(Utils.get_rand_element(items), p)
+			RunData.add_item(it, p)
+			gave.push_back(it.my_id)
+		if gave.size() > 0:
+			changed.push_back(p)
+			if scene.has_method("_get_gear_container"):
+				var gear = scene._get_gear_container(p)
+				gear.set_weapons_data(RunData.get_player_weapons(p))
+				gear.set_items_data(RunData.get_player_items(p))
+		print("BTHARNESS curse-gift: wave=%d player=%d gave=%s" % [RunData.current_wave, p, str(gave)])
+	if changed.size() > 0 and scene.has_method("send_shop_state"):
+		scene.send_shop_state(changed)
 
 
 # Post-wave chooser (inside Main, no scene change): after each wave the host shows
