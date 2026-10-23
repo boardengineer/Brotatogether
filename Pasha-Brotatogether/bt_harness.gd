@@ -66,6 +66,9 @@ var _combine_done := {}
 # client-side curse display check without waiting on shop luck.
 var _curse_gift := false
 var _curse_gift_done := {}
+# --bt-wait-peers=<n>: HOST autoplay leaves CharacterSelection alone until the lobby holds
+# n members, so a human joining a bot host is not left behind by an instant solo start.
+var _wait_peers := 0
 var _autoplay := false
 var _acted := false
 var _joined := false
@@ -133,6 +136,8 @@ func _ready() -> void:
 		elif a == "--bt-solo":
 			_mode = "solo"
 			_solo = true
+		elif a.begins_with("--bt-wait-peers="):
+			_wait_peers = int(a.substr(len("--bt-wait-peers=")))
 		elif a == "--bt-curse-gift":
 			_curse_gift = true
 		elif a == "--bt-fake-peer":
@@ -369,6 +374,9 @@ func _on_lobby_found(lobby_id, lobby_name) -> void:
 func _autoplay_tick(sc) -> void:
 	var scene = get_tree().current_scene
 	if scene == null:
+		return
+	if _wait_peers > 0 and scene.name == "CharacterSelection" and sc.is_host() and ("lobby_members" in sc) and sc.lobby_members.size() < _wait_peers:
+		_ap_frames = 0
 		return
 	if _bots and CoopService.get("is_bot_by_index") != null and _local_idx < CoopService.is_bot_by_index.size():
 		# Idempotent re-assert: mode switches call clear_coop_players() which wipes the flags.
