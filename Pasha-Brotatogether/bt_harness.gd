@@ -66,6 +66,11 @@ var _combine_done := {}
 # client-side curse display check without waiting on shop luck.
 var _curse_gift := false
 var _curse_gift_done := {}
+# --bt-gift=<my_id>[,<my_id>...]: HOST only. Same timing as --bt-curse-gift, but gives exactly
+# these items/weapons (repeat an id for a pair, e.g. weapon_knife_1,weapon_knife_1 to combine).
+# --bt-gold=<n>: HOST only. Tops each OTHER player's gold up to n at every co-op shop.
+var _gift_ids := []
+var _gift_gold := 0
 # --bt-wait-peers=<n>: HOST autoplay leaves CharacterSelection alone until the lobby holds
 # n members, so a human joining a bot host is not left behind by an instant solo start.
 var _wait_peers := 0
@@ -140,6 +145,12 @@ func _ready() -> void:
 			_wait_peers = int(a.substr(len("--bt-wait-peers=")))
 		elif a == "--bt-curse-gift":
 			_curse_gift = true
+		elif a.begins_with("--bt-gift="):
+			for id in a.substr(len("--bt-gift=")).split(","):
+				if id != "":
+					_gift_ids.push_back(id)
+		elif a.begins_with("--bt-gold="):
+			_gift_gold = int(a.substr(len("--bt-gold=")))
 		elif a == "--bt-fake-peer":
 			_fake_peer = true
 		elif a.begins_with("--bt-combine="):
@@ -527,7 +538,7 @@ func _ap_difficulty(sc, scene) -> void:
 func _ap_shop(sc, scene) -> void:
 	var pc = RunData.get_player_count()
 	print("BTHARNESS autoplay shop: wave=%d is_host=%s local_idx=%d player_count=%d" % [RunData.current_wave, str(sc.is_host()), _local_idx, pc])
-	if _curse_gift and sc.is_host():
+	if (_curse_gift or _gift_ids.size() > 0 or _gift_gold > 0) and sc.is_host():
 		_curse_gift_tick(scene)
 	if _bots:
 		# GO is a TOGGLE: with --bt-bots the AutoBattler autoshop presses GO itself at
@@ -552,9 +563,9 @@ func _curse_gift_tick(scene) -> void:
 		return
 	_curse_gift_done[sid] = true
 	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
-	if dlc == null or not dlc.has_method("curse_item"):
-		print("BTHARNESS curse-gift: no abyssal_terrors curse_item, skipping")
-		return
+	var can_curse = _curse_gift and dlc != null and dlc.has_method("curse_item")
+	if _curse_gift and not can_curse:
+		print("BTHARNESS curse-gift: no abyssal_terrors curse_item, skipping curses")
 	var weapons = []
 	for w in ItemService.weapons:
 		if w.tier == 0:
@@ -568,14 +579,33 @@ func _curse_gift_tick(scene) -> void:
 		if p == _local_idx:
 			continue
 		var gave = []
-		if weapons.size() > 0 and RunData.get_player_weapons(p).size() < 6:
+		if can_curse and weapons.size() > 0 and RunData.get_player_weapons(p).size() < 6:
 			var w = dlc.curse_item(Utils.get_rand_element(weapons), p)
 			RunData.add_weapon(w, p)
 			gave.push_back(w.my_id)
-		if items.size() > 0:
+		if can_curse and items.size() > 0:
 			var it = dlc.curse_item(Utils.get_rand_element(items), p)
 			RunData.add_item(it, p)
 			gave.push_back(it.my_id)
+		for id in _gift_ids:
+			var gw = ItemService.get_element_safe(ItemService.weapons, id)
+			if gw != null:
+				if RunData.get_player_weapons(p).size() < 6:
+					RunData.add_weapon(gw, p)
+					gave.push_back(id)
+				continue
+			var gi = ItemService.get_element_safe(ItemService.items, id)
+			if gi != null:
+				# Stop one short of a limited item's max, so the shop can still offer the last one.
+				if gi.max_nb > 0 and RunData.get_nb_item(gi.my_id_hash, p, false) >= gi.max_nb - 1:
+					continue
+				RunData.add_item(gi.duplicate(), p)
+				gave.push_back(id)
+			else:
+				print("BTHARNESS gift: unknown id %s" % id)
+		if _gift_gold > 0 and RunData.get_player_gold(p) < _gift_gold:
+			RunData.add_gold(_gift_gold - RunData.get_player_gold(p), p)
+			gave.push_back("gold=%d" % _gift_gold)
 		if gave.size() > 0:
 			changed.push_back(p)
 			if scene.has_method("_get_gear_container"):
