@@ -30,7 +30,7 @@ func _init():
 	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/gpe_spawner.gd")
 	
-	ModLoaderMod.install_script_extension(ext_dir + "items/global/item.gd")
+	# No items/global/item.gd extension: see main.gd _bt_item_network_id.
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "projectiles/player_explosion.gd")

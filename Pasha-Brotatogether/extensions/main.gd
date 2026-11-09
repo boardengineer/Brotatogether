@@ -1478,12 +1478,24 @@ func _spawn_player_projectile(player_projectile_dict : Dictionary) -> void:
 	projectile.show()
 
 
+# Materials and consumables (Item subclasses) get their network id here, as node meta, the
+# first time the host ships them. This used to come from an items/global/item.gd extension,
+# but in the retail 1.2 build that extension, installed after AutoBattler's player.gd one,
+# leaves the precompiled main.gdc unable to load ("assigned value type (Node) doesn't match
+# consumable.gd") and the game segfaults at boot.
+func _bt_item_network_id(item) -> int:
+	if not item.has_meta("bt_network_id"):
+		item.set_meta("bt_network_id", brotatogether_options.current_network_id)
+		brotatogether_options.current_network_id += 1
+	return item.get_meta("bt_network_id")
+
+
 func _host_items_array() -> PoolIntArray:
 	var rows := PoolIntArray()
 	for item in _active_golds:
 		if not is_instance_valid(item):
 			continue
-		rows.push_back(item.network_id)
+		rows.push_back(_bt_item_network_id(item))
 		rows.push_back(int(round(item.global_position.x)))
 		rows.push_back(int(round(item.global_position.y)))
 		rows.push_back(int(round(item.scale.x * 100.0)))
@@ -1543,7 +1555,7 @@ func _host_consumables_array() -> PoolIntArray:
 			if not file_index.has(path):
 				file_index[path] = files.size()
 				files.push_back(path)
-			rows.push_back(consumable.network_id)
+			rows.push_back(_bt_item_network_id(consumable))
 			rows.push_back(int(round(consumable.global_position.x)))
 			rows.push_back(int(round(consumable.global_position.y)))
 			rows.push_back(file_index[path])
