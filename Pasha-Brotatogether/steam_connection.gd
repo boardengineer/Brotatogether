@@ -651,6 +651,8 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 		# Only treat an owner-left as "host left" for OUR game lobby. Without the lobby_id guard a
 		# LEFT in the global chat lobby (or a lobby we bailed out of, e.g. an incompatible join)
 		# whose leaver id matched game_lobby_owner_id would spuriously kick us back to the menu.
+		var left_kind := "game" if lobby_id == game_lobby_id else ("global chat" if lobby_id == global_chat_lobby_id else "other")
+		var ended_flag := run_ended_by_host
 		if lobby_id == game_lobby_id and game_lobby_id != -1 and change_id == game_lobby_owner_id:
 			if run_ended_by_host:
 				# Expected: the host leaves right after send_run_ended and Main is already
@@ -662,7 +664,7 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
 		elif lobby_id == game_lobby_id and game_lobby_id != -1 and is_host():
 			_host_member_left(change_id, changer_name)
-		print("%s has left the lobby (state %d)." % [changer_name, chat_state])
+		print("%s has left the %s lobby (state %d, run_ended_by_host=%s)." % [changer_name, left_kind, chat_state, str(ended_flag)])
 
 	else:
 		print("%s did... something (state %d)." % [changer_name, chat_state])
@@ -2176,12 +2178,14 @@ func _receive_enemy_statics_request(data : Dictionary) -> void:
 # Run over (host -> clients, reliable). See MESSAGE_TYPE_RUN_ENDED.
 func send_run_ended(won : bool, delay : float) -> void:
 	if is_host():
+		print("BTLOBBY sending RUN_ENDED won=%s delay=%.2f to %d members" % [str(won), delay, lobby_members.size() - 1])
 		send_p2p_packet({"WON": won, "DELAY": delay}, MessageType.MESSAGE_TYPE_RUN_ENDED)
 
 
 func _receive_run_ended(data : Dictionary) -> void:
 	if is_host():
 		return
+	print("BTLOBBY received RUN_ENDED won=%s" % str(data.get("WON", false)))
 	run_ended_by_host = true
 	emit_signal("host_run_ended", data.get("WON", false), float(data.get("DELAY", 0.5)))
 
