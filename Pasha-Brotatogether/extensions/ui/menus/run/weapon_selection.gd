@@ -25,6 +25,9 @@ func _ready():
 	if is_multiplayer_lobby:
 		for weapon_data in ItemService.weapons:
 			selections_by_string_key[weapon_item_to_string(weapon_data)] = weapon_data
+		# 1.2: a character's starting ITEMS are offered on this screen too.
+		for item_data in ItemService.items:
+			selections_by_string_key[weapon_item_to_string(item_data)] = item_data
 	
 	inventory_maps = []
 	for player_index in RunData.get_player_count():
@@ -41,16 +44,22 @@ func weapon_item_to_string(item : Resource) -> String:
 
 
 func _lobby_weapons_updated(player_weapons : Array, has_player_selected : Array) -> void:
+	# This screen's own slot is driven by local input: replaying the host's (possibly older)
+	# view of it would clear it, and since 1.2 clearing a confirmed slot also pops a pick.
+	var local_index = steam_connection.get_lobby_index_for_player(steam_connection.steam_id)
 	for player_index in player_weapons.size():
-		if player_weapons[player_index] != null:
+		if player_index != local_index and player_weapons[player_index] != null:
 			_player_focused_weapon(player_index, player_weapons[player_index])
-	
+
 	var all_selected = true
 	for player_index in RunData.get_player_count():
+		if not has_player_selected[player_index]:
+			all_selected = false
+		if player_index == local_index:
+			continue
 		if has_player_selected[player_index]:
 			_set_selected_element(player_index)
 		else:
-			all_selected = false
 			_clear_selected_element(player_index)
 	
 	if all_selected:
@@ -87,7 +96,8 @@ func _player_focused_weapon(player_index : int , weapon : String) -> void:
 				external_focus = true
 				Utils.get_focus_emulator(player_index).focused_control = focused_weapon
 	
-	_player_weapons[player_index] = selected_item
+	# 1.2: _player_weapons[i] is the list of confirmed PICKS, filled by presses (a remote
+	# player's arrive with its confirmation, see _player_selected_weapon) -- a focus is not one.
 	_clear_selected_element(player_index)
 	
 	var panel = _get_panels()[player_index]
@@ -97,7 +107,13 @@ func _player_focused_weapon(player_index : int , weapon : String) -> void:
 			panel.set_data(selected_item, player_index)
 
 
-func _player_selected_weapon(player_index : int) -> void:
+func _player_selected_weapon(player_index : int, picks : Array = []) -> void:
+	if steam_connection.is_host() and player_index < _player_weapons.size():
+		var resolved = []
+		for pick_id in picks:
+			if selections_by_string_key.has(pick_id):
+				resolved.push_back(selections_by_string_key[pick_id])
+		_player_weapons[player_index] = resolved
 	_set_selected_element(player_index)
 
 
@@ -123,7 +139,12 @@ func _set_selected_element(p_player_index:int) -> void:
 			_selections_completed_timer.start()
 
 	if steam_connection.get_lobby_index_for_player(steam_connection.steam_id) == p_player_index:
-		steam_connection.weapon_selected()
+		var picks = []
+		if p_player_index < _player_weapons.size():
+			for pick in _player_weapons[p_player_index]:
+				if pick != null:
+					picks.push_back(weapon_item_to_string(pick))
+		steam_connection.weapon_selected(picks)
 
 
 func _on_selections_completed() -> void:
@@ -135,36 +156,52 @@ func _on_selections_completed() -> void:
 		return
 	
 	
+	var items_before = []
 	for player_index in RunData.get_player_count():
-		var chosen_item = _get_panels()[player_index]
-		var weapon = _player_weapons[player_index]
+		items_before.push_back(RunData.players_data[player_index].items.size())
+		var picks = _player_weapons[player_index] if player_index < _player_weapons.size() else []
 		
-		if chosen_item.item_data == null or weapon == null:
+		# A slot that never confirmed (left, or a character with nothing to pick) falls back
+		# to a random pickable element, like vanilla's random button.
+		if picks.empty() and RunData.player_has_weapon_slots(player_index):
 			var available_elements: = []
 			for element in displayed_elements[player_index]:
-				if not element.is_locked:
+				if not element.is_locked and _get_item_disabled_update(element) == null:
 					available_elements.push_back(element)
-			weapon = Utils.get_rand_element(available_elements)
-			_player_weapons[player_index] = weapon
+			var fallback = Utils.get_rand_element(available_elements)
+			if fallback != null:
+				picks = [fallback]
 		
-		if weapon:
-			var _weapon = RunData.add_weapon(weapon, player_index, true)
+		for pick in picks:
+			if pick is WeaponData:
+				var _weapon = RunData.add_weapon(pick, player_index, true)
+			elif pick is ItemData:
+				RunData.add_item(pick, player_index, true)
 	
 	RunData.add_starting_items_and_weapons()
 	
 	var all_selected_weapons = []
+	var all_selected_items = []
 	for player_index in RunData.get_player_count():
 		var selected_weapons = []
 		for owned_weapon in RunData.players_data[player_index].weapons:
 			selected_weapons.push_back(weapon_item_to_string(owned_weapon))
 		all_selected_weapons.push_back(selected_weapons)
+		# Only what this screen added (picked items + the character's starting items): the
+		# client already holds everything from before it, like the character itself.
+		var selected_items = []
+		var owned_items = RunData.players_data[player_index].items
+		for item_index in range(items_before[player_index], owned_items.size()):
+			selected_items.push_back(weapon_item_to_string(owned_items[item_index]))
+		all_selected_items.push_back(selected_items)
 	
-	steam_connection.send_weapon_selection_completed(all_selected_weapons)
+	steam_connection.send_weapon_selection_completed(all_selected_weapons, all_selected_items)
 	
 	_change_scene(MenuData.difficulty_selection_scene)
 
 
 func _weapon_selection_completed(selected_weapons : Array) -> void:
+	var selected_items = steam_connection.last_selected_items
 	for player_index in RunData.get_player_count():
 		RunData.players_data[player_index].weapons.clear()
 		for weapon_index in selected_weapons[player_index].size():
@@ -181,6 +218,13 @@ func _weapon_selection_completed(selected_weapons : Array) -> void:
 				print("WARNING - weapon selection named an unknown weapon ", selected_weapons[player_index][weapon_index], "; skipping")
 				continue
 			RunData.players_data[player_index].weapons.push_back(selected_weapon.duplicate())
+		# Starting items (1.2 pickable ones and the character's own): through add_item, so the
+		# client's local sim (its own movement speed, pickup range) has their effects in wave 1.
+		if player_index < selected_items.size():
+			for item_id in selected_items[player_index]:
+				var selected_item = selections_by_string_key.get(item_id)
+				if selected_item is ItemData:
+					RunData.add_item(selected_item.duplicate(), player_index)
 	
 	_change_scene(MenuData.difficulty_selection_scene)
 

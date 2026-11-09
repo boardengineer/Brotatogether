@@ -315,7 +315,8 @@ func _on_selections_completed() -> void:
 		if chosen_item.item_data == null:
 			var available_elements: = []
 			for element in ItemService.characters:
-				if not element.is_locked:
+				# 1.2: a character can need an item set the host has switched off.
+				if not element.is_locked and _get_item_disabled_update(element) == null:
 					available_elements.push_back(element)
 			character = Utils.get_rand_element(available_elements)
 			_player_characters[player_index] = character

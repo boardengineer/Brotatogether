@@ -115,6 +115,13 @@ enum MessageType {
 	MESSAGE_TYPE_RUN_ENDED,
 	# Host -> one client: leave this lobby (kick / refused join). {REASON}
 	MESSAGE_TYPE_KICKED,
+	# Client -> host (reliable), 1.2 shop actions: dismantle a shop item {ITEM, MECA};
+	# meca-upgrade an owned weapon {WEAPON_INDEX, UPGRADED (WeaponData.serialize())}.
+	MESSAGE_TYPE_SHOP_DISMANTLE_ITEM,
+	MESSAGE_TYPE_SHOP_MECA_UPGRADE,
+	# Client -> host (reliable), 1.2 wave-end crate chooser: an owned weapon was combined,
+	# recycled or meca-upgraded there. {ACTION, WEAPON_INDEX, UPGRADED (meca only)}
+	MESSAGE_TYPE_MAIN_SCENE_WEAPON_ACTION,
 }
 
 var global_chat_lobby_id : int = -1
@@ -332,6 +339,10 @@ signal client_shop_focus_updated(shop_item_string, player_index)
 signal client_shop_focus_inventory_element(element_dict, player_index)
 
 signal client_shop_buy_item(item_string, player_index)
+# 1.2: meca shop items need the buyer's effect choice; dismantle and meca upgrades are new.
+signal client_shop_buy_item_choice(item_string, is_meca, effect_choice, player_index)
+signal client_shop_dismantle_item(item_string, is_meca, player_index)
+signal client_shop_meca_upgrade(weapon_index, upgraded_weapon_dict, player_index)
 
 signal client_shop_reroll(player_index)
 
@@ -379,6 +390,7 @@ signal client_main_scene_choose_upgrade_pressed(upgrade_data_dict, player_index)
 signal client_main_scene_take_button_pressed(player_index)
 
 signal client_main_scene_discard_button_pressed(player_index)
+signal client_main_scene_weapon_action(action, weapon_index, upgraded_weapon_dict, player_index)
 
 signal host_entered_shop()
 
@@ -1047,11 +1059,13 @@ func _compat_game_version() -> String:
 	return str(ProgressData.VERSION)
 
 
-# Sorted comma-joined ACTIVE dlc ids (owned AND not deactivated) -- the content the game is
+# Sorted comma-joined ACTIVE dlc ids (owned; 1.2 has no per-DLC deactivation) -- the content the game is
 # actually running. A peer missing or deactivating any of these would desync.
 func _compat_dlc_string() -> String:
 	var ids := []
-	for dlc_id in ProgressData.get_active_dlc_ids():
+	# 1.2 dropped get_active_dlc_ids(); every owned DLC is active (is_dlc_available_and_active
+	# == is_dlc_available), and available_dlc_ids is the owned list.
+	for dlc_id in ProgressData.available_dlc_ids:
 		ids.push_back(str(dlc_id))
 	ids.sort()
 	return PoolStringArray(ids).join(",")
@@ -1372,13 +1386,13 @@ func read_p2p_packet() -> void:
 						_lat_rel_count += 1
 					# Density: enemies + bosses ride as flat 9-int rows (ENEMY_ROW_STRIDE).
 					var lat_ec : int = 0
-					# Packed bytes since 2026-09-10 (main.gd ENEMY_ROW_BYTES=16); ints (9/row) before.
+					# Packed bytes since 2026-09-10 (main.gd ENEMY_ROW_BYTES, 17 with the 1.2 facing byte).
 					var lat_rows = data.get("ENEMIES", null)
 					if lat_rows != null:
-						lat_ec = int(lat_rows.size() / (16 if lat_rows is PoolByteArray else 9))
+						lat_ec = int(lat_rows.size() / (17 if lat_rows is PoolByteArray else 9))
 					var lat_brows = data.get("BOSSES", null)
 					if lat_brows != null:
-						lat_ec += int(lat_brows.size() / (16 if lat_brows is PoolByteArray else 9))
+						lat_ec += int(lat_brows.size() / (17 if lat_brows is PoolByteArray else 9))
 					if lat_ec > _lat_max_enemies:
 						_lat_max_enemies = lat_ec
 					var lat_seq : int = int(data.get("SEQ", 0))
@@ -1428,6 +1442,12 @@ func read_p2p_packet() -> void:
 				_receive_run_ended(data)
 			elif channel == MessageType.MESSAGE_TYPE_KICKED:
 				_receive_kicked(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_DISMANTLE_ITEM:
+				_receive_shop_dismantle_item(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_SHOP_MECA_UPGRADE:
+				_receive_shop_meca_upgrade(data, sender_id)
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_SCENE_WEAPON_ACTION:
+				_receive_main_scene_weapon_action(data, sender_id)
 
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1684,11 +1704,14 @@ func _receive_weapon_focus(data : Dictionary, sender_id : int) -> void:
 	_send_weapon_lobby_update()
 
 
-func weapon_selected() -> void:
+# `picks`: the ids this player confirmed (1.2: several for a character with extra starting
+# weapon choices, and starting ITEMS can be picks too). The host used to infer the pick from
+# the client's last focus, which can only ever be one element.
+func weapon_selected(picks : Array = []) -> void:
 	if is_host():
 		_send_weapon_lobby_update()
 	else:
-		send_p2p_packet({}, MessageType.MESSAGE_TYPE_WEAPON_SELECTED, game_lobby_owner_id)
+		send_p2p_packet({"PICKS": picks}, MessageType.MESSAGE_TYPE_WEAPON_SELECTED, game_lobby_owner_id)
 
 
 func _receive_weapon_select(_data : Dictionary, sender_id : int) -> void:
@@ -1700,7 +1723,7 @@ func _receive_weapon_select(_data : Dictionary, sender_id : int) -> void:
 	if player_index == -1:
 		return
 
-	emit_signal("player_selected_weapon", player_index)
+	emit_signal("player_selected_weapon", player_index, _data.get("PICKS", []))
 
 
 func _send_weapon_lobby_update() -> void:
@@ -1744,18 +1767,26 @@ func send_difficulty_lobby_update() -> void:
 
 
 
-func send_weapon_selection_completed(selected_weapons : Array) -> void:
+# Client: the SELECTED_ITEMS of the last weapon_selection_completed (read by the
+# WeaponSelection extension right after the signal; kept out of the signal's arguments so the
+# harness trace's handler signature stays valid).
+var last_selected_items : Array = []
+
+
+func send_weapon_selection_completed(selected_weapons : Array, selected_items : Array = []) -> void:
 	if not is_host():
 		return
 
 	var data = {
 		"SELECTED_WEAPONS" : selected_weapons,
+		"SELECTED_ITEMS" : selected_items,
 	}
 
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_WEAPON_SELECTION_COMPLETED)
 
 
 func _receive_weapon_selection_completed(data : Dictionary) -> void:
+	last_selected_items = data.get("SELECTED_ITEMS", [])
 	emit_signal("weapon_selection_completed", data["SELECTED_WEAPONS"])
 
 
@@ -1788,6 +1819,11 @@ func difficulty_pressed() -> void:
 
 	var data = {
 		"SELECTED_DIFFICULTY": selected_difficulty,
+		# The run setup a client never computes itself (it skips the vanilla press). Since 1.2
+		# the zone decides the map size, the wave list and the hole waves, and the background
+		# decides the generated decor -- a client on its own menu zone played a different map.
+		"ZONE": RunData.current_zone,
+		"BACKGROUND": RunData.current_background.resource_path if RunData.current_background != null else "",
 	}
 
 	send_p2p_packet(data, MessageType.MESSAGE_TYPE_DIFFICULTY_PRESSED)
@@ -1802,6 +1838,12 @@ func _receive_difficutly_pressed(data : Dictionary) -> void:
 		print("WARNING - Received difficulty focus update when not in the current scene, current scene:", get_tree().current_scene.name)
 		return
 
+	RunData.current_difficulty = data["SELECTED_DIFFICULTY"]
+	if data.has("ZONE"):
+		RunData.current_zone = data["ZONE"]
+	var background_path = data.get("BACKGROUND", "")
+	if background_path != "" and ResourceLoader.exists(background_path):
+		RunData.current_background = load(background_path)
 	emit_signal("difficulty_selected", data["SELECTED_DIFFICULTY"])
 
 # returns -1 if the player isn't in the lobby
@@ -1878,12 +1920,14 @@ func shop_go_button_exited() -> void:
 	shop_go_button_pressed(false)
 
 
-func shop_buy_item(item_string : String, player_index : int) -> void:
+func shop_buy_item(item_string : String, player_index : int, is_meca : bool = false, effect_choice : int = -1) -> void:
 	if is_host():
 		request_shop_update([player_index])
 	else:
 		var data = {
 			"ITEM": item_string,
+			"MECA": is_meca,
+			"CHOICE": effect_choice,
 		}
 
 		send_p2p_packet(data, MessageType.MESSAGE_TYPE_SHOP_BUY_ITEM, game_lobby_owner_id)
@@ -1899,7 +1943,40 @@ func _receive_shop_buy_item(data : Dictionary, sender_id : int) -> void:
 		return
 
 	var player_index : int = get_lobby_index_for_player(sender_id)
-	emit_signal("client_shop_buy_item", data["ITEM"], player_index)
+	if data.has("CHOICE"):
+		emit_signal("client_shop_buy_item_choice", data["ITEM"], data.get("MECA", false), data["CHOICE"], player_index)
+	else:
+		emit_signal("client_shop_buy_item", data["ITEM"], player_index)
+
+
+func shop_dismantle_item(item_string : String, is_meca : bool, player_index : int) -> void:
+	if is_host():
+		request_shop_update([player_index])
+	else:
+		send_p2p_packet({"ITEM": item_string, "MECA": is_meca}, MessageType.MESSAGE_TYPE_SHOP_DISMANTLE_ITEM, game_lobby_owner_id)
+
+
+func _receive_shop_dismantle_item(data : Dictionary, sender_id : int) -> void:
+	if not is_host() or not data.has("ITEM"):
+		return
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	if player_index >= 0:
+		emit_signal("client_shop_dismantle_item", data["ITEM"], data.get("MECA", false), player_index)
+
+
+func shop_meca_upgrade(weapon_index : int, upgraded_weapon_dict : Dictionary, player_index : int) -> void:
+	if is_host():
+		request_shop_update([player_index])
+	else:
+		send_p2p_packet({"WEAPON_INDEX": weapon_index, "UPGRADED": upgraded_weapon_dict}, MessageType.MESSAGE_TYPE_SHOP_MECA_UPGRADE, game_lobby_owner_id)
+
+
+func _receive_shop_meca_upgrade(data : Dictionary, sender_id : int) -> void:
+	if not is_host() or not data.has("WEAPON_INDEX") or not data.has("UPGRADED"):
+		return
+	var player_index : int = get_lobby_index_for_player(sender_id)
+	if player_index >= 0:
+		emit_signal("client_shop_meca_upgrade", data["WEAPON_INDEX"], data["UPGRADED"], player_index)
 
 
 func shop_reroll(player_index : int) -> void:
@@ -2187,6 +2264,20 @@ func send_main_scene_client_discard_button_pressed() -> void:
 
 func _receive_main_scene_client_discard_button_pressed(sender_id : int) -> void:
 	emit_signal("client_main_scene_discard_button_pressed", get_lobby_index_for_player(sender_id))
+
+
+# action: "combine" | "discard" | "meca"; weapon_index into the player's RunData weapons
+# (a client's list is the host's, in the host's order, from the last shop packet).
+func send_main_scene_weapon_action(action : String, weapon_index : int, upgraded_weapon_dict : Dictionary = {}) -> void:
+	send_p2p_packet({"ACTION": action, "WEAPON_INDEX": weapon_index, "UPGRADED": upgraded_weapon_dict}, MessageType.MESSAGE_TYPE_MAIN_SCENE_WEAPON_ACTION, game_lobby_owner_id)
+
+
+func _receive_main_scene_weapon_action(data : Dictionary, sender_id : int) -> void:
+	if not is_host() or not data.has("ACTION") or not data.has("WEAPON_INDEX"):
+		return
+	var player_index = get_lobby_index_for_player(sender_id)
+	if player_index >= 0:
+		emit_signal("client_main_scene_weapon_action", data["ACTION"], data["WEAPON_INDEX"], data.get("UPGRADED", {}), player_index)
 
 
 func send_host_entered_shop() -> void:

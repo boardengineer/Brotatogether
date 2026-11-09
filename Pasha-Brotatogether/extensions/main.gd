@@ -72,6 +72,15 @@ var client_consumables = {}
 var client_neutrals = {}
 var client_structures = {}
 var client_pets = {}
+var client_puddles = {}
+
+# PUDDLES (1.2 acid/petrol/fire puddles): packed bytes u32 id, i16 x, i16 y, u16 scale*100,
+# u8 kind (gpe_spawner extension's PuddleKind) = 11 B. Puddles are pooled Area2Ds with no
+# Entity id, so the host keys them by node and drops a node's id once it stops being active:
+# a pooled puddle reused later is a new id, which is how the client tells a new puddle from
+# one that moved.
+const PUDDLE_ROW_BYTES := 11
+var _puddle_ids := {}   # host: puddle node -> network id while active
 
 # Used to dedupe spawns
 var client_pending_ids = {}
@@ -81,17 +90,25 @@ var client_pending_ids = {}
 # The per-enemy string statics (scene filename + stats resource_path) are ~9x the row's bytes,
 # never change, and so are hoisted out of the 60 Hz snapshot into a one-shot RELIABLE spawn
 # event (BATCHED_ENEMY_SPAWNS) keyed by network_id.
-const ENEMY_ROW_STRIDE := 9
+const ENEMY_ROW_STRIDE := 10
 # On the wire the int rows are packed to bytes (see _pack_enemy_rows): u32 id, i16 x, i16 y,
 # i16 move_x*100, i16 move_y*100, u8 a/r/g/b = 16 B per enemy vs 36 B as PoolIntArray. At
 # 60-70 live enemies (danger 0, two bots, wave 9+) the int rows alone were 2.1-2.6 KB and
 # every snapshot fell back to the reliable channel (BTSIZE run 28).
-const ENEMY_ROW_BYTES := 16
+const ENEMY_ROW_BYTES := 17
+# Last row field (1.2): the sprite's facing, 1 = mirrored (sprite.scale.x < 0). Clients used to
+# derive facing from the movement direction, but some 1.2 bosses face where their behavior
+# says, not where they move (the brachiosaurus's edge behavior points its head into the map:
+# on clients its head and tail were swapped).
 # ENEMY_PROJECTILES: packed bytes u32 id, i16 x, i16 y, i16 rot*1000, u8 file_idx (11 B) with the
 # distinct scene paths in a per-snapshot EP_FILES table. CONSUMABLES: int rows [id, x, y, file_idx]
 # + CS_FILES table. Each used to carry its ~50 B path string per object per tick (BTSIZE run 30:
 # ENEMY_PROJECTILES 4.6 KB at wave 8 with 100+ live enemies, CONSUMABLES ~1 KB).
 const EP_ROW_BYTES := 11
+# The file-index byte's top bit carries "lit" (hitbox enabled) for 1.2's lasers; 127 distinct
+# projectile scenes per snapshot is far more than any wave fields.
+const EP_FILE_MASK := 127
+const EP_LIT_BIT := 128
 const CS_ROW_STRIDE := 4
 var _ep_files_out : Array = []   # EP_FILES for the snapshot being built (host)
 var _cs_files_out : Array = []   # CS_FILES for the snapshot being built (host)
@@ -105,6 +122,9 @@ const ITEM_ROW_STRIDE := 5
 # sprite_y*100, is_shooting]. BTSIZE run 27: PLAYERS 1.5 KB (weapon dicts) + BIRTHS 1.0-1.4 KB
 # spikes were the two fattest sections once ITEMS shrank.
 const BIRTH_ROW_STRIDE := 4
+const BIRTH_TYPE_MASK := 255
+const BIRTH_CHARMED_BIT := 256
+const BIRTH_GROUP_BIT := 512
 const WEAPON_ROW_STRIDE := 5
 var _enemy_statics_sent := {}   # host: network_ids whose spawn statics have been sent this wave
 var client_enemy_statics := {}  # client: network_id -> [filename, resource_path] from spawn events
@@ -180,6 +200,12 @@ func _ready():
 	brotatogether_options = $"/root/BrotogetherOptions"
 	in_multiplayer_game = brotatogether_options.in_multiplayer_game
 
+	# The base _ready rolled the map from a seed both machines share (gpe_spawner extension);
+	# everything after it must stay unpredictable again.
+	if brotatogether_options.map_rng_seeded:
+		brotatogether_options.map_rng_seeded = false
+		randomize()
+
 	if in_multiplayer_game:
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
@@ -199,6 +225,7 @@ func _ready():
 		steam_connection.connect("client_main_scene_choose_upgrade_pressed", self, "_client_choose_upgrade_button_pressed")
 		steam_connection.connect("client_main_scene_take_button_pressed", self, "_client_take_button_pressed")
 		steam_connection.connect("client_main_scene_discard_button_pressed", self, "_client_discard_button_pressed")
+		steam_connection.connect("client_main_scene_weapon_action", self, "_client_weapon_action")
 
 		steam_connection.connect("host_entered_shop", self, "_host_entered_shop")
 
@@ -355,6 +382,8 @@ func _send_game_state() -> void:
 	state_dict["PETS"] = _host_pets_array()
 	state_dict["ENEMY_PROJECTILES"] = _host_enemy_projectiles_array()
 	state_dict["EP_FILES"] = _ep_files_out
+	state_dict["PUDDLES"] = _host_puddles_array()
+	state_dict["POACHER_ZONES"] = _host_poacher_zones()
 	state_dict["UPGRADE_MENU_STATUS"] = _host_menu_status()
 
 	# One-shot deltas -> reliable events channel (see steam_connection.send_game_events).
@@ -385,6 +414,10 @@ func _send_game_state() -> void:
 	brotatogether_options.batched_sounds.clear()
 	events_dict["BATCHED_EXPLOSIONS"] = brotatogether_options.batched_explosions.duplicate()
 	brotatogether_options.batched_explosions.clear()
+	# Boss stomp holes are permanent walls: reliable, like deaths (a lost one = a wall the
+	# client walks through).
+	events_dict["BATCHED_HOLES"] = brotatogether_options.batched_holes.duplicate()
+	brotatogether_options.batched_holes.clear()
 	# Per-enemy statics (filename + resource_path) for ids first seen this tick. Reliable so the
 	# client can decode the enemy's int rows once it knows how to instance it. Empty most ticks.
 	events_dict["BATCHED_ENEMY_SPAWNS"] = enemy_spawns
@@ -493,6 +526,9 @@ func _state_update(state_dict : Dictionary) -> void:
 	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"], state_dict.get("EP_FILES", []))
 	var enemy_projectiles_update_time = Time.get_ticks_usec() - before
 
+	_update_puddles(state_dict.get("PUDDLES", PoolByteArray()))
+	_update_poacher_zones(state_dict.get("POACHER_ZONES", PoolIntArray()))
+
 	# Hit effects/particles/floating-text/sounds moved to _state_events (reliable channel).
 	var enemy_hit_effects_update_time = 0
 	var enemy_hit_particles_update_time = 0
@@ -571,6 +607,10 @@ func _state_events(events_dict : Dictionary) -> void:
 
 	for explosion in events_dict["BATCHED_EXPLOSIONS"]:
 		call_deferred("spawn_explosion", explosion)
+
+	if is_instance_valid(_gpe_spawner) and _gpe_spawner.has_method("spawn_hole_replica"):
+		for hole in events_dict.get("BATCHED_HOLES", []):
+			_gpe_spawner.call_deferred("spawn_hole_replica", Vector2(hole[0], hole[1]))
 
 	_update_batched_hit_effects(events_dict["BATCHED_HIT_EFFECTS"])
 	_update_batched_hit_particles(events_dict["BATCHED_HIT_PARTICLES"])
@@ -700,7 +740,7 @@ func _enemy_row(enemy, spawns : Dictionary) -> PoolIntArray:
 	var enemy_id = enemy.network_id
 	if not _enemy_statics_sent.has(enemy_id):
 		_enemy_statics_sent[enemy_id] = true
-		spawns[enemy_id] = [enemy.filename, enemy.stats.resource_path]
+		spawns[enemy_id] = _enemy_statics(enemy)
 		# Also ride the statics in the UNRELIABLE snapshot for the id's first ticks
 		# (see _statics_fresh in _send_game_state): the reliable events channel can lag
 		# the unreliable rows by 100 ms+ on an asymmetric link, and with pooled reuse
@@ -720,7 +760,39 @@ func _enemy_row(enemy, spawns : Dictionary) -> PoolIntArray:
 	row.push_back(modulate.r8)
 	row.push_back(modulate.g8)
 	row.push_back(modulate.b8)
+	row.push_back(1 if enemy.sprite.scale.x < 0 else 0)
 	return row
+
+
+# [scene filename, stats resource_path, evolution]. Evolution (1.2, Primal Dread): 0 plain,
+# 1 mutant, 2 meca. The host's EvolutionSceneEffectBehavior decides it inside spawn_entity
+# (enemy_respawned), so it is final before the enemy's first row is ever built.
+func _enemy_statics(enemy) -> Array:
+	var evolution = 0
+	if "_is_mutant" in enemy and enemy._is_mutant:
+		evolution = 1
+	elif "_is_meca" in enemy and enemy._is_meca:
+		evolution = 2
+	return [enemy.filename, enemy.stats.resource_path, evolution]
+
+
+# Client: what the mutant/meca effect behaviors show (they also carry host-only damage and
+# gold hooks, so they are not instanced here): the evolved texture and the colored outline.
+# The flags themselves make the enemy's own script take its evolved branch; any puddle it
+# then tries to drop is suppressed client-side (gpe_spawner extension) and arrives from the
+# host's PUDDLES rows instead.
+func _apply_client_evolution(enemy, evolution : int) -> void:
+	if evolution == 0 or not "_is_mutant" in enemy:
+		return
+	enemy._is_mutant = evolution == 1
+	enemy._is_meca = evolution == 2
+	var texture = enemy.evolution_mutant if evolution == 1 else enemy.evolution_meca
+	if texture != null:
+		if "_sprite_foot" in enemy:
+			enemy._sprite_foot.texture = texture
+		else:
+			enemy.sprite.texture = texture
+	enemy.add_outline(Utils.MUTANT_COLOR if evolution == 1 else Utils.MECA_COLOR)
 
 
 # BTMISS backstop (host): a client received rows for these ids but never got their spawn
@@ -735,10 +807,10 @@ func _on_enemy_statics_requested(ids) -> void:
 	if is_instance_valid(_entity_spawner):
 		for enemy in _entity_spawner.enemies:
 			if is_instance_valid(enemy) and enemy.network_id in ids:
-				spawns[enemy.network_id] = [enemy.filename, enemy.stats.resource_path]
+				spawns[enemy.network_id] = _enemy_statics(enemy)
 		for boss in _entity_spawner.bosses:
 			if is_instance_valid(boss) and boss.network_id in ids:
-				spawns[boss.network_id] = [boss.filename, boss.stats.resource_path]
+				spawns[boss.network_id] = _enemy_statics(boss)
 	if spawns.empty():
 		return
 	print("BTMISS host resending statics for %d id(s)" % spawns.size())
@@ -769,6 +841,7 @@ func _pack_enemy_rows(rows : PoolIntArray) -> PoolByteArray:
 		buf.put_u8(rows[base + 6])
 		buf.put_u8(rows[base + 7])
 		buf.put_u8(rows[base + 8])
+		buf.put_u8(rows[base + 9])
 	return buf.data_array
 
 
@@ -784,6 +857,7 @@ func _unpack_enemy_rows(bytes : PoolByteArray) -> PoolIntArray:
 		rows.push_back(buf.get_16())
 		rows.push_back(buf.get_16())
 		rows.push_back(buf.get_16())
+		rows.push_back(buf.get_u8())
 		rows.push_back(buf.get_u8())
 		rows.push_back(buf.get_u8())
 		rows.push_back(buf.get_u8())
@@ -820,11 +894,13 @@ func _apply_enemy_rows(rows) -> void:
 			"MODULATE_R": rows[base + 6],
 			"MODULATE_G": rows[base + 7],
 			"MODULATE_B": rows[base + 8],
+			"MIRRORED": rows[base + 9] != 0,
 		}
 		if not is_known:
 			var statics = client_enemy_statics[enemy_id]
 			enemy_dict["FILENAME"] = statics[0]
 			enemy_dict["RESOURCE_PATH"] = statics[1]
+			enemy_dict["EVOLUTION"] = statics[2] if statics.size() > 2 else 0
 		_update_enemy(enemy_dict)
 
 
@@ -859,6 +935,10 @@ func spawn_enemy(enemy_dict) -> void:
 
 	var enemy = load(filename).instance()
 	enemy._entity_spawner_ref = _entity_spawner
+	# A client copy is never init()ed by a spawner, so it had no players and no target. 1.2
+	# bosses read current_target every frame (Tyranosaurus._physics_process: 3.9k errors a
+	# wave); give it the players so update_target (below, once it is in the tree) has some.
+	enemy.players_ref = _players
 
 	var position : Vector2 = Vector2(enemy_dict["X_POS"], enemy_dict["Y_POS"])
 	enemy.position = position
@@ -901,6 +981,9 @@ func spawn_enemy(enemy_dict) -> void:
 
 	_entities_container.add_child(enemy)
 	enemy.set_meta("btg_ghost_enemy", true)
+	_apply_client_evolution(enemy, enemy_dict.get("EVOLUTION", 0))
+	if enemy.has_method("update_target"):
+		enemy.update_target()
 
 
 func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> void:
@@ -968,6 +1051,8 @@ func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> voi
 	for explosion in state_dict["BATCHED_EXPLOSIONS"]:
 		call_deferred("spawn_explosion", explosion)
 
+	_update_puddles(state_dict.get("PUDDLES", PoolByteArray()))
+
 	before = Time.get_ticks_usec()
 	_apply_ghost_modulate()
 	var modulate_us = Time.get_ticks_usec() - before
@@ -1032,6 +1117,10 @@ func _apply_ghost_modulate() -> void:
 	for entity in client_pets.values():
 		if is_instance_valid(entity):
 			entity.modulate = ghost_color
+	for entity in client_puddles.values():
+		if is_instance_valid(entity):
+			entity.modulate = ghost_color
+			entity.monitoring = false   # a solo replica sits on the real puddle: never double its dot
 
 
 func _update_ghost_players(players_array: Array) -> void:
@@ -1099,12 +1188,8 @@ func _update_ghost_births(rows) -> void:
 		var network_id = rows[base]
 		current_births[network_id] = true
 		if not _ghost_births.has(network_id):
-			var birth = ENTITY_BIRTH_SCENE.instance()
-			birth.network_id = network_id
-			_entities_container.add_child(birth)
+			var birth = _make_client_birth(network_id, Vector2(rows[base + 1], rows[base + 2]), rows[base + 3], _entities_container)
 			_ghost_births[network_id] = birth
-			birth.start(rows[base + 3], ENTITY_BIRTH_SCENE,
-				Vector2(rows[base + 1], rows[base + 2]))
 			birth._collision_shape.set_deferred("disabled", true)
 
 	var to_remove = []
@@ -1260,8 +1345,37 @@ func _host_births_array() -> PoolIntArray:
 		rows.push_back(birth.network_id)
 		rows.push_back(int(round(birth.global_position.x)))
 		rows.push_back(int(round(birth.global_position.y)))
-		rows.push_back(birth.type)
+		rows.push_back(_birth_flags(birth))
 	return rows
+
+
+# A birth row's last int is the EntityType plus two 1.2 flags the client needs to draw the same
+# marker: a charmed birth is tinted (EntityBirth.set_color reads request.charmed_by) and a group
+# birth is a different scene (EntityGroupBirth, one marker for a whole edge-of-map pack).
+func _birth_flags(birth) -> int:
+	var flags = birth.type
+	if birth.request != null and birth.request.charmed_by != - 1:
+		flags |= BIRTH_CHARMED_BIT
+	if birth is EntityGroupBirth:
+		flags |= BIRTH_GROUP_BIT
+	return flags
+
+
+# Client: instance and start a cosmetic birth marker from a host row. 1.2's start() takes a
+# SpawnRequest; only its type, position and charmed_by matter for the marker (the host spawns
+# the entity), so its scene field is just the marker's own.
+func _make_client_birth(network_id : int, pos : Vector2, flags : int, container : Node) -> Node:
+	var scene = ENTITY_BIRTH_SCENE
+	if (flags & BIRTH_GROUP_BIT) != 0 and _entity_spawner.entity_group_birth_scene != null:
+		scene = _entity_spawner.entity_group_birth_scene
+	var birth = scene.instance()
+	birth.network_id = network_id
+	container.add_child(birth)
+	var request = SpawnRequest.new(flags & BIRTH_TYPE_MASK, scene, pos)
+	if (flags & BIRTH_CHARMED_BIT) != 0:
+		request.charmed_by = 0
+	birth.start(request)
+	return birth
 
 
 func _update_births(rows) -> void:
@@ -1275,11 +1389,7 @@ func _update_births(rows) -> void:
 		current_births[network_id] = true
 
 		if not client_births.has(network_id):
-			var birth = ENTITY_BIRTH_SCENE.instance()
-			birth.network_id = network_id
-			_births_container.add_child(birth)
-			client_births[network_id] = birth
-			birth.start(rows[base + 3], ENTITY_BIRTH_SCENE, Vector2(rows[base + 1], rows[base + 2]))
+			client_births[network_id] = _make_client_birth(network_id, Vector2(rows[base + 1], rows[base + 2]), rows[base + 3], _births_container)
 
 	for network_id in client_births:
 		var old_birth = client_births[network_id]
@@ -1492,6 +1602,8 @@ func _host_neutrals_array() -> Array:
 	for neutral in _entity_spawner.neutrals:
 		var neutral_dict = {}
 		neutral_dict["NETWORK_ID"] = neutral.network_id
+		# Zones have their own trees (1.2 jungle: tree_jungle.tscn; Abyssal Terrors' tree).
+		neutral_dict["FILENAME"] = neutral.filename
 		neutral_dict["X_POS"] = neutral.global_position.x
 		neutral_dict["Y_POS"] = neutral.global_position.y
 		neutrals_array.push_back(neutral_dict)
@@ -1520,7 +1632,8 @@ func _update_neutrals(neutrals_array : Array) -> void:
 
 func _spawn_neutral(neutral_dict : Dictionary) -> void:
 	client_pending_ids.erase(neutral_dict["NETWORK_ID"])
-	var neutral = TREE_SCENE.instance()
+	var filename = neutral_dict.get("FILENAME", "")
+	var neutral = load(filename).instance() if filename != "" and ResourceLoader.exists(filename) else TREE_SCENE.instance()
 
 	neutral.collision_layer = 0
 	neutral.collision_mask = 0
@@ -1709,7 +1822,8 @@ func _host_enemy_projectiles_array() -> PoolByteArray:
 				buf.put_16(int(round(enemy_projectile.global_position.x)))
 				buf.put_16(int(round(enemy_projectile.global_position.y)))
 				buf.put_16(int(round(enemy_projectile.rotation * 1000.0)))
-				buf.put_u8(file_index[path])
+				var lit = 0 if enemy_projectile._hitbox.is_disabled() else EP_LIT_BIT
+				buf.put_u8(file_index[path] | lit)
 	_ep_files_out = files
 	return buf.data_array
 
@@ -1725,7 +1839,9 @@ func _update_enemy_projectiles(rows, files : Array = []) -> void:
 		var px = buf.get_16()
 		var py = buf.get_16()
 		var rot = buf.get_16() / 1000.0
-		var file_idx = buf.get_u8()
+		var file_byte = buf.get_u8()
+		var file_idx = file_byte & EP_FILE_MASK
+		var lit = (file_byte & EP_LIT_BIT) != 0
 		current_enemy_projectiles[network_id] = true
 
 		if client_enemy_projectiles.has(network_id):
@@ -1737,6 +1853,7 @@ func _update_enemy_projectiles(rows, files : Array = []) -> void:
 			enemy_projectile.position.x = px
 			enemy_projectile.position.y = py
 			enemy_projectile.rotation = rot
+			_apply_laser_lit(enemy_projectile, lit)
 		else:
 			if file_idx >= files.size():
 				continue   # table missing this tick; a later snapshot carries it
@@ -1746,6 +1863,7 @@ func _update_enemy_projectiles(rows, files : Array = []) -> void:
 				ProjectileState.PROJECTILE_STATE_Y_POS: py,
 				ProjectileState.PROJECTILE_STATE_ROTATION: rot,
 				ProjectileState.PROJECTILE_STATE_FILENAME: files[file_idx],
+				"LIT": lit,
 			}
 			# Register in client_pending_ids BEFORE deferring: multiple snapshots can be
 			# applied in ONE frame (backlog drains), and an unguarded defer queued a spawn per
@@ -1783,6 +1901,129 @@ func _spawn_enemy_projectile(enemy_projectile_dict : Dictionary) -> void:
 	enemy_projectile._hitbox.active = false
 	enemy_projectile.set_physics_process(false)
 	_enemy_projectiles.show()
+	_apply_laser_lit(enemy_projectile, enemy_projectile_dict.get("LIT", true))
+
+
+# 1.2 boss/elite lasers (EnemyLaser, EnemyLaserFollow) charge with the beam hidden and reveal
+# it from their own _physics_process, which never runs on a client copy. Mirror the host's
+# beam state instead: lit = the host's hitbox is enabled.
+func _apply_laser_lit(projectile, lit : bool) -> void:
+	if not is_instance_valid(projectile) or not "aura_0" in projectile:
+		return
+	projectile._sprite.visible = lit
+	projectile.aura_0.visible = lit
+	projectile.aura_1.visible = lit
+	projectile.aura_2.visible = lit
+
+
+func _host_puddles_array() -> PoolByteArray:
+	var buf := StreamPeerBuffer.new()
+	var ids := {}
+	if is_instance_valid(_gpe_spawner) and _gpe_spawner.has_method("puddle_kind"):
+		for pool in _gpe_spawner._active_puddles.values():
+			for puddle in pool:
+				if not is_instance_valid(puddle) or not puddle.is_active():
+					continue
+				var kind = _gpe_spawner.puddle_kind(puddle)
+				if kind < 0:
+					continue
+				var network_id = _puddle_ids.get(puddle, - 1)
+				if network_id < 0:
+					network_id = brotatogether_options.current_network_id
+					brotatogether_options.current_network_id += 1
+				ids[puddle] = network_id
+				buf.put_u32(network_id)
+				buf.put_16(int(round(puddle.global_position.x)))
+				buf.put_16(int(round(puddle.global_position.y)))
+				buf.put_u16(int(clamp(round(puddle._target_scale.x * 100.0), 0, 65535)))
+				buf.put_u8(kind)
+	_puddle_ids = ids
+	return buf.data_array
+
+
+func _update_puddles(rows) -> void:
+	if rows == null or not is_instance_valid(_gpe_spawner) or not _gpe_spawner.has_method("spawn_replica"):
+		return
+	var current = {}
+	var buf := StreamPeerBuffer.new()
+	buf.data_array = rows
+	for _k in int(rows.size() / PUDDLE_ROW_BYTES):
+		var network_id = buf.get_u32()
+		var pos = Vector2(buf.get_16(), buf.get_16())
+		var puddle_scale = buf.get_u16() / 100.0
+		var kind = buf.get_u8()
+		current[network_id] = true
+		if client_puddles.has(network_id):
+			if is_instance_valid(client_puddles[network_id]):
+				client_puddles[network_id].global_position = pos
+		elif not client_pending_ids.has(network_id):
+			client_pending_ids[network_id] = true
+			call_deferred("_spawn_puddle", network_id, kind, pos, puddle_scale)
+	for network_id in client_puddles.keys():
+		if not current.has(network_id):
+			var gone = client_puddles[network_id]
+			if is_instance_valid(gone) and gone.is_active():
+				gone.despawn()
+			client_puddles.erase(network_id)
+
+
+func _spawn_puddle(network_id : int, kind : int, pos : Vector2, puddle_scale : float) -> void:
+	client_pending_ids.erase(network_id)
+	if not is_instance_valid(_gpe_spawner):
+		return
+	var puddle = _gpe_spawner.spawn_replica(kind, pos, Vector2(puddle_scale, puddle_scale))
+	if puddle != null:
+		client_puddles[network_id] = puddle
+
+
+# 1.2 poacher zones (an item's per-player kill zones). Both machines place them from the shared
+# map seed, but only the host sees the kills that make a zone jump elsewhere
+# (RunData.poacher_bonus_gained), so the host ships every zone's position: [x, y] per zone in the
+# behavior's own order, and a client relocates any of its zones that has drifted.
+func _poacher_zone_behavior():
+	if not is_instance_valid(_effect_behaviors):
+		return null
+	for behavior in _effect_behaviors.get_children():
+		if "poacher_zones" in behavior:
+			return behavior
+	return null
+
+
+func _host_poacher_zones() -> PoolIntArray:
+	var rows := PoolIntArray()
+	var behavior = _poacher_zone_behavior()
+	if behavior == null:
+		return rows
+	for zone in behavior.poacher_zones:
+		if is_instance_valid(zone):
+			rows.push_back(int(round(zone.global_position.x)))
+			rows.push_back(int(round(zone.global_position.y)))
+	return rows
+
+
+func _update_poacher_zones(rows) -> void:
+	if rows == null or rows.empty():
+		return
+	var behavior = _poacher_zone_behavior()
+	if behavior == null:
+		return
+	var zones = []
+	for zone in behavior.poacher_zones:
+		if is_instance_valid(zone):
+			zones.push_back(zone)
+	for k in min(zones.size(), int(rows.size() / 2)):
+		var pos = Vector2(rows[k * 2], rows[k * 2 + 1])
+		if zones[k].global_position.distance_squared_to(pos) > 4.0:
+			zones[k].relocate(pos)
+
+
+# Consumables are host-authoritative (CONSUMABLES rows). 1.2 added this direct spawn path for
+# evolution fruits, meca parts and dig-site crates; a client's local dig site completing would
+# otherwise drop a crate of its own that no host row ever clears.
+func spawn_consumable(consumable_data: ConsumableData, pos: Vector2, unit_pos: Vector2) -> void:
+	if in_multiplayer_game and not steam_connection.is_host():
+		return
+	.spawn_consumable(consumable_data, pos, unit_pos)
 
 
 func _update_batched_hit_particles(batched_hit_effects_array : Array) -> void:
@@ -1997,6 +2238,29 @@ func _client_take_button_pressed(player_index : int) -> void:
 func _client_discard_button_pressed(player_index : int) -> void:
 	var player_container = _coop_upgrades_ui._get_player_container(player_index)
 	player_container._on_DiscardButton_pressed()
+
+
+# Host: a client combined / recycled / meca-upgraded an owned weapon in its wave-end crate
+# chooser (1.2; the upgrades_ui extension forwards it instead of running it locally).
+func _client_weapon_action(action : String, weapon_index : int, upgraded_weapon_dict : Dictionary, player_index : int) -> void:
+	var weapons = RunData.get_player_weapons(player_index)
+	if weapon_index < 0 or weapon_index >= weapons.size() or not is_instance_valid(_coop_upgrades_ui):
+		return
+	var weapon = weapons[weapon_index]
+	match action:
+		"combine":
+			_coop_upgrades_ui._on_weapon_combine_button_pressed(weapon, player_index)
+		"discard":
+			_coop_upgrades_ui._on_weapon_discard_button_pressed(weapon, player_index)
+		"meca":
+			if not upgraded_weapon_dict.has("my_id"):
+				return
+			var catalogue = ItemService.get_element_safe(ItemService.weapons, upgraded_weapon_dict["my_id"])
+			if catalogue == null:
+				return
+			var upgraded = catalogue.duplicate()
+			upgraded.deserialize_and_merge(upgraded_weapon_dict)
+			_coop_upgrades_ui._on_weapon_meca_upgrade_selected(weapon, upgraded, player_index)
 
 
 func _host_entered_shop() -> void:

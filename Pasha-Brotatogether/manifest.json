@@ -1,7 +1,7 @@
 {
 	"name": "Brotatogether",
 	"namespace": "Pasha",
-	"version_number": "1.5.2",
+	"version_number": "1.6.0",
 	"description": "Wanna Brotato with your bros?",
 	"website_url": "",
 	"dependencies": [],
@@ -10,7 +10,7 @@
 			"incompatibilities": [],
 			"authors": ["Pasha"],
 			"compatible_mod_loader_version": ["6.0.0"],
-			"compatible_game_version": ["0.8.0.3"],
+			"compatible_game_version": ["1.2.0.1"],
 			"config_defaults": {
 			}
 		}

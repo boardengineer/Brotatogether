@@ -82,6 +82,9 @@ func _ready():
 		steam_connection.connect("client_shop_discard_weapon", self, "_client_shop_discard_weapon")
 		steam_connection.connect("client_shop_combine_weapon", self, "_client_shop_combine_weapon")
 		steam_connection.connect("client_shop_buy_item", self, "_client_shop_buy_item")
+		steam_connection.connect("client_shop_buy_item_choice", self, "_client_shop_buy_item_choice")
+		steam_connection.connect("client_shop_dismantle_item", self, "_client_shop_dismantle_item")
+		steam_connection.connect("client_shop_meca_upgrade", self, "_client_shop_meca_upgrade")
 		steam_connection.connect("client_shop_reroll", self, "_client_shop_reroll")
 		steam_connection.connect("client_shop_lock_item", self, "_client_shop_lock_item")
 		steam_connection.connect("client_shop_unlock_item", self, "_client_shop_unlock_item")
@@ -254,13 +257,77 @@ func on_shop_item_bought(shop_item: ShopItem, player_index: int) -> void:
 		if steam_connection.is_host():
 			.on_shop_item_bought(shop_item, player_index)
 			pending_force_focus.push_back(player_index)
-		steam_connection.shop_buy_item(_string_for_shop_item(shop_item), player_index)
+		steam_connection.shop_buy_item(_string_for_shop_item(shop_item), player_index, shop_item.item_data.is_meca, shop_item.effect_choice_selected)
 	else:
 		.on_shop_item_bought(shop_item, player_index)
 
 
 func _client_shop_buy_item(item_string : String, player_index : int) -> void:
 	_get_shop_items_container(player_index).on_shop_item_buy_button_pressed(_shop_item_for_string(item_string, player_index))
+
+
+# 1.2: a meca shop item is only bought once one of its two effect options is chosen (the
+# container refocuses the choice buttons instead), so the client's choice rides the buy.
+func _client_shop_buy_item_choice(item_string : String, is_meca : bool, effect_choice : int, player_index : int) -> void:
+	var shop_item = _shop_item_for_string(item_string, player_index, is_meca)
+	if shop_item == null:
+		return
+	if is_meca:
+		shop_item.effect_choice_selected = effect_choice
+	_get_shop_items_container(player_index).on_shop_item_buy_button_pressed(shop_item)
+
+
+# 1.2 dismantle (sell a shop offer for meca parts): host-authoritative like a buy. A client
+# used to run it locally only -- its gold and meca parts changed on its own screen and the
+# host never heard of it.
+func on_shop_item_dismantled(shop_item: ShopItem, player_index: int) -> void:
+	if _bt_client_shop_not_ready():
+		return
+	if in_multiplayer_game:
+		if steam_connection.is_host():
+			.on_shop_item_dismantled(shop_item, player_index)
+			pending_force_focus.push_back(player_index)
+		steam_connection.shop_dismantle_item(_string_for_shop_item(shop_item), shop_item.item_data.is_meca, player_index)
+	else:
+		.on_shop_item_dismantled(shop_item, player_index)
+
+
+func _client_shop_dismantle_item(item_string : String, is_meca : bool, player_index : int) -> void:
+	var shop_item = _shop_item_for_string(item_string, player_index, is_meca)
+	if shop_item != null:
+		_get_shop_items_container(player_index).on_shop_item_dismantle_button_pressed(shop_item)
+
+
+# 1.2 meca upgrade of an owned weapon (item popup, costs meca parts). The client rolled the
+# two stat options it chose from in its own popup, so it sends the finished weapon (vanilla's
+# lossless serialize()) and which owned weapon -- by gear-container index, the order both
+# sides' panels share -- it replaces.
+func _on_item_meca_upgrade_selected(weapon_data: WeaponData, upgraded_weapon: WeaponData, player_index: int) -> void:
+	if not in_multiplayer_game:
+		._on_item_meca_upgrade_selected(weapon_data, upgraded_weapon, player_index)
+		return
+	if steam_connection.is_host():
+		._on_item_meca_upgrade_selected(weapon_data, upgraded_weapon, player_index)
+		pending_force_focus.push_back(player_index)
+		steam_connection.shop_meca_upgrade(-1, {}, player_index)
+		return
+	_popup_manager.reset_focus(player_index)
+	var weapons = _get_gear_container(player_index).weapons_container._elements.get_children()
+	for weapon_index in weapons.size():
+		if weapons[weapon_index].item == weapon_data:
+			steam_connection.shop_meca_upgrade(weapon_index, upgraded_weapon.serialize(), player_index)
+			return
+
+
+func _client_shop_meca_upgrade(weapon_index : int, upgraded_weapon_dict : Dictionary, player_index : int) -> void:
+	var weapons = _get_gear_container(player_index).weapons_container._elements.get_children()
+	if weapon_index < 0 or weapon_index >= weapons.size() or not upgraded_weapon_dict.has("my_id"):
+		return
+	var upgraded = _bt_rebuild_full(ItemService.get_element_safe(ItemService.weapons, upgraded_weapon_dict["my_id"]), {"FULL": upgraded_weapon_dict})
+	if upgraded == null:
+		return
+	_on_item_meca_upgrade_selected(weapons[weapon_index].item, upgraded, player_index)
+	steam_connection.request_close_client_shop_popup(player_index)
 
 
 func _on_item_combine_button_pressed(weapon_data: WeaponData, player_index: int)->void :
@@ -305,7 +372,7 @@ func _client_shop_unlock_item(item_string : String, player_index : int) -> void:
 
 func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 	var result_dict : Dictionary = {}
-	var abyssal_dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	var abyssal_dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 
 	var players_array = []
 	var player_count: int = RunData.get_player_count()
@@ -323,6 +390,7 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 				if item[0].is_cursed:
 					item_dict["CURSED"] = true
 					item_dict["CURSE_FACTOR"] = _bt_curse_factor(item[0])
+			_bt_add_full(item_dict, item[0])
 
 			shop_items.push_back(item_dict)
 		player_dict["SHOP_ITEMS"] = shop_items
@@ -355,6 +423,8 @@ func send_shop_state(changed_shop_player_indeces : Array = []) -> void:
 		player_dict["ITEMS"] = items_array
 
 		player_dict["GOLD"] = RunData.get_player_gold(player_index)
+		# 1.2 second shop currency (meca upgrades, Primal Dread characters).
+		player_dict["MECA_PARTS"] = RunData.get_player_meca_parts(player_index)
 		# XP and level ride ONLY the unreliable wave-end snapshot (main.gd:490-491, 471) and have no
 		# other reliable correction -- unlike gold/effects/items, which this shop packet already
 		# re-syncs. Include them so a dropped wave-end snapshot can't leave the client showing a
@@ -497,6 +567,9 @@ func _update_shop(shop_dictionary : Dictionary) -> void:
 				item.unlock_visually()
 
 		RunData.players_data[player_index].gold = player_dict["GOLD"]
+		if player_dict.has("MECA_PARTS"):
+			RunData.players_data[player_index].meca_parts = player_dict["MECA_PARTS"]
+			RunData.emit_signal("meca_parts_changed", player_dict["MECA_PARTS"], player_index)
 		_get_gold_label(player_index).update_value(RunData.players_data[player_index].gold)
 		# Direct gold assignment skips gold_changed AND the local spend paths that
 		# normally re-tint affordability, so the reroll button stayed dark (and shop
@@ -553,11 +626,12 @@ func _dictionary_for_inventory_item(inventory_element : InventoryElement) -> Dic
 		"NUMBER" : inventory_element.current_number,
 	}
 
-	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	var dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 	if dlc:
 		if item_data.is_cursed:
 			item_dict["CURSED"] = true
 			item_dict["CURSE_FACTOR"] = _bt_curse_factor(item_data)
+	_bt_add_full(item_dict, item_data)
 
 	return item_dict
 
@@ -641,6 +715,8 @@ func _inventory_item_for_dictionary(item_dict : Dictionary) -> ItemData:
 		print("WARNING - shop update named an unknown item ", query_id, "; skipping it")
 		return null
 
+	if item_dict.has("FULL"):
+		return _bt_rebuild_full(result, item_dict)
 	result = _bt_apply_curse(result, item_dict)
 	return result
 
@@ -667,8 +743,30 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 		print("WARNING - shop update named an unknown shop item ", query_id, "; skipping it")
 		return []
 
-	item_element = _bt_apply_curse(item_element, shop_item_dict)
+	if shop_item_dict.has("FULL"):
+		item_element = _bt_rebuild_full(item_element, shop_item_dict)
+	else:
+		item_element = _bt_apply_curse(item_element, shop_item_dict)
 	return [item_element, shop_item_dict["WAVE_VALUE"]]
+
+
+# 1.2 meca and mutant items, and cursed ones, are rebuilt resources rather than catalogue
+# entries: extra effects, two effect options to choose from, a meca rank, effects a mutation
+# copied from another item or removed. An id cannot carry that, so for any such item the host
+# also ships vanilla's own lossless save format (ItemParentData/WeaponData.serialize(), what a
+# saved run is restored from) and the client merges it onto the catalogue copy. This also
+# makes cursed items exact, closing the CURSE_FACTOR residual described below.
+func _bt_add_full(item_dict : Dictionary, item_data) -> void:
+	if item_data != null and (item_data.is_cursed or item_data.is_meca or item_data.is_mutant):
+		item_dict["FULL"] = item_data.serialize()
+
+
+func _bt_rebuild_full(catalogue_item, item_dict : Dictionary):
+	if catalogue_item == null:
+		return null
+	var rebuilt = catalogue_item.duplicate()
+	rebuilt.deserialize_and_merge(item_dict["FULL"])
+	return rebuilt
 
 
 # A cursed item is not a normal item with a flag set: the DLC's curse_item() boosts its stats
@@ -716,7 +814,7 @@ func _shop_item_for_dictionary(shop_item_dict : Dictionary) -> Array:
 func _bt_apply_curse(item_data, item_dict : Dictionary):
 	if not item_dict.has("CURSED") or not item_dict["CURSED"]:
 		return item_data
-	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	var dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 	if dlc == null:
 		return item_data
 	if item_dict.has("CURSE_FACTOR") and dlc.has_method("curse_item"):
@@ -744,11 +842,12 @@ func _dictionary_for_weapon(weapon_data : WeaponData) -> Dictionary:
 		"ID" : weapon_data.my_id
 	}
 
-	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	var dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 	if dlc:
 		if weapon_data.is_cursed:
 			weapon_dict["CURSED"] = true
 			weapon_dict["CURSE_FACTOR"] = _bt_curse_factor(weapon_data)
+	_bt_add_full(weapon_dict, weapon_data)
 
 	return weapon_dict
 
@@ -761,7 +860,9 @@ func _weapon_for_dictionary(weapon_dict : Dictionary) -> WeaponData:
 		if weapon.my_id == query_id:
 			result = weapon.duplicate()
 
-	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	if result != null and weapon_dict.has("FULL"):
+		return _bt_rebuild_full(result, weapon_dict)
+	var dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 	if dlc and result:
 		if weapon_dict.has("CURSED") and weapon_dict["CURSED"]:
 			result.is_cursed = true
@@ -786,14 +887,20 @@ func _string_for_shop_item(shop_item : ShopItem) -> String:
 	return shop_item.item_data.my_id
 
 
-func _shop_item_for_string(shop_item_string : String, player_index : int) -> ShopItem:
+# is_meca (1.2, when the sender knows it): a shop can offer the same item plain and meca'd;
+# prefer the matching one, fall back to any with the id.
+func _shop_item_for_string(shop_item_string : String, player_index : int, is_meca = null) -> ShopItem:
+	var fallback = null
 	for item in _get_shop_items_container(player_index).get_children():
 		if not item is ShopItem:
 			continue
 		if item.item_data.my_id == shop_item_string:
-			return item
+			if is_meca == null or item.item_data.is_meca == is_meca:
+				return item
+			if fallback == null:
+				fallback = item
 
-	return null
+	return fallback
 
 
 func fill_shop_items(player_locked_items: Array, player_index: int, just_entered_shop: bool = false) -> void:

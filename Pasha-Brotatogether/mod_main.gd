@@ -28,6 +28,7 @@ func _init():
 	# TODO replace this
 #	ModLoaderMod.install_script_extension(ext_dir + "global/effects_manager.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "global/entity_spawner.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "global/gpe_spawner.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "items/global/item.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "main.gd")
@@ -42,17 +43,30 @@ func _init():
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/coop_upgrades_ui_player_container.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/pause_menu.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/ingame/upgrades_ui.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/pages/main_menu.gd")
 	
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/character_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/difficulty_selection/difficulty_selection.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/run/weapon_selection.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/coop_shop.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop.gd")
-	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop_item.gd")
+	# coop_shop and shop are installed late (see _install_late_extensions).
+	# No shop_item.gd extension on 1.2: script-extending it gives the ShopItem class two
+	# scripts, and the 1.2 hint scripts typed `shop_item: ShopItem` (coop_ban_shop_hint,
+	# coop_dismantle_shop_hint) then fail to parse against their parent -- no co-op item popup.
+	# Its old client-only deactivate() is unnecessary now that the base one is purely cosmetic.
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/player_gear_container.gd")
 	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/global/focus_emulator.gd")
+	call_deferred("_install_late_extensions")
+
+
+# Brotato 1.2.0.1 base_shop.gd has `var next_wave := RunData.get_next_wave()`. Compiled during
+# ModLoader init, before the RunData autoload exists, that inference fails ("The assigned value
+# doesn't have a set type"), base_shop fails to load and every extension of a shop script is
+# dropped (no co-op shop sync at all). Installed after init, every autoload is in the tree.
+func _install_late_extensions():
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/coop_shop.gd")
+	ModLoaderMod.install_script_extension(ext_dir + "ui/menus/shop/shop.gd")
 
 
 func _ready():

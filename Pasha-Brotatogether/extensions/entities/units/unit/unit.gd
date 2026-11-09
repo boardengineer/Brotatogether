@@ -68,7 +68,15 @@ func update_client_enemy(unit_dict : Dictionary) -> void:
 
 	sprite.self_modulate = Color8(modulate_r, modulate_g, modulate_b, modulate_a)
 
-	call_deferred("update_animation", _current_movement)
+	call_deferred("_update_client_animation", unit_dict.get("MIRRORED", null))
+
+
+# Host-sent facing wins over the movement-derived one (see main.gd ENEMY_ROW_BYTES). Pets ride
+# a dict without it (null): movement facing as before.
+func _update_client_animation(mirrored) -> void:
+	update_animation(_current_movement)
+	if mirrored != null:
+		sprite.scale.x = - abs(sprite.scale.x) if mirrored else abs(sprite.scale.x)
 
 
 func update_external_player_position(player_dict : Dictionary) -> void:

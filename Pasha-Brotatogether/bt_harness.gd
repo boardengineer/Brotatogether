@@ -211,6 +211,22 @@ func _ready() -> void:
 		elif a.begins_with("--bt-danger="):
 			_danger = int(a.substr(12))
 			print("BTHARNESS danger override: element %d" % _danger)
+		elif a.begins_with("--bt-zone="):
+			# HOST: the zone the run starts in (0 crash, 1 abyss, 2 jungle). Character
+			# selection reads it from the settings in its _ready; the client gets it from
+			# the host's difficulty packet, so the client needs no flag.
+			ProgressData.settings.zone_selected = int(a.substr(10))
+			ProgressData.settings.zone_is_random = false
+			print("BTHARNESS zone override: %d" % ProgressData.settings.zone_selected)
+		elif a.begins_with("--bt-start-wave="):
+			# BOTH machines: RunData.reset copies DebugService.starting_wave into current_wave,
+			# so a test can start at a hole wave (jungle 4/10/16) or a boss (10/20).
+			DebugService.starting_wave = int(a.substr(16))
+			print("BTHARNESS start wave override: %d" % DebugService.starting_wave)
+		elif a.begins_with("--bt-boss="):
+			# HOST: the last wave's boss (e.g. boss_brachiosaurus), via the debug hook.
+			DebugService.spawn_specific_boss = a.substr(10)
+			print("BTHARNESS boss override: %s" % DebugService.spawn_specific_boss)
 	if _mode == "":
 		set_process(false)
 		return
@@ -562,7 +578,7 @@ func _curse_gift_tick(scene) -> void:
 	if _curse_gift_done.has(sid):
 		return
 	_curse_gift_done[sid] = true
-	var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+	var dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 	var can_curse = _curse_gift and dlc != null and dlc.has_method("curse_item")
 	if _curse_gift and not can_curse:
 		print("BTHARNESS curse-gift: no abyssal_terrors curse_item, skipping curses")
@@ -768,6 +784,22 @@ func _hb_tick() -> void:
 		# client thinks dead), rows > alive shows up alongside a growing dN.
 		if "client_dead_ids" in scene:
 			cli += "/d%d" % scene.client_dead_ids.size()
+		# pudH-C = puddles the host shipped in its last snapshot / puddle replicas on this
+		# client (1.2). They should track each other; H>0 with C stuck at 0 = rows not drawn.
+		if "client_puddles" in scene and "_puddle_ids" in scene:
+			cli += "/pud%d-%d" % [scene._puddle_ids.size(), scene.client_puddles.size()]
+		# holesN@x,y = hole walls on this machine and the first one's position. Host and
+		# client must print the same value on a hole wave (the map roll is seeded).
+		if "_gpe_container" in scene and is_instance_valid(scene._gpe_container):
+			var holes = []
+			for h in scene._gpe_container.get_children():
+				if h is Hole:
+					holes.push_back(h)
+				for sub in h.get_children():
+					if sub is Hole:
+						holes.push_back(sub)
+			if not holes.empty():
+				cli += "/holes%d@%d,%d" % [holes.size(), int(holes[0].global_position.x), int(holes[0].global_position.y)]
 	# pl=alive/total players (both sides). A client whose 'alive' stays above the host's
 	# after a death = BATCHED_PLAYER_DEATHS not applied; run=L/W once a run end is known.
 	var pl = "n/a"
@@ -1204,7 +1236,7 @@ func _combine_run(scene) -> void:
 		_bt_trace("BTCOMBINE gave 2 duplicates (ids=%d,%d)" % [a.get_instance_id(), b.get_instance_id()])
 
 	if want_curse:
-		var dlc = ProgressData.get_dlc_data("abyssal_terrors")
+		var dlc = ItemService.get_dlc_data_by_id("abyssal_terrors")
 		var last = weapons.size() - 1
 		if dlc != null and dlc.has_method("curse_item"):
 			weapons[last] = dlc.curse_item(weapons[last], 0, true, 0.0)
