@@ -393,7 +393,8 @@ func _on_lobby_found(lobby_id, lobby_name) -> void:
 	if _join_name != "" and _join_name.to_lower() != str(lobby_name).to_lower():
 		return
 	_joined = true
-	print("BTHARNESS joining id=%s name=%s" % [str(lobby_id), str(lobby_name)])
+	print("BTHARNESS joining id=%s name=%s compat=%s" % [str(lobby_id), str(lobby_name),
+		$"/root/SteamConnection".compat_mismatch_reason(lobby_id).replace("\n", " | ")])
 	Steam.joinLobby(lobby_id)
 
 

@@ -1856,12 +1856,16 @@ func _update_enemy_projectiles(rows, files : Array = []) -> void:
 		var lit = (file_byte & EP_LIT_BIT) != 0
 		current_enemy_projectiles[network_id] = true
 
+		# A copy freed or pulled off the tree on this side (pooling, a local timer) while the
+		# host still has the projectile: forget it so it respawns below. Skipping it left the
+		# host's projectile invisible here for the rest of its flight (pj C < D in heavy waves).
+		if client_enemy_projectiles.has(network_id):
+			var stale = client_enemy_projectiles[network_id]
+			if not is_instance_valid(stale) or stale.get_parent() == null:
+				client_enemy_projectiles.erase(network_id)
+
 		if client_enemy_projectiles.has(network_id):
 			var enemy_projectile = client_enemy_projectiles[network_id]
-
-			if not is_instance_valid(enemy_projectile):
-				continue
-
 			enemy_projectile.position.x = px
 			enemy_projectile.position.y = py
 			enemy_projectile.rotation = rot

@@ -590,6 +590,7 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 					# invite): re-verify compatibility now that we're in and the data is present.
 					var reason := compat_mismatch_reason(lobby_id)
 					if reason != "":
+						print("BTLOBBY refusing lobby %d, incompatible: %s" % [lobby_id, reason.replace("\n", " | ")])
 						pending_system_messages.push_back("Cannot join lobby -- incompatible:\n" + reason)
 						Steam.leaveLobby(lobby_id)
 						var _e = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")

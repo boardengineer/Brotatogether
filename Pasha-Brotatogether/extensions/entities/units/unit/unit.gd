@@ -54,6 +54,15 @@ func die(args: = Entity.DieArgs.new())->void :
 	.die(args)
 
 
+# 1.2 border runners (Iguanodon, Oviraptor: go_towards_border_opposite_movement_behavior)
+# leave through Entity.despawn(), which skips die() -- without this the client never heard
+# they were gone and kept them frozen on screen until the wave ended.
+func despawn() -> void:
+	if self.in_multiplayer_game and self.is_host and not dead:
+		self.brotatogether_options.batched_enemy_deaths[self.network_id] = true
+	.despawn()
+
+
 func update_client_enemy(unit_dict : Dictionary) -> void:
 	set_deferred("position", Vector2(unit_dict["X_POS"], unit_dict["Y_POS"]))
 
