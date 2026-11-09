@@ -755,7 +755,7 @@ func _hb_tick() -> void:
 	if sc != null and ("game_lobby_id" in sc):
 		lobby = sc.game_lobby_id
 	if sc != null and ("last_packet_bytes" in sc) and ("unreliable_fallbacks" in sc):
-		net = "%d/%d" % [sc.last_packet_bytes, sc.unreliable_fallbacks]
+		net = "%d/%d/s%d" % [sc.last_packet_bytes, sc.unreliable_fallbacks, sc.superseded_snapshots]
 	# seq = host snapshots sent / client snapshots applied (per Main instance). On the client
 	# an applied count that stops climbing mid-wave means snapshots are not arriving.
 	var seq = "n/a"

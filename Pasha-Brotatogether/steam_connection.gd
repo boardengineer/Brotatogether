@@ -1376,7 +1376,14 @@ func read_p2p_packet() -> void:
 				_receive_leave_shop()
 
 			# Main scene channels
+			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE and Steam.getAvailableP2PPacketSize(channel) > 0:
+				# A newer snapshot is already queued: this one is superseded. Applying every
+				# queued snapshot rebuilt 100+ enemy rows several times in one frame after any
+				# stall, so a dense wave (T-Rex) spiralled to single-digit client fps. Snapshots
+				# are full state; only the enemy statics are one-shot, so carry them forward.
+				_stash_superseded_state(data)
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE:
+				_merge_superseded_state(data)
 				if _latprof_enabled:
 					# Compressed size + delivery mode: only an over-MTU packet can have been
 					# sent RELIABLE (host falls back above UNRELIABLE_MAX_BYTES), so the size
@@ -2177,6 +2184,27 @@ func _receive_run_ended(data : Dictionary) -> void:
 		return
 	run_ended_by_host = true
 	emit_signal("host_run_ended", data.get("WON", false), float(data.get("DELAY", 0.5)))
+
+
+var superseded_snapshots : int = 0       # client: queued snapshots skipped for a newer one (diagnostics)
+var _superseded_spawns := {}
+
+func _stash_superseded_state(state_dict : Dictionary) -> void:
+	superseded_snapshots += 1
+	var spawns = state_dict.get("BATCHED_ENEMY_SPAWNS", {})
+	for spawn_id in spawns:
+		_superseded_spawns[spawn_id] = spawns[spawn_id]
+
+
+func _merge_superseded_state(state_dict : Dictionary) -> void:
+	if _superseded_spawns.empty():
+		return
+	var spawns = state_dict.get("BATCHED_ENEMY_SPAWNS", {})
+	for spawn_id in _superseded_spawns:
+		if not spawns.has(spawn_id):
+			spawns[spawn_id] = _superseded_spawns[spawn_id]
+	state_dict["BATCHED_ENEMY_SPAWNS"] = spawns
+	_superseded_spawns.clear()
 
 
 func _receive_game_state(state_dict : Dictionary) -> void:
