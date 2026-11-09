@@ -526,6 +526,15 @@ func leave_game_lobby() -> void:
 		game_lobby_id = 0
 
 
+# Host run end: keep the lobby open briefly so RUN_ENDED reaches every client before Steam
+# tells them the host left. Only leaves the lobby that was current when this was scheduled.
+func leave_game_lobby_after(seconds : float) -> void:
+	var lobby_id := game_lobby_id
+	yield(get_tree().create_timer(seconds), "timeout")
+	if game_lobby_id == lobby_id:
+		leave_game_lobby()
+
+
 func _on_lobby_created(connect: int, created_lobby_id: int) -> void:
 	print("Created Lobby")
 	if connect == 1:

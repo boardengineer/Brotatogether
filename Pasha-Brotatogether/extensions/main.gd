@@ -16,6 +16,7 @@ var is_self_call = false
 var player_in_scene = [true, false, false, false]
 var waiting_to_start_round = false
 
+const RUN_END_LEAVE_DELAY : float = 3.0   # host: seconds between RUN_ENDED and leaving the lobby
 const SEND_RATE : float = 1.0 / 60.0   # was 1/30; payload is ~1KB so 2x is trivial and halves snapshot staleness
 var send_timer = SEND_RATE
 var my_player_index
@@ -1283,7 +1284,11 @@ func _on_EndWaveTimer_timeout()->void :
 				# lobby is gone by now and clients can't follow a retry, so the run ends
 				# for everyone (clients were told by send_run_ended in clean_up_room).
 				_is_wave_failed = false
-				steam_connection.leave_game_lobby()
+				# Leave a little later, not now: RUN_ENDED rides the reliable P2P stream (which can be
+				# backed up behind over-MTU snapshots) while "host left" comes from Steam's lobby
+				# service. A client that heard "host left" first bounced to the menu instead of
+				# showing the end-run screen.
+				steam_connection.leave_game_lobby_after(RUN_END_LEAVE_DELAY)
 			._on_EndWaveTimer_timeout()
 	else:
 		._on_EndWaveTimer_timeout()
