@@ -124,6 +124,7 @@ var _dil_wave := -1
 # player is dead, the host's clean_up_room -> send_run_ended -> end-run screen on both
 # machines. e.g. --bt-die-at=2:0,3:0,3:1 : host dies wave 2; run ends wave 3.
 var _die_at := {}        # wave -> [player idx, ...]
+var _pl_dead := {}       # player index -> dead at the last heartbeat (DIED/REVIVED lines)
 var _mortal := false     # --bt-mortal: players can actually die (no DebugService.invulnerable)
 
 
@@ -806,9 +807,16 @@ func _hb_tick() -> void:
 	var pl = "n/a"
 	if scene != null and ("_players" in scene):
 		var alive = 0
-		for p in scene._players:
-			if is_instance_valid(p) and not p.dead:
+		for i in scene._players.size():
+			var p = scene._players[i]
+			var is_dead : bool = not is_instance_valid(p) or p.dead
+			if not is_dead:
 				alive += 1
+			# Deaths/revives as their own line: on an unattended seat they were only visible
+			# by diffing pl= across heartbeats (5 s resolution, same wave).
+			if is_dead != bool(_pl_dead.get(i, false)) and (is_dead or _pl_dead.has(i)):
+				print("BTHARNESS player %d %s wave=%d wave_time=%s" % [i, "DIED" if is_dead else "REVIVED", RunData.current_wave, wave_time])
+			_pl_dead[i] = is_dead
 		pl = "%d/%d" % [alive, scene._players.size()]
 		if ("_is_run_lost" in scene) and ("_is_run_won" in scene):
 			if scene._is_run_lost:
@@ -822,7 +830,9 @@ func _hb_tick() -> void:
 		var hp_parts = []
 		for p in scene._players:
 			if is_instance_valid(p):
-				hp_parts.append("%d/%d" % [p.current_stats.health, p.max_stats.health])
+				# @x,y: compare the same slot on both machines -- a client slot that moves on its
+				# own screen but not on the host's is shot standing still.
+				hp_parts.append("%d/%d@%d,%d" % [p.current_stats.health, p.max_stats.health, p.global_position.x, p.global_position.y])
 			else:
 				hp_parts.append("x")
 		hp = PoolStringArray(hp_parts).join(",")
