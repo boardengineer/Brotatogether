@@ -52,7 +52,9 @@ var _last_enemy_rows : int = 0   # enemies in the most recently applied snapshot
 # behind any loss. 40 rows = 680 B packed, well under the cap after gzip.
 const ENEMY_SPLIT_MIN = 30
 const ENEMY_CHUNK_ROWS = 40
-var _rows_seq : int = -1        # client: SEQ the _last_enemy_rows count belongs to
+var _main_rows : int = 0        # client: rows in the newest MAIN_STATE (bosses, + enemies when not split)
+var _chunk_rows : int = 0       # client: rows in the newest chunk SEQ (0 when not split)
+var _chunk_rows_seq : int = -1
 var _last_chunk_seq : int = 0   # client: newest SEQ whose enemy chunks were applied
 const STATICS_FRESH_TICKS = 12  # ~200ms at 60Hz: how long a new id's statics ride the snapshot
 var _statics_fresh := {}        # host: id -> [[filename, stats_path], ticks_left] for snapshot-carried statics
@@ -122,6 +124,10 @@ const EP_LIT_BIT := 128
 const CS_ROW_STRIDE := 4
 var _ep_files_out : Array = []   # EP_FILES for the snapshot being built (host)
 var _cs_files_out : Array = []   # CS_FILES for the snapshot being built (host)
+# PLAYER_PROJECTILES (1.6.6): same 11 B rows + PP_FILES table as ENEMY_PROJECTILES. As dicts
+# (five string keys + the scene path each) ~40 player bullets kept the T-Rex snapshot over the
+# unreliable cap even with the enemy rows split out.
+var _pp_files_out : Array = []   # PP_FILES for the snapshot being built (host)
 # ITEMS row: [network_id, x, y, scale_x*100, scale_y*100]. Materials used to ride as a
 # 5-key string dict each (~70 B); two danger-0 bots litter 40+ materials -> the snapshot
 # outgrew the ~1200 B unreliable MTU every tick from wave 3 (10k+ reliable fallbacks,
@@ -385,6 +391,7 @@ func _send_game_state() -> void:
 
 	state_dict["BIRTHS"] = _host_births_array()
 	state_dict["PLAYER_PROJECTILES"] = _host_player_projectiles_array()
+	state_dict["PP_FILES"] = _pp_files_out
 	state_dict["ITEMS"] = _host_items_array()
 	state_dict["CONSUMABLES"] = _host_consumables_array()
 	state_dict["CS_FILES"] = _cs_files_out
@@ -492,15 +499,11 @@ func _enemy_rows_update(chunk : Dictionary) -> void:
 	for spawn_id in spawns:
 		client_enemy_statics[spawn_id] = spawns[spawn_id]
 		_missing_statics.erase(spawn_id)
-	_count_rows_for_seq(seq)
-	_apply_enemy_rows(chunk.get("ENEMIES", null))
-
-
-# hb rows= is per SEQ now that one snapshot can arrive as several packets.
-func _count_rows_for_seq(seq : int) -> void:
-	if seq != _rows_seq:
-		_rows_seq = seq
-		_last_enemy_rows = 0
+	if seq != _chunk_rows_seq:
+		_chunk_rows_seq = seq
+		_chunk_rows = 0
+	_chunk_rows += _apply_enemy_rows(chunk.get("ENEMIES", null))
+	_last_enemy_rows = _main_rows + _chunk_rows
 
 
 func _state_update(state_dict : Dictionary) -> void:
@@ -542,19 +545,23 @@ func _state_update(state_dict : Dictionary) -> void:
 		_missing_statics.erase(spawn_id)
 
 	before = Time.get_ticks_usec()
-	_count_rows_for_seq(seq)   # per-SEQ reset: ENEMIES + BOSSES + any split chunks accumulate
-	_apply_enemy_rows(state_dict["ENEMIES"])
+	# hb rows= = this snapshot's ENEMIES + BOSSES plus the newest chunk set. Counted apart so
+	# a chunk set landing before its MAIN_STATE (or after) never drops the boss row from it.
+	if not state_dict.has("ENEMY_CHUNKS"):
+		_chunk_rows = 0
+	_main_rows = _apply_enemy_rows(state_dict["ENEMIES"])
 	var enemies_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
-	_apply_enemy_rows(state_dict["BOSSES"])
+	_main_rows += _apply_enemy_rows(state_dict["BOSSES"])
+	_last_enemy_rows = _main_rows + _chunk_rows
 	var bosses_update_time = Time.get_ticks_usec() - before
 
 	# Enemy deaths + flashes + explosions moved to _state_events (reliable channel).
 	var enemy_deaths_update_time = 0
 
 	before = Time.get_ticks_usec()
-	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
+	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"], state_dict.get("PP_FILES", []))
 	var player_projectiles_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
@@ -614,7 +621,7 @@ func _state_update(state_dict : Dictionary) -> void:
 				sound_update_time + sound_2d_update_time,
 				enemy_deaths_update_time,
 				state_dict["PLAYERS"].size(), int(state_dict["ENEMIES"].size() / ENEMY_ROW_BYTES), int(state_dict["BOSSES"].size() / ENEMY_ROW_BYTES),
-				state_dict["PLAYER_PROJECTILES"].size() + int(state_dict["ENEMY_PROJECTILES"].size() / EP_ROW_BYTES),
+				int(state_dict["PLAYER_PROJECTILES"].size() / EP_ROW_BYTES) + int(state_dict["ENEMY_PROJECTILES"].size() / EP_ROW_BYTES),
 				int(state_dict["ITEMS"].size() / ITEM_ROW_STRIDE), int(state_dict["CONSUMABLES"].size() / CS_ROW_STRIDE),
 				state_dict["NEUTRALS"].size(), state_dict["STRUCTURES"].size(),
 				state_dict["PETS"].size(), int(state_dict["BIRTHS"].size() / BIRTH_ROW_STRIDE)])
@@ -929,13 +936,13 @@ func _unpack_enemy_rows(bytes : PoolByteArray) -> PoolIntArray:
 	return rows
 
 
-func _apply_enemy_rows(rows) -> void:
+# Returns the row count (hb rows=, see _main_rows / _chunk_rows).
+func _apply_enemy_rows(rows) -> int:
 	if rows == null:
-		return
+		return 0
 	if rows is PoolByteArray:
 		rows = _unpack_enemy_rows(rows)
 	var enemy_count = int(rows.size() / ENEMY_ROW_STRIDE)
-	_last_enemy_rows += enemy_count   # accumulates across the ENEMIES and BOSSES calls per snapshot
 	for k in enemy_count:
 		var base = k * ENEMY_ROW_STRIDE
 		var enemy_id = rows[base]
@@ -966,6 +973,7 @@ func _apply_enemy_rows(rows) -> void:
 			enemy_dict["RESOURCE_PATH"] = statics[1]
 			enemy_dict["EVOLUTION"] = statics[2] if statics.size() > 2 else 0
 		_update_enemy(enemy_dict)
+	return enemy_count
 
 
 func _update_enemy(enemy_dict : Dictionary) -> void:
@@ -1065,12 +1073,11 @@ func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> voi
 		_missing_statics.erase(spawn_id)
 
 	before = Time.get_ticks_usec()
-	_last_enemy_rows = 0   # per-snapshot reset: _apply_enemy_rows accumulates ENEMIES + BOSSES
-	_apply_enemy_rows(state_dict["ENEMIES"])
+	_last_enemy_rows = _apply_enemy_rows(state_dict["ENEMIES"])
 	var enemies_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
-	_apply_enemy_rows(state_dict["BOSSES"])
+	_last_enemy_rows += _apply_enemy_rows(state_dict["BOSSES"])
 	var bosses_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
@@ -1085,7 +1092,7 @@ func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> voi
 
 	before = Time.get_ticks_usec()
 	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"], state_dict.get("EP_FILES", []))
-	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"])
+	_update_player_projectiles(state_dict["PLAYER_PROJECTILES"], state_dict.get("PP_FILES", []))
 	var proj_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
@@ -1135,7 +1142,7 @@ func _ghost_state_update(state_dict: Dictionary, queue_delay_ms: int = 0) -> voi
 				neutrals_update_time, structures_update_time, pets_update_time,
 				enemy_deaths_update_time, wave_time_left,
 				state_dict["PLAYERS"].size(), int(state_dict["ENEMIES"].size() / ENEMY_ROW_BYTES), int(state_dict["BOSSES"].size() / ENEMY_ROW_BYTES),
-				state_dict["PLAYER_PROJECTILES"].size() + int(state_dict["ENEMY_PROJECTILES"].size() / EP_ROW_BYTES),
+				int(state_dict["PLAYER_PROJECTILES"].size() / EP_ROW_BYTES) + int(state_dict["ENEMY_PROJECTILES"].size() / EP_ROW_BYTES),
 				int(state_dict["ITEMS"].size() / ITEM_ROW_STRIDE), int(state_dict["CONSUMABLES"].size() / CS_ROW_STRIDE),
 				state_dict["NEUTRALS"].size(), state_dict["STRUCTURES"].size(),
 				state_dict["PETS"].size(), int(state_dict["BIRTHS"].size() / BIRTH_ROW_STRIDE)])
@@ -1466,12 +1473,13 @@ func _update_births(rows) -> void:
 			old_birth.queue_free()
 
 
-func _host_player_projectiles_array() -> Array:
-	var player_projectiles_array = []
+func _host_player_projectiles_array() -> PoolByteArray:
+	var buf := StreamPeerBuffer.new()
+	var files := []
+	var file_index := {}
 
 	for child in _player_projectiles.get_children():
 		if child is PlayerProjectile and child._hitbox.active:
-			var projectile_dict = {}
 			var network_id
 			if server_player_projectile_ids.has(child):
 				network_id = server_player_projectile_ids[child]
@@ -1480,20 +1488,36 @@ func _host_player_projectiles_array() -> Array:
 				brotatogether_options.current_network_id = brotatogether_options.current_network_id + 1
 				server_player_projectile_ids[child] = network_id
 
-			projectile_dict["NETWORK_ID"] = network_id
-			projectile_dict["X_POS"] = child.position.x
-			projectile_dict["Y_POS"] = child.position.y
-			projectile_dict["ROTATION"] = child.rotation
-			projectile_dict["FILENAME"] = child.filename
-			player_projectiles_array.push_back(projectile_dict)
-	return player_projectiles_array
+			var path = child.filename
+			if not file_index.has(path):
+				file_index[path] = files.size()
+				files.push_back(path)
+			buf.put_u32(network_id)
+			buf.put_16(int(round(child.position.x)))
+			buf.put_16(int(round(child.position.y)))
+			buf.put_16(int(round(child.rotation * 1000.0)))
+			buf.put_u8(file_index[path])
+	_pp_files_out = files
+	return buf.data_array
 
 
-func _update_player_projectiles(player_projectiles_array : Array) -> void:
+func _update_player_projectiles(rows, files : Array = []) -> void:
 	var current_projectiles = {}
+	if rows == null:
+		rows = PoolByteArray()
+	var buf := StreamPeerBuffer.new()
+	buf.data_array = rows
 
-	for player_projectile_dict in player_projectiles_array:
-		var network_id = player_projectile_dict["NETWORK_ID"]
+	for _k in int(rows.size() / EP_ROW_BYTES):
+		var network_id = buf.get_u32()
+		var px = buf.get_16()
+		var py = buf.get_16()
+		var rot = buf.get_16() / 1000.0
+		var file_idx = buf.get_u8()
+		if file_idx >= files.size():
+			continue
+		var player_projectile_dict = {"NETWORK_ID": network_id, "X_POS": px, "Y_POS": py,
+				"ROTATION": rot, "FILENAME": files[file_idx]}
 		current_projectiles[network_id] = true
 
 		if client_player_projectiles.has(network_id):

@@ -12,7 +12,11 @@ var ext_dir = ""
 var trans_dir = ""
 
 func _init():
-	Steam.steamInit()
+	# Retail 1.2 has already initialised Steam (SteamPlatform) by the time mods load; a
+	# second steamInit() re-connects Steam.run_callbacks to idle_frame (boot-time "already
+	# connected" error). Test trees on LocalPlatform still need it.
+	if not Steam.loggedOn():
+		Steam.steamInit()
 	
 	dir = ModLoaderMod.get_unpacked_dir() + MOD_DIR
 	ext_dir = dir + "extensions/"

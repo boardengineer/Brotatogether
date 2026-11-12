@@ -57,7 +57,12 @@ func _ready():
 	
 	if is_multiplayer_lobby:
 		RunData.is_coop_run = true
-		_coop_button.init()
+		# Vanilla _ready already ran init(), which connects "toggled"; a second init()
+		# double-connects it (the CoopButton "already connected" error). Only re-read pressed.
+		if _coop_button.is_connected("toggled", _coop_button, "_on_toggled"):
+			_coop_button.pressed = RunData.play_mode != RunData.PlayMode.SOLO
+		else:
+			_coop_button.init()
 		_coop_button.hide()
 		var run_options_top_panel = _run_options_panel.get_node("MarginContainer/VBoxContainer/HBoxContainer")
 		run_options_top_panel.remove_child(run_options_top_panel.get_node("Icon"))

@@ -1304,6 +1304,7 @@ func read_p2p_packet() -> void:
 	var lat_last_seq : int = -1
 	var lat_newest_sent_ms : int = -1
 	var lat_pass_rel : bool = false # newest MAIN_STATE packet this pass rode the reliable fallback
+	var chunk_batch := []
 	for channel in MessageType.values():
 		var packet_size: int = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1446,8 +1447,9 @@ func read_p2p_packet() -> void:
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS:
 				_receive_game_events(data)
 			elif channel == MessageType.MESSAGE_TYPE_ENEMY_ROWS:
+				# Collected, not applied: only the newest SEQ's chunks go out (see below).
 				if not is_host():
-					emit_signal("enemy_rows", data)
+					chunk_batch.push_back(data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
 
@@ -1478,6 +1480,9 @@ func read_p2p_packet() -> void:
 				_receive_main_scene_weapon_action(data, sender_id)
 
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
+
+	if not chunk_batch.empty():
+		_emit_newest_enemy_chunks(chunk_batch)
 
 	# BTLAT pass-end: gap/jitter between MAIN_STATE-carrying passes, backlog events, summary.
 	if _latprof_enabled and lat_n > 0:
@@ -2242,6 +2247,34 @@ func _merge_superseded_state(state_dict : Dictionary) -> void:
 			spawns[spawn_id] = _superseded_spawns[spawn_id]
 	state_dict["BATCHED_ENEMY_SPAWNS"] = spawns
 	_superseded_spawns.clear()
+
+
+# Enemy-row chunks get the same newest-only rule as MAIN_STATE: after a stall, applying every
+# queued chunk rebuilt 100+ enemies several times in one frame (1.6.6's T-Rex wave: client
+# fps median ~21 against 1.6.2's ~46). Statics in the skipped chunks are carried forward.
+func _emit_newest_enemy_chunks(batch : Array) -> void:
+	var newest = -1
+	for chunk in batch:
+		newest = max(newest, int(chunk.get("SEQ", 0)))
+	var carried = {}
+	for chunk in batch:
+		if int(chunk.get("SEQ", 0)) != newest:
+			superseded_snapshots += 1
+			var spawns = chunk.get("BATCHED_ENEMY_SPAWNS", {})
+			for spawn_id in spawns:
+				carried[spawn_id] = spawns[spawn_id]
+	var first = true
+	for chunk in batch:
+		if int(chunk.get("SEQ", 0)) != newest:
+			continue
+		if first and not carried.empty():
+			var spawns = chunk.get("BATCHED_ENEMY_SPAWNS", {})
+			for spawn_id in carried:
+				if not spawns.has(spawn_id):
+					spawns[spawn_id] = carried[spawn_id]
+			chunk["BATCHED_ENEMY_SPAWNS"] = spawns
+		first = false
+		emit_signal("enemy_rows", chunk)
 
 
 func _receive_game_state(state_dict : Dictionary) -> void:
