@@ -436,6 +436,32 @@ func _ready():
 	steam_id = Steam.getSteamID()
 
 
+# Client: the newest MAIN_STATE and enemy chunks wait here and are applied at most once per
+# RENDERED frame (_process), not on every physics step. Under load Godot runs several
+# physics steps per frame, and applying a 100+ enemy update in each made a slow frame slower
+# still: 1.6.6-1.6.7 clients fell to 6-20 fps above ~110 enemies. Unreliable packets now
+# arrive every tick instead of in reliable bursts, which fed that loop harder.
+var _pending_state = null
+var _pending_chunks := []
+
+func _queue_game_state(data : Dictionary) -> void:
+	if _pending_state != null:
+		_stash_superseded_state(_pending_state)
+	_pending_state = data
+
+
+func _process(_delta : float) -> void:
+	if _pending_state != null:
+		var state = _pending_state
+		_pending_state = null
+		_merge_superseded_state(state)
+		_receive_game_state(state)
+	if not _pending_chunks.empty():
+		var batch = _pending_chunks
+		_pending_chunks = []
+		_emit_newest_enemy_chunks(batch)
+
+
 func _physics_process(_delta : float) -> void:
 	Steam.run_callbacks()
 	if _invite_lobby_id > 0 and OS.get_ticks_msec() - _invite_requested_ms > INVITE_DATA_TIMEOUT_MS:
@@ -1304,7 +1330,6 @@ func read_p2p_packet() -> void:
 	var lat_last_seq : int = -1
 	var lat_newest_sent_ms : int = -1
 	var lat_pass_rel : bool = false # newest MAIN_STATE packet this pass rode the reliable fallback
-	var chunk_batch := []
 	for channel in MessageType.values():
 		var packet_size: int = Steam.getAvailableP2PPacketSize(channel)
 
@@ -1423,7 +1448,7 @@ func read_p2p_packet() -> void:
 						_lat_max_enemies = lat_ec
 					var lat_seq : int = int(data.get("SEQ", 0))
 					var lat_app_t0 : int = Time.get_ticks_usec()
-					_receive_game_state(data)
+					_queue_game_state(data)
 					var lat_app_us : int = Time.get_ticks_usec() - lat_app_t0
 					_lat_apply_samples.push_back(lat_app_us)
 					lat_pass_us += lat_app_us
@@ -1443,13 +1468,13 @@ func read_p2p_packet() -> void:
 					if lat_sent != null and int(lat_sent) > 0:
 						lat_newest_sent_ms = int(lat_sent)
 				else:
-					_receive_game_state(data)
+					_queue_game_state(data)
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS:
 				_receive_game_events(data)
 			elif channel == MessageType.MESSAGE_TYPE_ENEMY_ROWS:
 				# Collected, not applied: only the newest SEQ's chunks go out (see below).
 				if not is_host():
-					chunk_batch.push_back(data)
+					_pending_chunks.push_back(data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
 
@@ -1480,9 +1505,6 @@ func read_p2p_packet() -> void:
 				_receive_main_scene_weapon_action(data, sender_id)
 
 			packet_size = Steam.getAvailableP2PPacketSize(channel)
-
-	if not chunk_batch.empty():
-		_emit_newest_enemy_chunks(chunk_batch)
 
 	# BTLAT pass-end: gap/jitter between MAIN_STATE-carrying passes, backlog events, summary.
 	if _latprof_enabled and lat_n > 0:
@@ -2141,6 +2163,8 @@ func _receive_host_round_start() -> void:
 	# Anything still queued from the PREVIOUS wave's tail is stale once a new round
 	# begins -- only events arriving between now and the new Main's _ready matter.
 	_pending_state_events.clear()
+	_pending_state = null
+	_pending_chunks.clear()
 	# Shop-time stat overrides must never leak into combat: the client's own player
 	# would read frozen shop values (speed, HP...) in its local simulation.
 	Utils.remote_player_stats.clear()
@@ -2253,20 +2277,24 @@ func _merge_superseded_state(state_dict : Dictionary) -> void:
 # queued chunk rebuilt 100+ enemies several times in one frame (1.6.6's T-Rex wave: client
 # fps median ~21 against 1.6.2's ~46). Statics in the skipped chunks are carried forward.
 func _emit_newest_enemy_chunks(batch : Array) -> void:
-	var newest = -1
+	# Newest copy PER CHUNK INDEX: keeping only the newest SEQ threw away chunk 2 and 3 of
+	# the previous update whenever the next update's chunk 1 landed in the same pass, so
+	# those enemies skipped a tick (the 1.6.7 hb sample with rows for 41 of 116).
+	var newest = {}
 	for chunk in batch:
-		newest = max(newest, int(chunk.get("SEQ", 0)))
+		var idx = int(chunk.get("CHUNK", 0))
+		if not newest.has(idx) or int(chunk.get("SEQ", 0)) > int(newest[idx].get("SEQ", 0)):
+			newest[idx] = chunk
+	var keep = newest.values()
 	var carried = {}
 	for chunk in batch:
-		if int(chunk.get("SEQ", 0)) != newest:
+		if not keep.has(chunk):
 			superseded_snapshots += 1
 			var spawns = chunk.get("BATCHED_ENEMY_SPAWNS", {})
 			for spawn_id in spawns:
 				carried[spawn_id] = spawns[spawn_id]
 	var first = true
-	for chunk in batch:
-		if int(chunk.get("SEQ", 0)) != newest:
-			continue
+	for chunk in keep:
 		if first and not carried.empty():
 			var spawns = chunk.get("BATCHED_ENEMY_SPAWNS", {})
 			for spawn_id in carried:

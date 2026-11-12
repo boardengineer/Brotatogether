@@ -53,9 +53,8 @@ var _last_enemy_rows : int = 0   # enemies in the most recently applied snapshot
 const ENEMY_SPLIT_MIN = 30
 const ENEMY_CHUNK_ROWS = 40
 var _main_rows : int = 0        # client: rows in the newest MAIN_STATE (bosses, + enemies when not split)
-var _chunk_rows : int = 0       # client: rows in the newest chunk SEQ (0 when not split)
-var _chunk_rows_seq : int = -1
-var _last_chunk_seq : int = 0   # client: newest SEQ whose enemy chunks were applied
+var _chunk_rows : int = 0       # client: rows across the newest copy of each chunk (0 when not split)
+var _chunk_seen := {}           # client: chunk index -> [SEQ, rows] of its newest applied copy
 const STATICS_FRESH_TICKS = 12  # ~200ms at 60Hz: how long a new id's statics ride the snapshot
 var _statics_fresh := {}        # host: id -> [[filename, stats_path], ticks_left] for snapshot-carried statics
 var _deaths_reported := {}      # host: every id ever batched into BATCHED_ENEMY_DEATHS this wave
@@ -451,6 +450,8 @@ func _send_game_state() -> void:
 		state_dict["ENEMY_CHUNKS"] = int(ceil(float(live_enemies) / ENEMY_CHUNK_ROWS))
 		_send_enemy_chunks(enemy_rows, snap_spawns)
 	steam_connection.send_game_state(state_dict)
+	if steam_connection.last_packet_bytes > steam_connection.UNRELIABLE_MAX_BYTES:
+		_btsize_report(state_dict)
 
 	# Only send the reliable events packet when something actually happened this tick.
 	var has_events = false
@@ -469,13 +470,32 @@ func _send_game_state() -> void:
 		_ghost_queue.push_back({"time": Time.get_ticks_msec(), "state": merged})
 
 
+# BTSIZE: at most once per 5 s while snapshots overflow the unreliable cap, print each key's
+# gzip size so the next shrink targets the real hog instead of a guess.
+var _btsize_next_ms : int = 0
+
+func _btsize_report(state_dict : Dictionary) -> void:
+	var now = Time.get_ticks_msec()
+	if now < _btsize_next_ms:
+		return
+	_btsize_next_ms = now + 5000
+	var parts = []
+	for k in state_dict:
+		var n = var2bytes(state_dict[k]).compress(File.COMPRESSION_GZIP).size()
+		if n >= 40:
+			parts.push_back("%s=%d" % [k, n])
+	print("BTSIZE total=%d enemies=%d %s" % [steam_connection.last_packet_bytes,
+			_entity_spawner.enemies.size() if is_instance_valid(_entity_spawner) else -1, " ".join(parts)])
+
+
 func _send_enemy_chunks(enemy_rows : PoolIntArray, snap_spawns : Dictionary) -> void:
 	var stride = ENEMY_CHUNK_ROWS * ENEMY_ROW_STRIDE
 	var all_rows = Array(enemy_rows)   # PoolIntArray has no subarray() in Godot 3
 	var start = 0
 	while start < all_rows.size():
 		var chunk_rows := PoolIntArray(all_rows.slice(start, min(start + stride, all_rows.size()) - 1))
-		var chunk = {"SEQ": _state_seq, "ENEMIES": _pack_enemy_rows(chunk_rows)}
+		var chunk = {"SEQ": _state_seq, "CHUNK": int(start / stride), "OF": int(ceil(float(all_rows.size()) / stride)),
+				"ENEMIES": _pack_enemy_rows(chunk_rows)}
 		# Statics for ids new in this chunk ride along, same as in the whole snapshot.
 		if not snap_spawns.empty():
 			var spawns = {}
@@ -488,21 +508,26 @@ func _send_enemy_chunks(enemy_rows : PoolIntArray, snap_spawns : Dictionary) -> 
 		start += stride
 
 
-# Client: one chunk of a split snapshot. Chunks of the same SEQ all apply; an older SEQ
-# is dropped so a late chunk never rewinds an enemy another chunk already moved.
+# Client: one chunk of a split snapshot. Each chunk index keeps its own newest SEQ; an older
+# copy of that index is dropped so a late chunk never rewinds its enemies. Rows are absolute
+# and deaths reliable, so an enemy that shifts chunk between updates is at worst one tick old.
 func _enemy_rows_update(chunk : Dictionary) -> void:
 	var seq = int(chunk.get("SEQ", 0))
-	if seq < _last_chunk_seq:
+	var idx = int(chunk.get("CHUNK", 0))
+	if _chunk_seen.has(idx) and seq < _chunk_seen[idx][0]:
 		return
-	_last_chunk_seq = seq
 	var spawns = chunk.get("BATCHED_ENEMY_SPAWNS", {})
 	for spawn_id in spawns:
 		client_enemy_statics[spawn_id] = spawns[spawn_id]
 		_missing_statics.erase(spawn_id)
-	if seq != _chunk_rows_seq:
-		_chunk_rows_seq = seq
-		_chunk_rows = 0
-	_chunk_rows += _apply_enemy_rows(chunk.get("ENEMIES", null))
+	_chunk_seen[idx] = [seq, _apply_enemy_rows(chunk.get("ENEMIES", null))]
+	var of = int(chunk.get("OF", idx + 1))
+	_chunk_rows = 0
+	for k in _chunk_seen.keys():
+		if k >= of:
+			_chunk_seen.erase(k)   # the pack shrank: that index no longer exists
+		else:
+			_chunk_rows += _chunk_seen[k][1]
 	_last_enemy_rows = _main_rows + _chunk_rows
 
 
@@ -549,6 +574,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	# a chunk set landing before its MAIN_STATE (or after) never drops the boss row from it.
 	if not state_dict.has("ENEMY_CHUNKS"):
 		_chunk_rows = 0
+		_chunk_seen.clear()
 	_main_rows = _apply_enemy_rows(state_dict["ENEMIES"])
 	var enemies_update_time = Time.get_ticks_usec() - before
 
