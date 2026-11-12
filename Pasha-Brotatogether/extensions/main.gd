@@ -45,6 +45,15 @@ var client_dead_ids := {}       # network_id -> physics frame of the death event
 # them from the host; entries clear when statics arrive or the enemy dies.
 var _missing_statics := {}
 var _last_enemy_rows : int = 0   # enemies in the most recently applied snapshot (hb rows= field)
+# 1.6.6 dense-wave split: past ENEMY_SPLIT_MIN live enemies the host sends ENEMIES as
+# separate unreliable chunks of ENEMY_CHUNK_ROWS rows (MESSAGE_TYPE_ENEMY_ROWS) instead of
+# inside MAIN_STATE. A whole snapshot over Steam's ~1.2 KB unreliable cap went RELIABLE
+# from about wave 3 (2.2 KB in the T-Rex wave), and 60 reliable sends a second queue
+# behind any loss. 40 rows = 680 B packed, well under the cap after gzip.
+const ENEMY_SPLIT_MIN = 30
+const ENEMY_CHUNK_ROWS = 40
+var _rows_seq : int = -1        # client: SEQ the _last_enemy_rows count belongs to
+var _last_chunk_seq : int = 0   # client: newest SEQ whose enemy chunks were applied
 const STATICS_FRESH_TICKS = 12  # ~200ms at 60Hz: how long a new id's statics ride the snapshot
 var _statics_fresh := {}        # host: id -> [[filename, stats_path], ticks_left] for snapshot-carried statics
 var _deaths_reported := {}      # host: every id ever batched into BATCHED_ENEMY_DEATHS this wave
@@ -211,6 +220,7 @@ func _ready():
 		steam_connection.connect("client_status_received", self, "_client_status_received")
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
 		steam_connection.connect("state_update", self, "_state_update")
+		steam_connection.connect("enemy_rows", self, "_enemy_rows_update")
 		steam_connection.connect("state_events", self, "_state_events")
 		steam_connection.connect("enemy_statics_requested", self, "_on_enemy_statics_requested")
 		steam_connection.connect("host_run_ended", self, "_host_run_ended")
@@ -426,6 +436,13 @@ func _send_game_state() -> void:
 	_state_seq += 1
 	state_dict["SEQ"] = _state_seq
 	state_dict["SENT_AT_MS"] = Time.get_ticks_msec()
+	var solo_dict = state_dict
+	var live_enemies = int(enemy_rows.size() / ENEMY_ROW_STRIDE)
+	if live_enemies > ENEMY_SPLIT_MIN and not brotatogether_options.is_solo_test:
+		solo_dict = state_dict.duplicate()
+		state_dict["ENEMIES"] = PoolByteArray()
+		state_dict["ENEMY_CHUNKS"] = int(ceil(float(live_enemies) / ENEMY_CHUNK_ROWS))
+		_send_enemy_chunks(enemy_rows, snap_spawns)
 	steam_connection.send_game_state(state_dict)
 
 	# Only send the reliable events packet when something actually happened this tick.
@@ -439,10 +456,51 @@ func _send_game_state() -> void:
 
 	if brotatogether_options.is_solo_test:
 		# Solo ghost replay expects one combined dict (positions + batches together).
-		var merged = state_dict.duplicate()
+		var merged = solo_dict.duplicate()
 		for k in events_dict:
 			merged[k] = events_dict[k]
 		_ghost_queue.push_back({"time": Time.get_ticks_msec(), "state": merged})
+
+
+func _send_enemy_chunks(enemy_rows : PoolIntArray, snap_spawns : Dictionary) -> void:
+	var stride = ENEMY_CHUNK_ROWS * ENEMY_ROW_STRIDE
+	var all_rows = Array(enemy_rows)   # PoolIntArray has no subarray() in Godot 3
+	var start = 0
+	while start < all_rows.size():
+		var chunk_rows := PoolIntArray(all_rows.slice(start, min(start + stride, all_rows.size()) - 1))
+		var chunk = {"SEQ": _state_seq, "ENEMIES": _pack_enemy_rows(chunk_rows)}
+		# Statics for ids new in this chunk ride along, same as in the whole snapshot.
+		if not snap_spawns.empty():
+			var spawns = {}
+			for k in range(0, chunk_rows.size(), ENEMY_ROW_STRIDE):
+				if snap_spawns.has(chunk_rows[k]):
+					spawns[chunk_rows[k]] = snap_spawns[chunk_rows[k]]
+			if not spawns.empty():
+				chunk["BATCHED_ENEMY_SPAWNS"] = spawns
+		steam_connection.send_enemy_rows(chunk)
+		start += stride
+
+
+# Client: one chunk of a split snapshot. Chunks of the same SEQ all apply; an older SEQ
+# is dropped so a late chunk never rewinds an enemy another chunk already moved.
+func _enemy_rows_update(chunk : Dictionary) -> void:
+	var seq = int(chunk.get("SEQ", 0))
+	if seq < _last_chunk_seq:
+		return
+	_last_chunk_seq = seq
+	var spawns = chunk.get("BATCHED_ENEMY_SPAWNS", {})
+	for spawn_id in spawns:
+		client_enemy_statics[spawn_id] = spawns[spawn_id]
+		_missing_statics.erase(spawn_id)
+	_count_rows_for_seq(seq)
+	_apply_enemy_rows(chunk.get("ENEMIES", null))
+
+
+# hb rows= is per SEQ now that one snapshot can arrive as several packets.
+func _count_rows_for_seq(seq : int) -> void:
+	if seq != _rows_seq:
+		_rows_seq = seq
+		_last_enemy_rows = 0
 
 
 func _state_update(state_dict : Dictionary) -> void:
@@ -484,7 +542,7 @@ func _state_update(state_dict : Dictionary) -> void:
 		_missing_statics.erase(spawn_id)
 
 	before = Time.get_ticks_usec()
-	_last_enemy_rows = 0   # per-snapshot reset: _apply_enemy_rows accumulates ENEMIES + BOSSES
+	_count_rows_for_seq(seq)   # per-SEQ reset: ENEMIES + BOSSES + any split chunks accumulate
 	_apply_enemy_rows(state_dict["ENEMIES"])
 	var enemies_update_time = Time.get_ticks_usec() - before
 
@@ -700,6 +758,11 @@ func _update_player_position(player_dict : Dictionary, player_index : int) -> vo
 
 	if player_index != my_player_index:
 		if player.dead:
+			# Keep the HP stat in step with the host (it froze at its last pre-death value,
+			# which the harness hb read as full HP) without emitting health_updated: vanilla
+			# flashes the dead player's bar out, and a signal here would put it back.
+			if not steam_connection.is_host() and player_dict.has(EntityState.ENTITY_STATE_CURRENT_HP):
+				player.current_stats.health = player_dict[EntityState.ENTITY_STATE_CURRENT_HP]
 			return
 		player.call_deferred("update_external_player_position", player_dict)
 
@@ -2402,7 +2465,7 @@ func _resolve_left_players_chooser() -> void:
 			continue
 		if pc._items_container.visible:
 			pc._on_TakeButton_pressed()
-			print("BTLOBBY auto-resolved item box for departed slot %d" % idx)
+			print("BTLOBBY " + steam_connection.bt_ts() + "auto-resolved item box for departed slot %d" % idx)
 		elif pc._upgrades_container.visible and pc._old_upgrades.size() > 0:
 			pc._on_choose_button_pressed(pc._old_upgrades[0])
-			print("BTLOBBY auto-resolved upgrade for departed slot %d" % idx)
+			print("BTLOBBY " + steam_connection.bt_ts() + "auto-resolved upgrade for departed slot %d" % idx)

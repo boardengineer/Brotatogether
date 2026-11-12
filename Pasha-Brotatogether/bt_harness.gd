@@ -258,6 +258,8 @@ func _process(_delta: float) -> void:
 	_hb_tick()
 	_hitch_tick()
 	var sc = get_node_or_null("/root/SteamConnection")
+	if _autoplay and not _mortal and sc != null and sc.is_host():
+		_invuln_tick()
 	if sc != null and _mode == "host":
 		_rc_tick(sc, _delta)
 	if _key_test:
@@ -284,6 +286,20 @@ func _process(_delta: float) -> void:
 		return
 	if _autoplay:
 		_autoplay_tick(sc)
+
+
+# DebugService.invulnerable only disables the player hurtbox, so damage that never
+# touches it (acid and other puddles, burning, explosions, lose-HP effects) still landed
+# on soak runs. Top every live player back up on the host each frame. A single hit
+# bigger than full HP still kills, which no soak wave deals.
+func _invuln_tick() -> void:
+	var scene = get_tree().current_scene
+	if scene == null or not ("_players" in scene):
+		return
+	for player in scene._players:
+		if is_instance_valid(player) and not player.dead and player.current_stats.health < player.max_stats.health:
+			player.current_stats.health = player.max_stats.health
+			player.emit_signal("health_updated", player, player.current_stats.health, player.max_stats.health)
 
 
 # Deterministic stall injector (see --bt-hitch above). Blocks only during a live,

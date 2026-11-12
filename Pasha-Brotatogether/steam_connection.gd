@@ -122,6 +122,9 @@ enum MessageType {
 	# Client -> host (reliable), 1.2 wave-end crate chooser: an owned weapon was combined,
 	# recycled or meca-upgraded there. {ACTION, WEAPON_INDEX, UPGRADED (meca only)}
 	MESSAGE_TYPE_MAIN_SCENE_WEAPON_ACTION,
+	# Host -> clients (UNRELIABLE), 1.6.6: enemy rows split out of a dense MAIN_STATE in
+	# chunks small enough for Steam's unreliable MTU. {SEQ, ENEMIES, BATCHED_ENEMY_SPAWNS}
+	MESSAGE_TYPE_ENEMY_ROWS,
 }
 
 var global_chat_lobby_id : int = -1
@@ -370,6 +373,9 @@ signal receive_leave_shop()
 
 signal state_update(state_dict)
 
+# Client-side: one chunk of enemy rows split out of a dense snapshot (MESSAGE_TYPE_ENEMY_ROWS).
+signal enemy_rows(chunk_dict)
+
 # Host side: a client asked for enemy spawn statics it never received (BTMISS backstop).
 signal enemy_statics_requested(ids)
 
@@ -599,7 +605,7 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 					# invite): re-verify compatibility now that we're in and the data is present.
 					var reason := compat_mismatch_reason(lobby_id)
 					if reason != "":
-						print("BTLOBBY refusing lobby %d, incompatible: %s" % [lobby_id, reason.replace("\n", " | ")])
+						print("BTLOBBY " + bt_ts() + "refusing lobby %d, incompatible: %s" % [lobby_id, reason.replace("\n", " | ")])
 						pending_system_messages.push_back("Cannot join lobby -- incompatible:\n" + reason)
 						Steam.leaveLobby(lobby_id)
 						var _e = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
@@ -673,7 +679,7 @@ func _on_lobby_chat_update(lobby_id: int, change_id: int, _making_change_id: int
 				var _error = get_tree().change_scene("res://mods-unpacked/Pasha-Brotatogether/ui/multiplayer_menu.tscn")
 		elif lobby_id == game_lobby_id and game_lobby_id != -1 and is_host():
 			_host_member_left(change_id, changer_name)
-		print("%s has left the %s lobby (state %d, run_ended_by_host=%s)." % [changer_name, left_kind, chat_state, str(ended_flag)])
+		print(bt_ts() + "%s has left the %s lobby (state %d, run_ended_by_host=%s)." % [changer_name, left_kind, chat_state, str(ended_flag)])
 
 	else:
 		print("%s did... something (state %d)." % [changer_name, chat_state])
@@ -782,7 +788,7 @@ func _host_admit(member_id : int, member_name : String) -> void:
 		# Same account re-entering while its old (hard-killed) session is still on the roster:
 		# keep the slot, republish so the new session gets its roster, and let the selection
 		# screen rebuild. The old session's late LEFT is ignored in _host_member_left.
-		print("BTLOBBY re-seated %s in slot %d" % [member_name, get_lobby_index_for_player(member_id)])
+		print("BTLOBBY " + bt_ts() + "re-seated %s in slot %d" % [member_name, get_lobby_index_for_player(member_id)])
 		_publish_roster()
 		emit_signal("lobby_players_updated")
 		return
@@ -796,14 +802,14 @@ func _host_admit(member_id : int, member_name : String) -> void:
 	elif _roster_open_slot_count() <= 0:
 		reason = "The lobby is full"
 	if reason != "":
-		print("BTLOBBY refusing %s: %s" % [member_name, reason])
+		print("BTLOBBY " + bt_ts() + "refusing %s: %s" % [member_name, reason])
 		_kick(member_id, reason)
 		return
 	var open_before := _roster_open_slot_count()
 	lobby_members.push_back(member_id)
 	lobby_member_names.push_back(member_name)
 	_normalize_locks(open_before - 1)   # the newcomer took one open seat
-	print("BTLOBBY seated %s in slot %d" % [member_name, lobby_members.size() - 1])
+	print("BTLOBBY " + bt_ts() + "seated %s in slot %d" % [member_name, lobby_members.size() - 1])
 	_publish_roster()
 	emit_signal("lobby_players_updated")
 
@@ -818,7 +824,7 @@ func _host_member_left(member_id : int, member_name : String) -> void:
 	# followed by a late LEFT (old session). Steam still lists the account as a member then,
 	# so that LEFT is stale: acting on it wiped the fresh seat (RC1 a3, 2026-09-13).
 	if _is_steam_lobby_member(member_id):
-		print("BTLOBBY ignoring stale LEFT for %s (still a lobby member)" % member_name)
+		print("BTLOBBY " + bt_ts() + "ignoring stale LEFT for %s (still a lobby member)" % member_name)
 		return
 	if _lobby_is_open():
 		var open_before := _roster_open_slot_count()
@@ -826,12 +832,12 @@ func _host_member_left(member_id : int, member_name : String) -> void:
 		lobby_member_names.remove(idx)
 		_normalize_locks(open_before + 1)   # the vacated seat is open again
 		_publish_roster()
-		print("BTLOBBY %s left slot %d (compacted)" % [member_name, idx])
+		print("BTLOBBY " + bt_ts() + "%s left slot %d (compacted)" % [member_name, idx])
 		emit_signal("lobby_roster_changed", [idx])
 	else:
 		left_players[idx] = true
 		_publish_roster()
-		print("BTLOBBY %s left slot %d mid-run" % [member_name, idx])
+		print("BTLOBBY " + bt_ts() + "%s left slot %d mid-run" % [member_name, idx])
 		emit_signal("player_left_run", idx)
 
 
@@ -1439,6 +1445,9 @@ func read_p2p_packet() -> void:
 					_receive_game_state(data)
 			elif channel == MessageType.MESSAGE_TYPE_MAIN_STATE_EVENTS:
 				_receive_game_events(data)
+			elif channel == MessageType.MESSAGE_TYPE_ENEMY_ROWS:
+				if not is_host():
+					emit_signal("enemy_rows", data)
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
 
@@ -1605,13 +1614,20 @@ func _on_p2p_session_request(remote_id: int) -> void:
 	# Accept only from the host we joined or someone Steam lists in our game lobby.
 	if remote_id != game_lobby_owner_id and get_lobby_index_for_player(remote_id) == -1 \
 			and not _is_steam_lobby_member(remote_id):
-		print("BTLOBBY ignoring P2P session request from non-member %s" % this_requester)
+		print("BTLOBBY " + bt_ts() + "ignoring P2P session request from non-member %s" % this_requester)
 		return
 	var _err = Steam.acceptP2PSessionWithUser(remote_id)
 
 	# Make the initial handshake
 	if not game_lobby_owner_id == steam_id:
 		_initiate_ping()
+
+
+# Wall-clock stamp for lobby log lines ("[HH:MM:SS.mmm] "), so the two machines' logs can
+# be lined up after a run (godot.log has no timestamps of its own).
+func bt_ts() -> String:
+	var t = OS.get_time()
+	return "[%02d:%02d:%02d.%03d] " % [t.hour, t.minute, t.second, OS.get_system_time_msecs() % 1000]
 
 
 func is_host() -> bool:
@@ -2164,6 +2180,14 @@ func send_game_state(state_dict : Dictionary) -> void:
 		send_p2p_packet(state_dict, MessageType.MESSAGE_TYPE_MAIN_STATE, -1, Steam.P2P_SEND_UNRELIABLE)
 
 
+# Dense waves: the snapshot's enemy rows ride separate unreliable chunks (see main.gd
+# ENEMY_CHUNK_ROWS). Each chunk stands alone -- rows are absolute and deaths are reliable
+# events -- so a lost chunk only delays those enemies by one tick.
+func send_enemy_rows(chunk_dict : Dictionary) -> void:
+	if is_host():
+		send_p2p_packet(chunk_dict, MessageType.MESSAGE_TYPE_ENEMY_ROWS, -1, Steam.P2P_SEND_UNRELIABLE)
+
+
 func send_game_events(events_dict : Dictionary) -> void:
 	if is_host():
 		# One-shot deltas (deaths/spawns/effects) -> RELIABLE so none are ever lost.
@@ -2187,14 +2211,14 @@ func _receive_enemy_statics_request(data : Dictionary) -> void:
 # Run over (host -> clients, reliable). See MESSAGE_TYPE_RUN_ENDED.
 func send_run_ended(won : bool, delay : float) -> void:
 	if is_host():
-		print("BTLOBBY sending RUN_ENDED won=%s delay=%.2f to %d members" % [str(won), delay, lobby_members.size() - 1])
+		print("BTLOBBY " + bt_ts() + "sending RUN_ENDED won=%s delay=%.2f to %d members" % [str(won), delay, lobby_members.size() - 1])
 		send_p2p_packet({"WON": won, "DELAY": delay}, MessageType.MESSAGE_TYPE_RUN_ENDED)
 
 
 func _receive_run_ended(data : Dictionary) -> void:
 	if is_host():
 		return
-	print("BTLOBBY received RUN_ENDED won=%s" % str(data.get("WON", false)))
+	print("BTLOBBY " + bt_ts() + "received RUN_ENDED won=%s" % str(data.get("WON", false)))
 	run_ended_by_host = true
 	emit_signal("host_run_ended", data.get("WON", false), float(data.get("DELAY", 0.5)))
 
@@ -2260,11 +2284,28 @@ func drain_pending_state_events() -> void:
 		emit_signal("state_events", events_dict)
 
 
+# 1.6.6: UNRELIABLE + sequence-numbered, like the host's snapshot. Reliable at 60 Hz meant
+# one late packet held every newer position behind it, so the host judged player 2's hits
+# on a stale position (the ~0.3 s player-2 lag). The counter outlives Main scenes so a
+# straggler from the previous wave can never pass for a newer one.
+var _client_pos_seq : int = 0
+var _last_client_pos_seq := {}     # host: sender steam id -> newest CSEQ applied
+
 func send_client_position(client_position_dict : Dictionary) -> void:
-	send_p2p_packet(client_position_dict, MessageType.MESSAGE_TYPE_CLIENT_POSITION)
+	_client_pos_seq += 1
+	client_position_dict["CSEQ"] = _client_pos_seq
+	send_p2p_packet(client_position_dict, MessageType.MESSAGE_TYPE_CLIENT_POSITION, -1, Steam.P2P_SEND_UNRELIABLE)
 
 
 func _receive_client_position(data : Dictionary, sender_id : int) -> void:
+	var cseq = int(data.get("CSEQ", 0))
+	if cseq > 0:
+		# A rejoin restarts the client's counter at 1: anything far below the newest
+		# seen is a fresh session, not a late packet.
+		var last = int(_last_client_pos_seq.get(sender_id, 0))
+		if cseq <= last and last - cseq < 120:
+			return
+		_last_client_pos_seq[sender_id] = cseq
 	emit_signal("client_position", data, get_lobby_index_for_player(sender_id))
 
 
