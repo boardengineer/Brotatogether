@@ -126,6 +126,17 @@ var _dil_wave := -1
 var _die_at := {}        # wave -> [player idx, ...]
 var _pl_dead := {}       # player index -> dead at the last heartbeat (DIED/REVIVED lines)
 var _mortal := false     # --bt-mortal: players can actually die (no DebugService.invulnerable)
+# --bt-pd-test (both machines): scripted Primal Dread actions for the client seat, the test
+# plan rows no bot reaches. Host, each shop: tops the client up (gold, meca parts), turns one
+# shop offer meca, and on the first shop duplicates its first weapon so a combine exists.
+# Client, each shop: buys the meca offer with effect 1, dismantles another offer, meca-upgrades
+# an owned weapon, then presses GO itself (its AutoBattler slot fights but does not shop).
+# Client, first chooser each wave: combines a pair, or recycles its last weapon. Both print
+# BTPD state lines at shop start and after the actions: compare A and B per wave/tag.
+var _pd_test := false
+var _pd_shop := {}        # shop scene instance id -> next step index
+var _pd_shop_t0 := {}     # shop scene instance id -> ms when first seen
+var _pd_chooser_wave := -1
 
 
 func _ready() -> void:
@@ -200,6 +211,8 @@ func _ready() -> void:
 			print("BTHARNESS forced character: %s" % _char_id)
 		elif a == "--bt-mortal":
 			_mortal = true   # skip the soak invulnerability: real deaths/revives
+		elif a == "--bt-pd-test":
+			_pd_test = true
 		elif a.begins_with("--bt-die-at="):
 			for spec in a.substr(12).split(","):
 				var wi = spec.split(":")
@@ -300,6 +313,164 @@ func _invuln_tick() -> void:
 		if is_instance_valid(player) and not player.dead and player.current_stats.health < player.max_stats.health:
 			player.current_stats.health = player.max_stats.health
 			player.emit_signal("health_updated", player, player.current_stats.health, player.max_stats.health)
+
+
+# --- --bt-pd-test (see the var block) -------------------------------------------------
+func _pd_weapons_str(p: int) -> String:
+	var out = []
+	for w in RunData.get_player_weapons(p):
+		out.push_back("%s%s" % [w.my_id, "[M]" if w.is_meca else ""])
+	return ",".join(out)
+
+
+func _pd_state(tag: String) -> void:
+	for p in RunData.get_player_count():
+		var meca_items = 0
+		for it in RunData.get_player_items(p):
+			if it.is_meca:
+				meca_items += 1
+		print("BTPD state %s wave=%d p%d gold=%d parts=%d weapons=%s items=%d meca_items=%d" % [tag,
+				RunData.current_wave, p, RunData.get_player_gold(p), RunData.get_player_meca_parts(p),
+				_pd_weapons_str(p), RunData.get_player_items(p).size(), meca_items])
+
+
+func _pd_host_gift(scene) -> void:
+	var dlc = ItemService.get_dlc_data_by_id("primal_dread")
+	if dlc == null or not ("_shop_items" in scene):
+		print("BTPD host: no primal_dread data or shop items, skipping")
+		return
+	var changed = []
+	for p in RunData.get_player_count():
+		if p == _local_idx:
+			continue
+		if RunData.get_player_gold(p) < 400:
+			RunData.add_gold(400 - RunData.get_player_gold(p), p)
+		if RunData.get_player_meca_parts(p) < 80:
+			RunData.add_meca_parts(80 - RunData.get_player_meca_parts(p), p)
+		var gave = ""
+		var weapons = RunData.get_player_weapons(p)
+		if RunData.current_wave <= 1 and weapons.size() > 0 and weapons.size() < 6 and weapons[0].tier < 3:
+			RunData.add_weapon(weapons[0].duplicate(), p)
+			gave = " dup=%s" % weapons[0].my_id
+		var offers = scene._shop_items[p]
+		var made = ""
+		for k in offers.size():
+			var it = offers[k][0]
+			if it.get_category() == Category.ITEM and not it.is_meca and not it.is_cursed and not it.is_mutant:
+				offers[k][0] = dlc.meca_item(it, p)
+				made = offers[k][0].my_id
+				break
+		scene._get_shop_items_container(p).set_shop_items(offers)
+		if scene.has_method("_get_gear_container"):
+			scene._get_gear_container(p).set_weapons_data(RunData.get_player_weapons(p))
+		changed.push_back(p)
+		print("BTPD host: wave=%d player=%d gold=%d parts=%d meca_offer=%s%s" % [RunData.current_wave, p,
+				RunData.get_player_gold(p), RunData.get_player_meca_parts(p), made, gave])
+	if changed.size() > 0 and scene.has_method("send_shop_state"):
+		scene.send_shop_state(changed)
+
+
+func _pd_shop_items(scene, p: int) -> Array:
+	var out = []
+	for si in scene._get_shop_items_container(p).get_children():
+		if si is ShopItem and si.visible and si.item_data != null:
+			out.push_back(si)
+	return out
+
+
+# Client steps 1-4 and the host's step 5 run off the shop scene's own clock, so A and B
+# print their after-state at about the same moment.
+func _pd_shop_tick(sc, scene) -> void:
+	var sid = scene.get_instance_id()
+	var now = Time.get_ticks_msec()
+	if not _pd_shop_t0.has(sid):
+		_pd_shop_t0[sid] = now
+		_pd_shop[sid] = 0
+	var t = now - int(_pd_shop_t0[sid])
+	var step = int(_pd_shop[sid])
+	var p = _local_idx
+	if step == 0 and t >= 2500:
+		_pd_state("shop-start")
+		_pd_shop[sid] = 1 if not sc.is_host() else 5
+	elif step == 1 and t >= 4500:
+		var meca = null
+		for si in _pd_shop_items(scene, p):
+			if si.item_data.is_meca:
+				meca = si
+				break
+		if meca == null and t < 9000:
+			return   # the host's meca offer may still be on its way
+		if meca == null:
+			print("BTPD client: wave=%d no meca offer arrived" % RunData.current_wave)
+		else:
+			meca.effect_choice_selected = 1
+			print("BTPD client: wave=%d buy meca %s choice=1 gold_before=%d" % [RunData.current_wave, meca.item_data.my_id, RunData.get_player_gold(p)])
+			scene._get_shop_items_container(p).on_shop_item_buy_button_pressed(meca)
+		_pd_shop[sid] = 2
+	elif step == 2 and t >= 10500:
+		var target = null
+		for si in _pd_shop_items(scene, p):
+			if not si.item_data.is_meca:
+				target = si
+				break
+		if target == null:
+			print("BTPD client: wave=%d nothing to dismantle" % RunData.current_wave)
+		else:
+			print("BTPD client: wave=%d dismantle %s gold_before=%d parts_before=%d" % [RunData.current_wave, target.item_data.my_id, RunData.get_player_gold(p), RunData.get_player_meca_parts(p)])
+			scene._get_shop_items_container(p).on_shop_item_dismantle_button_pressed(target)
+		_pd_shop[sid] = 3
+	elif step == 3 and t >= 12500:
+		var dlc = ItemService.get_dlc_data_by_id("primal_dread")
+		var done = false
+		var weapons = RunData.get_player_weapons(p)
+		for i in weapons.size():
+			var w = weapons[i]
+			if dlc == null or w.is_meca or not ItemService.can_weapon_be_mechanized(w):
+				continue
+			var cost = dlc.get_meca_upgrade_cost(w)
+			if cost <= 0 or RunData.get_player_meca_parts(p) < cost:
+				continue
+			var preview = dlc.meca_item(w, p)
+			var options = 0
+			for e in preview.effects:
+				if e is EffectOption:
+					options += 1
+			if options < 2:
+				continue
+			var upgraded = DLC2Data.change_effect_option_to_modular_effect(preview, 0)
+			print("BTPD client: wave=%d meca upgrade weapon %d %s cost=%d parts_before=%d" % [RunData.current_wave, i, w.my_id, cost, RunData.get_player_meca_parts(p)])
+			scene._on_item_meca_upgrade_selected(w, upgraded, p)
+			done = true
+			break
+		if not done:
+			print("BTPD client: wave=%d no weapon to meca-upgrade (parts=%d)" % [RunData.current_wave, RunData.get_player_meca_parts(p)])
+		_pd_shop[sid] = 4
+	elif step == 4 and t >= 15500:
+		_pd_state("shop-after")
+		if scene.has_method("_on_GoButton_pressed"):
+			scene._on_GoButton_pressed(p)
+			print("BTPD client: wave=%d GO pressed" % RunData.current_wave)
+		_pd_shop[sid] = 6
+	elif step == 5 and t >= 15000:
+		_pd_state("shop-after")   # host: about when the client prints its own
+		_pd_shop[sid] = 6
+
+
+func _pd_chooser_action(ui) -> void:
+	var p = _local_idx
+	var weapons = RunData.get_player_weapons(p)
+	print("BTPD client: wave=%d chooser before weapons=%s" % [RunData.current_wave, _pd_weapons_str(p)])
+	for i in weapons.size():
+		for j in range(i + 1, weapons.size()):
+			if weapons[i].my_id == weapons[j].my_id and weapons[i].tier < 3 and not weapons[i].is_meca and not weapons[j].is_meca:
+				print("BTPD client: wave=%d chooser combine %s" % [RunData.current_wave, weapons[i].my_id])
+				ui._on_weapon_combine_button_pressed(weapons[i], p)
+				return
+	if weapons.size() > 1:
+		print("BTPD client: wave=%d chooser recycle %s" % [RunData.current_wave, weapons[weapons.size() - 1].my_id])
+		ui._on_weapon_discard_button_pressed(weapons[weapons.size() - 1], p)
+	else:
+		print("BTPD client: wave=%d chooser: one weapon, nothing to recycle" % RunData.current_wave)
 
 
 # Deterministic stall injector (see --bt-hitch above). Blocks only during a live,
@@ -426,11 +597,15 @@ func _autoplay_tick(sc) -> void:
 	if _bots and CoopService.get("is_bot_by_index") != null and _local_idx < CoopService.is_bot_by_index.size():
 		# Idempotent re-assert: mode switches call clear_coop_players() which wipes the flags.
 		CoopService.is_bot_by_index[_local_idx] = true
+		if _pd_test and not sc.is_host() and CoopService.get("autoshop_by_index") != null and _local_idx < CoopService.autoshop_by_index.size():
+			CoopService.autoshop_by_index[_local_idx] = false   # the PD test owns this slot's shop
 	# Post-wave chooser lives INSIDE Main (no scene change), so it needs a per-frame poll
 	# rather than the instance-keyed once-per-scene dispatch below.
 	if scene.name == "Main":
 		_ap_postwave_tick(sc, scene)
 		_die_tick(sc, scene)
+	if _pd_test and (scene.name == "Shop" or scene.name == "CoopShop"):
+		_pd_shop_tick(sc, scene)
 	# Difficulty wedge guard: a press can silently no-op (co-op caps danger at the
 	# CLIENT's unlock; a stale saved selection poisons the default focus too). If the
 	# run hasn't started ~3s after ANY press, force element 0 (always pressable) and
@@ -503,6 +678,28 @@ func _ap_select(sc, scene, kind) -> void:
 				if kind == "character" and ("_player_characters" in scene) and ("item" in sel_el):
 					scene._player_characters[_local_idx] = sel_el.item
 					print("BTHARNESS autoplay character: committing %s" % (sel_el.item.my_id if sel_el.item != null else "RANDOM"))
+		if kind == "weapon" and _pd_test and scene.has_method("_get_required_pick_count") and scene.has_method("_get_inventories"):
+			# PD test: real picks through _on_element_pressed (as a click does), as many as
+			# the character needs (Survivor: 2), so row 3 checks the weapons that were PICKED.
+			var need = scene._get_required_pick_count(_local_idx)
+			var invs = scene._get_inventories()
+			var picks = []
+			if not invs.empty():
+				for el in invs[min(_local_idx, invs.size() - 1)].get_children():
+					if not ("item" in el) or el.item == null or el.is_random or el.is_special or el.get("is_locked") == true:
+						continue
+					picks.push_back(el)
+					if picks.size() >= need:
+						break
+			if not picks.empty():
+				while picks.size() < need:
+					picks.push_back(picks[0])
+				var ids = []
+				for el in picks:
+					ids.push_back(el.item.my_id)
+				print("BTPD weapon picks: player=%d need=%d picks=%s" % [_local_idx, need, ",".join(ids)])
+				for el in picks:
+					scene._on_element_pressed(el, _local_idx)
 		scene._set_selected_element(_local_idx)
 		print("BTHARNESS autoplay %s: _set_selected_element(%d) called" % [kind, _local_idx])
 		if (kind == "character" or kind == "weapon") and _local_idx < RunData.players_data.size():
@@ -574,6 +771,11 @@ func _ap_shop(sc, scene) -> void:
 	print("BTHARNESS autoplay shop: wave=%d is_host=%s local_idx=%d player_count=%d" % [RunData.current_wave, str(sc.is_host()), _local_idx, pc])
 	if (_curse_gift or _gift_ids.size() > 0 or _gift_gold > 0) and sc.is_host():
 		_curse_gift_tick(scene)
+	if _pd_test and sc.is_host():
+		_pd_host_gift(scene)
+	if _pd_test and not sc.is_host():
+		print("BTHARNESS autoplay shop: PD test owns GO, harness skipping")
+		return
 	if _bots:
 		# GO is a TOGGLE: with --bt-bots the AutoBattler autoshop presses GO itself at
 		# the end of its buy/reroll flow, and a second press from the harness UN-readies
@@ -690,6 +892,11 @@ func _ap_postwave_tick(sc, scene) -> void:
 	var pc = ui._get_player_container(_local_idx)
 	if pc == null or pc._checkmark_group.visible:
 		return   # our choices are done; the host's yield resumes once everyone is
+	if _pd_test and not sc.is_host() and _pd_chooser_wave != RunData.current_wave:
+		_pd_chooser_wave = RunData.current_wave
+		_pd_chooser_action(ui)
+		_chooser_cooldown = CHOOSER_COOLDOWN_FRAMES
+		return
 	if pc._items_container.visible:
 		var item_id = "?"
 		if pc._item_data != null:
