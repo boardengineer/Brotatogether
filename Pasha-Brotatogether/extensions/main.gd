@@ -2,6 +2,7 @@ extends "res://main.gd"
 
 var ClientMovementBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_movement_behavior.gd")
 var ClientAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_attack_behavior.gd")
+var ClientShootingAttackBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_shooting_attack_behavior.gd")
 var ClientTargetBehavior = load("res://mods-unpacked/Pasha-Brotatogether/client/client_target_behavior.gd")
 var explosion_scene = load("res://projectiles/explosion.tscn")
 var DataNode = load("res://mods-unpacked/Pasha-Brotatogether/data_node.gd")
@@ -226,6 +227,7 @@ func _ready():
 		steam_connection.connect("host_starts_round", self, "_host_starts_round")
 		steam_connection.connect("state_update", self, "_state_update")
 		steam_connection.connect("enemy_rows", self, "_enemy_rows_update")
+		steam_connection.connect("side_state", self, "_side_state_update")
 		steam_connection.connect("state_events", self, "_state_events")
 		steam_connection.connect("enemy_statics_requested", self, "_on_enemy_statics_requested")
 		steam_connection.connect("host_run_ended", self, "_host_run_ended")
@@ -449,6 +451,13 @@ func _send_game_state() -> void:
 		state_dict["ENEMIES"] = PoolByteArray()
 		state_dict["ENEMY_CHUNKS"] = int(ceil(float(live_enemies) / ENEMY_CHUNK_ROWS))
 		_send_enemy_chunks(enemy_rows, snap_spawns)
+		# Same dense waves: the next-fattest sections ride their own packet too (BTSIZE at
+		# 110+ enemies: main ~1.2-1.4 KB with EP ~330, NEUTRALS ~220, ITEMS ~170).
+		var side = {"SEQ": _state_seq}
+		for k in SIDE_STATE_KEYS:
+			side[k] = state_dict[k]
+			state_dict.erase(k)
+		steam_connection.send_side_state(side)
 	steam_connection.send_game_state(state_dict)
 	if steam_connection.last_packet_bytes > steam_connection.UNRELIABLE_MAX_BYTES:
 		_btsize_report(state_dict)
@@ -473,6 +482,28 @@ func _send_game_state() -> void:
 # BTSIZE: at most once per 5 s while snapshots overflow the unreliable cap, print each key's
 # gzip size so the next shrink targets the real hog instead of a guess.
 var _btsize_next_ms : int = 0
+
+# Sections a dense snapshot moves into MESSAGE_TYPE_SIDE_STATE. Each is an absolute list the
+# client rebuilds from, so a lost side packet only leaves them one tick old.
+const SIDE_STATE_KEYS := ["ITEMS", "NEUTRALS", "ENEMY_PROJECTILES", "EP_FILES"]
+var _side_seq : int = 0   # client: newest SEQ whose SIDE_STATE_KEYS were applied
+
+func _side_state_update(side : Dictionary) -> void:
+	var seq = int(side.get("SEQ", 0))
+	if seq <= _side_seq:
+		return
+	_side_seq = seq
+	_apply_side_keys(side)
+
+
+func _apply_side_keys(d : Dictionary) -> void:
+	if d.has("ITEMS"):
+		_update_items(d["ITEMS"])
+	if d.has("NEUTRALS"):
+		_update_neutrals(d["NEUTRALS"])
+	if d.has("ENEMY_PROJECTILES"):
+		_update_enemy_projectiles(d["ENEMY_PROJECTILES"], d.get("EP_FILES", []))
+
 
 func _btsize_report(state_dict : Dictionary) -> void:
 	var now = Time.get_ticks_msec()
@@ -594,17 +625,18 @@ func _state_update(state_dict : Dictionary) -> void:
 	call_deferred("_update_births", state_dict["BIRTHS"])
 	var births_update_time = Time.get_ticks_usec() - before
 
+	# ITEMS / NEUTRALS / ENEMY_PROJECTILES are absent when they rode a SIDE_STATE packet.
 	before = Time.get_ticks_usec()
-	_update_items(state_dict["ITEMS"])
+	if state_dict.has("ITEMS") and seq > _side_seq:
+		_side_seq = seq
+		_apply_side_keys(state_dict)
 	var items_update_time = Time.get_ticks_usec() - before
 
 	before = Time.get_ticks_usec()
 	_update_consumables(state_dict["CONSUMABLES"], state_dict.get("CS_FILES", []))
 	var consumables_update_time = Time.get_ticks_usec() - before
 
-	before = Time.get_ticks_usec()
-	_update_neutrals(state_dict["NEUTRALS"])
-	var neutrals_update_time = Time.get_ticks_usec() - before
+	var neutrals_update_time = 0
 
 	before = Time.get_ticks_usec()
 	_update_structures(state_dict["STRUCTURES"])
@@ -614,9 +646,7 @@ func _state_update(state_dict : Dictionary) -> void:
 	_update_pets(state_dict["PETS"])
 	var pets_update_time = Time.get_ticks_usec() - before
 
-	before = Time.get_ticks_usec()
-	_update_enemy_projectiles(state_dict["ENEMY_PROJECTILES"], state_dict.get("EP_FILES", []))
-	var enemy_projectiles_update_time = Time.get_ticks_usec() - before
+	var enemy_projectiles_update_time = 0
 
 	_update_puddles(state_dict.get("PUDDLES", PoolByteArray()))
 	_update_poacher_zones(state_dict.get("POACHER_ZONES", PoolIntArray()))
@@ -647,9 +677,9 @@ func _state_update(state_dict : Dictionary) -> void:
 				sound_update_time + sound_2d_update_time,
 				enemy_deaths_update_time,
 				state_dict["PLAYERS"].size(), int(state_dict["ENEMIES"].size() / ENEMY_ROW_BYTES), int(state_dict["BOSSES"].size() / ENEMY_ROW_BYTES),
-				int(state_dict["PLAYER_PROJECTILES"].size() / EP_ROW_BYTES) + int(state_dict["ENEMY_PROJECTILES"].size() / EP_ROW_BYTES),
-				int(state_dict["ITEMS"].size() / ITEM_ROW_STRIDE), int(state_dict["CONSUMABLES"].size() / CS_ROW_STRIDE),
-				state_dict["NEUTRALS"].size(), state_dict["STRUCTURES"].size(),
+				int(state_dict["PLAYER_PROJECTILES"].size() / EP_ROW_BYTES) + int(state_dict.get("ENEMY_PROJECTILES", []).size() / EP_ROW_BYTES),
+				int(state_dict.get("ITEMS", []).size() / ITEM_ROW_STRIDE), int(state_dict["CONSUMABLES"].size() / CS_ROW_STRIDE),
+				state_dict.get("NEUTRALS", []).size(), state_dict["STRUCTURES"].size(),
 				state_dict["PETS"].size(), int(state_dict["BIRTHS"].size() / BIRTH_ROW_STRIDE)])
 
 
@@ -1059,7 +1089,7 @@ func spawn_enemy(enemy_dict) -> void:
 	for ab in attack_behaviors_to_replace:
 		var ab_name = ab.name
 		enemy.remove_child(ab)
-		var client_ab = ClientAttackBehavior.new()
+		var client_ab = ClientShootingAttackBehavior.new() if ab is ShootingAttackBehavior else ClientAttackBehavior.new()
 		client_ab.set_name(ab_name)
 		enemy.add_child(client_ab, true)
 	var replaced_ab = enemy.get_node_or_null("AttackBehavior")

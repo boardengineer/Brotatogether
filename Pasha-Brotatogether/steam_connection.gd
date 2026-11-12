@@ -125,6 +125,9 @@ enum MessageType {
 	# Host -> clients (UNRELIABLE), 1.6.6: enemy rows split out of a dense MAIN_STATE in
 	# chunks small enough for Steam's unreliable MTU. {SEQ, ENEMIES, BATCHED_ENEMY_SPAWNS}
 	MESSAGE_TYPE_ENEMY_ROWS,
+	# Host -> clients (UNRELIABLE), 1.6.12: the SIDE_STATE_KEYS sections (main.gd) of a dense
+	# MAIN_STATE, so the main snapshot stays under the unreliable cap. {SEQ, ITEMS, ...}
+	MESSAGE_TYPE_SIDE_STATE,
 }
 
 var global_chat_lobby_id : int = -1
@@ -376,6 +379,9 @@ signal state_update(state_dict)
 # Client-side: one chunk of enemy rows split out of a dense snapshot (MESSAGE_TYPE_ENEMY_ROWS).
 signal enemy_rows(chunk_dict)
 
+# Client-side: the sections split out of a dense snapshot (MESSAGE_TYPE_SIDE_STATE).
+signal side_state(side_dict)
+
 # Host side: a client asked for enemy spawn statics it never received (BTMISS backstop).
 signal enemy_statics_requested(ids)
 
@@ -443,6 +449,7 @@ func _ready():
 # arrive every tick instead of in reliable bursts, which fed that loop harder.
 var _pending_state = null
 var _pending_chunks := []
+var _pending_side = null   # newest SIDE_STATE since the last rendered frame
 
 func _queue_game_state(data : Dictionary) -> void:
 	if _pending_state != null:
@@ -460,6 +467,10 @@ func _process(_delta : float) -> void:
 		var batch = _pending_chunks
 		_pending_chunks = []
 		_emit_newest_enemy_chunks(batch)
+	if _pending_side != null:
+		var side = _pending_side
+		_pending_side = null
+		emit_signal("side_state", side)
 
 
 func _physics_process(_delta : float) -> void:
@@ -1475,6 +1486,10 @@ func read_p2p_packet() -> void:
 				# Collected, not applied: only the newest SEQ's chunks go out (see below).
 				if not is_host():
 					_pending_chunks.push_back(data)
+			elif channel == MessageType.MESSAGE_TYPE_SIDE_STATE:
+				# Absolute state like MAIN_STATE: only the newest one matters.
+				if not is_host() and (_pending_side == null or int(data.get("SEQ", 0)) > int(_pending_side.get("SEQ", 0))):
+					_pending_side = data
 			elif channel == MessageType.MESSAGE_TYPE_CLIENT_POSITION:
 				_receive_client_position(data, sender_id)
 
@@ -2165,6 +2180,7 @@ func _receive_host_round_start() -> void:
 	_pending_state_events.clear()
 	_pending_state = null
 	_pending_chunks.clear()
+	_pending_side = null
 	# Shop-time stat overrides must never leak into combat: the client's own player
 	# would read frozen shop values (speed, HP...) in its local simulation.
 	Utils.remote_player_stats.clear()
@@ -2215,6 +2231,11 @@ func send_game_state(state_dict : Dictionary) -> void:
 func send_enemy_rows(chunk_dict : Dictionary) -> void:
 	if is_host():
 		send_p2p_packet(chunk_dict, MessageType.MESSAGE_TYPE_ENEMY_ROWS, -1, Steam.P2P_SEND_UNRELIABLE)
+
+
+func send_side_state(side_dict : Dictionary) -> void:
+	if is_host():
+		send_p2p_packet(side_dict, MessageType.MESSAGE_TYPE_SIDE_STATE, -1, Steam.P2P_SEND_UNRELIABLE)
 
 
 func send_game_events(events_dict : Dictionary) -> void:
