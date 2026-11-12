@@ -430,6 +430,12 @@ func _pd_shop_tick(sc, scene) -> void:
 			var w = weapons[i]
 			if dlc == null or w.is_meca or not ItemService.can_weapon_be_mechanized(w):
 				continue
+			var twin = false
+			for j in weapons.size():
+				if j != i and weapons[j].my_id == w.my_id:
+					twin = true
+			if twin:
+				continue   # keep the host's duplicate pair plain so the chooser can combine it
 			var cost = dlc.get_meca_upgrade_cost(w)
 			if cost <= 0 or RunData.get_player_meca_parts(p) < cost:
 				continue
