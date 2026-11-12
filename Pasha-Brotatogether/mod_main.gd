@@ -2,7 +2,10 @@ extends Node
 
 const SteamConnection = preload("res://mods-unpacked/Pasha-Brotatogether/steam_connection.gd")
 const BrotogetherOptions = preload("res://mods-unpacked/Pasha-Brotatogether/brotatogether_options.gd")
-const BTHarness = preload("res://mods-unpacked/Pasha-Brotatogether/bt_harness.gd")
+# bt_harness.gd is loaded at runtime, not preloaded: a const preload compiles it with this
+# script, before _init() installs the extensions, so any vanilla class it names gets loaded
+# too early (1.6.9: naming ShopItem broke retail 1.2's boot with 209 parse errors).
+const BT_HARNESS_PATH = "res://mods-unpacked/Pasha-Brotatogether/bt_harness.gd"
 const MpMouse = preload("res://mods-unpacked/Pasha-Brotatogether/ui/mouse/mp_mouse.gd")
 
 const MOD_DIR = "Pasha-Brotatogether/"
@@ -82,7 +85,7 @@ func _ready():
 	options_node.set_name("BrotogetherOptions")
 	$"/root".call_deferred("add_child",options_node)
 
-	var bt_harness = BTHarness.new()
+	var bt_harness = load(BT_HARNESS_PATH).new()
 	bt_harness.set_name("BTHarness")
 	$"/root".call_deferred("add_child",bt_harness)
 

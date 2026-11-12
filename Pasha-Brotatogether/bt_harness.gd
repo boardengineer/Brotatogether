@@ -316,6 +316,9 @@ func _invuln_tick() -> void:
 
 
 # --- --bt-pd-test (see the var block) -------------------------------------------------
+# No global class names in here (ShopItem, Category, EffectOption, DLC2Data): this script is
+# preloaded at mod init, and naming them made retail 1.2 load those classes before the
+# script extensions were installed -- 209 parse errors and no game (1.6.9 boot, A).
 func _pd_weapons_str(p: int) -> String:
 	var out = []
 	for w in RunData.get_player_weapons(p):
@@ -356,7 +359,7 @@ func _pd_host_gift(scene) -> void:
 		var made = ""
 		for k in offers.size():
 			var it = offers[k][0]
-			if it.get_category() == Category.ITEM and not it.is_meca and not it.is_cursed and not it.is_mutant:
+			if it.get_category() == ItemService.items[0].get_category() and not it.is_meca and not it.is_cursed and not it.is_mutant:
 				offers[k][0] = dlc.meca_item(it, p)
 				made = offers[k][0].my_id
 				break
@@ -373,7 +376,7 @@ func _pd_host_gift(scene) -> void:
 func _pd_shop_items(scene, p: int) -> Array:
 	var out = []
 	for si in scene._get_shop_items_container(p).get_children():
-		if si is ShopItem and si.visible and si.item_data != null:
+		if si.has_method("set_shop_item") and si.visible and si.item_data != null:
 			out.push_back(si)
 	return out
 
@@ -433,11 +436,11 @@ func _pd_shop_tick(sc, scene) -> void:
 			var preview = dlc.meca_item(w, p)
 			var options = 0
 			for e in preview.effects:
-				if e is EffectOption:
+				if e.get_script() != null and e.get_script().resource_path.find("effect_option") >= 0:
 					options += 1
 			if options < 2:
 				continue
-			var upgraded = DLC2Data.change_effect_option_to_modular_effect(preview, 0)
+			var upgraded = dlc.change_effect_option_to_modular_effect(preview, 0)
 			print("BTPD client: wave=%d meca upgrade weapon %d %s cost=%d parts_before=%d" % [RunData.current_wave, i, w.my_id, cost, RunData.get_player_meca_parts(p)])
 			scene._on_item_meca_upgrade_selected(w, upgraded, p)
 			done = true
